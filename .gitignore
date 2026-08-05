@@ -1,0 +1,39 @@
+# --- Never commit: raw data (large Book-Crossing CSVs) ---
+data/
+
+# --- Never commit: private working notes and agent instructions ---
+# Excluded regardless of repo visibility.
+internal/
+STRATEGY.md
+CLAUDE.md
+
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Cached model artefacts (embedding vectors: ~400MB, regenerable) ---
+artifacts/
+
+# --- Python environments ---
+.venv/
+venv/
+env/
+
+# --- Python build/caches ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# --- Notebooks ---
+.ipynb_checkpoints/
+
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/

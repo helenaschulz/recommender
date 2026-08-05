@@ -1,0 +1,9 @@
+# Pointer, kept so the README's quick-start still works.
+# pyproject.toml is the source of truth for dependencies since M4 (iteration 2):
+# it pins the modelling stack (scipy, scikit-learn, implicit, sentence-transformers,
+# torch) that this file predates.
+#
+#   python3.11 -m venv .venv && source .venv/bin/activate
+#   pip install -e ".[dev]"
+#
+-e .
