@@ -104,3 +104,10 @@ The sources this project leans on, in full in
 - Steck, WWW 2019 — [Embarrassingly Shallow Autoencoders for Sparse Data](https://arxiv.org/abs/1905.03375) (EASE).
 - [`paraphrase-multilingual-MiniLM-L12-v2`](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2)
   — the sentence-embedding model used for the content layer.
+
+## License
+
+The code and documentation in this repository are released under the MIT License — see
+[`LICENSE`](LICENSE). The Book-Crossing data is **not** covered by it: it is not part of
+this repo and stays under the terms of its own source (see
+[Getting the data](#getting-the-data)).
