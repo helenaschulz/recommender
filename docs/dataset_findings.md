@@ -1,7 +1,5 @@
 # Book-Crossing: what is already known, and which approaches make sense
 
-As of 2026-08-03. Every number below was recomputed on the local CSVs in `data/`, not
-copied from someone else's notebook. Sources are listed at the end.
 
 ## 1. Provenance and character
 
@@ -12,14 +10,12 @@ Through Topic Diversification"](https://doi.org/10.1145/1060745.1060754)). 278,8
 271,360 books, 1,149,780 ratings. It has been a standard benchmark for twenty years, so
 there is a lot of prior knowledge to build on.
 
-**The structural property almost every public notebook ignores: there are no
-timestamps.** `Ratings.csv` holds only `User-ID`, `ISBN`, `Book-Rating`. A time-based
+**There are no timestamps.** `Ratings.csv` holds only `User-ID`, `ISBN`, `Book-Rating`. A time-based
 train/test split is therefore impossible. The honest alternatives are a per-user random
 holdout or per-user leave-N-out, and saying openly that a production system with real
-timestamps would be split temporally instead. That limitation is worth stating rather
-than hiding: the split follows what the data can support, not what the textbook prefers.
+timestamps would be split temporally instead.
 
-## 2. Data quality, recomputed on these files
+## 2. Data quality
 
 | Finding | Number |
 |---|---|
@@ -125,4 +121,3 @@ The model ladder from the earlier notes holds. Refinements:
   [`implicit`](https://github.com/benfred/implicit) library.
 - Steck (WWW 2019): ["Embarrassingly Shallow Autoencoders for Sparse
   Data"](https://arxiv.org/abs/1905.03375) — EASE.
-- Own profiling of the local CSVs, script run on 2026-08-03 (the numbers in section 2).
