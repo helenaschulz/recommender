@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "recommender"
-version = "0.2.0"
+version = "0.3.0"
 description = "Book recommender project on the Book-Crossing dataset"
 requires-python = ">=3.11,<3.12"
 dependencies = [

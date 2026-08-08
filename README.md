@@ -66,6 +66,16 @@ reproduce the comparison table:
 python scripts/run_model.py --all --gallery
 ```
 
+The edition-clustering work (same ISBN, many editions) has its own two entry points:
+
+```bash
+python scripts/analyze_editions.py --write-sample docs/edition_clusters_sample.md
+```
+
+```bash
+python scripts/analyze_dedup.py
+```
+
 ## Repository layout
 
 | Path | What lives there |
@@ -74,7 +84,7 @@ python scripts/run_model.py --all --gallery
 | `notebooks/` | The journey: `01_eda.ipynb` (data understanding), `02_models.ipynb` (model comparison). |
 | `docs/` | [`RESULTS.md`](docs/RESULTS.md) — the measurement ledger — plus [`dataset_findings.md`](docs/dataset_findings.md), the model-selection write-up [`model_selection.md`](docs/model_selection.md), and figures under `docs/img/`. |
 | `src/recommender/` | One module per responsibility: data prep, split, models, evaluation, gallery. |
-| `scripts/` | Entry points: `run_model.py` (evaluate models), `tune_*.py` (hyperparameters on a validation split). |
+| `scripts/` | Entry points: `run_model.py` (evaluate models), `tune_*.py` (hyperparameters on a validation split), `analyze_editions.py` and `analyze_dedup.py` (the edition-clustering measurements). |
 | `tests/` | Offline, deterministic tests — no network, no model downloads. |
 
 [`docs/RESULTS.md`](docs/RESULTS.md) is the measurement ledger: every headline number used
