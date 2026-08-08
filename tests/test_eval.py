@@ -11,7 +11,7 @@ import math
 import numpy as np
 import pytest
 
-from recommender.eval import catalog_coverage_at_k, hit_rate_at_k, novelty_at_k
+from recommender.eval import catalog_coverage_at_k, evaluate, hit_rate_at_k, novelty_at_k
 from recommender.models.base import top_k_from_scores
 
 
@@ -62,6 +62,26 @@ def test_novelty_is_finite_for_never_interacted_items() -> None:
     """Content models recommend zero-interaction books; the metric must stay finite."""
     got = novelty_at_k(np.array([["unseen"]], dtype=object), {}, total_interactions=500, catalog_size=10)
     assert math.isfinite(got)
+
+
+def test_evaluate_uses_the_catalog_size_it_is_given(toy_ratings, toy_catalog) -> None:
+    """The work-level experiment measures coverage against 235,824 works, not 271,360
+    ISBNs. A denominator that silently stayed at the ISBN catalogue would make the
+    work-level row look worse than it is, and nothing in the printed metric would say so.
+    """
+    from recommender.data import build_interactions
+    from recommender.models.popularity import PopularityRecommender
+    from recommender.split import make_split
+
+    split = make_split(toy_ratings, min_explicit=5, relevance_threshold=8)
+    train = build_interactions(split.train, weights="binary")
+    model = PopularityRecommender().fit(train, toy_catalog)
+    catalog_isbns = set(toy_catalog.books["ISBN"])
+
+    wide = evaluate(model, split, train, catalog_isbns=catalog_isbns, catalog_size=1000)
+    narrow = evaluate(model, split, train, catalog_isbns=catalog_isbns, catalog_size=100)
+    assert narrow.coverage_at_10 == pytest.approx(wide.coverage_at_10 * 10)
+    assert narrow.hit_rate_at_10 == pytest.approx(wide.hit_rate_at_10)
 
 
 class TestTopK:

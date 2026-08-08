@@ -192,6 +192,8 @@ recommendation slots are another *edition* of a book the user already has, affec
 distinguish "same work" from "similar work". **Edition clustering is a precondition for
 shipping a content model as the app's similarity engine**, not a data-hygiene nicety, and
 it also means every model's coverage number is inflated by roughly a fifth (L32).
+*Measured properly in §10, the duplicate rate is worse than this — 39.1% of slots and
+81.5% of users — and clustering turns out to be necessary but not sufficient.*
 
 ## 7 · What would be built, and why
 
@@ -202,8 +204,9 @@ approach a team can debug beats one it can only tune.
 
 **A content layer beside it, not behind it.** Not as a cold-start footnote — collaborative
 filtering is structurally blind to 15.2% of held-out books and 95% of the catalogue after
-standard filtering. The two model classes overlap on only 7,451 of the ~75,000 books they
-reach between them, and their union raises the achievable ceiling from 84.8% to 95.4%.
+standard filtering. The two model classes overlap on only 7,451 of the 62,236 catalogue
+books they reach between them (L46), and their union raises the achievable ceiling from
+84.8% to 95.4%.
 
 **ALS kept in the plan for what the metrics do not show.** Free personalization from the
 same fit, the best item-to-item neighbourhoods of any model here, and the only model that
@@ -211,7 +214,9 @@ ports to Spark without a rewrite — which makes productionization a port rather
 second project.
 
 **Edition clustering before any of it ships.** It is the one fix that improves every
-model's product surface at once.
+model's product surface at once — and, measured after the fact, the single largest
+accuracy gain in the project: **+18% on item-item's hit rate for a data-prep change**
+(L44). See §10.
 
 ### Deliberately not built, and why
 
@@ -247,11 +252,11 @@ not chosen by accident.
 
 ## 9 · Open questions
 
-1. **Edition clustering: serving-layer dedup, or a data-prep fix?** It is the single
-   highest-value change (L31). Done properly in data prep it changes the comparison basis
-   for every model, so every number would need re-measuring. The pragmatic path is dedup
-   in the serving layer first, with the ledger numbers left as they are and the
-   data-prep-level clustering named as the proper fix.
+1. ~~**Edition clustering: serving-layer dedup, or a data-prep fix?**~~ **Answered — both,
+   and they do different jobs. See §10.** Serving dedup removes the duplicate output at no
+   accuracy cost; clustering *before* training is worth +18% on the hit rate (L44). The
+   remaining decision is not which one, but whether the whole comparison table moves to
+   work level.
 2. **Which model should drive the app?** Item-item has the best numbers; **ALS has by far
    the best neighbourhoods** (L34), and the app is an item-to-item surface. Showing ALS
    *and* the table where it loses is a better account than either number alone — it just
@@ -267,3 +272,98 @@ not chosen by accident.
 5. **Cross-lingual lookup is weak** (L38) — `"herr der ringe"` finds nothing. Title+author
    is too thin for a multilingual encoder to bridge. This is the concrete, now-measured
    argument for an LLM metadata-enrichment layer.
+
+## 10 · Edition clustering, measured (M11)
+
+§6 ended on a failure that was named but not fixed: a third of the content model's output
+is another edition of a book the reader already has, and no text model can tell a reprint
+from a similar book because the two are textually identical. It was left unpatched on
+purpose — fixing it moves every number in the table, so it needed measuring first.
+
+**The catalogue is 13% smaller than it looks.** 271,360 ISBNs are **235,824 works**;
+24,392 works carry more than one ISBN, covering 59,928 ISBNs — 22% of the catalogue
+(L40). The clustering key is the normalized title with its trailing parenthetical
+stripped, plus the author's surname; the parenthetical is not thrown away but parsed into
+a `series` field (74,233 books have one). The earlier estimate (L15) counted 40,675 ISBNs;
+this key finds **47% more**, because an exact author string cannot see that "Fyodor
+Dostoevsky", "Fedor Dostoevsky" and "Fyodor M. Dostoevsky" are one person. L15 was a
+lower bound, and is now labelled as one.
+
+**Validated by hand, not asserted.** 30 seeded-random multi-ISBN clusters were inspected
+one by one in [`edition_clusters_sample.md`](edition_clusters_sample.md): **0 wrong
+merges**. One extension to the key — merging surnames that differ by a single character
+under an identical title, which is what finally joins *Dostoevsky* to *Dostoyevsky* —
+touches only 223 clusters, so a random sample cannot audit it; 20 of those were drawn
+separately and **1 was wrong** (Anne Hampson and Georgia Hampton both wrote a *Desire*).
+Two ISBNs, three interactions. Raising the length floor would remove that error and also
+un-merge Rendell/Rendall, Elliott/Elliot and Searls/Searles, so the error is reported
+rather than tuned away (L42).
+
+**The finding that changes the build order.** Clustering *before* training — the same
+item-item model on a work-keyed matrix, same split mechanics, same metrics — lifts
+HitRate@10 from **0.0546 to 0.0644, +18%** (L44). That is the largest single accuracy gain
+in this project, and it comes from data preparation, not from a model. Three things had to
+be ruled out before believing it: the structural ceiling moves only 84.81% → 86.66%, so it
+is not an easier target; the held-out work cannot leak in through a second edition,
+because `to_work_level` collapses each (user, work) pair before the split; and only 0.38%
+of ISBN-level holdouts were a second edition of something the user already had, so the old
+number was not being flattered either. It is also a *lower bound* — λ and the neighbourhood
+size are still the ones tuned on the ISBN-level split.
+
+**Why the standard recipe makes this worse.** The usual min-5 filter is applied per ISBN,
+so it deletes **23,429 editions carrying 49,649 interactions that belong to works which
+clear the threshold** (L43). *Crime and Punishment* loses 19% of its evidence that way and
+is then treated as a book with 40 readers.
+
+### Deduplication at serving time
+
+The models still score ISBNs, and the app still has to show books. Collapsing the output
+to one ISBN per work — dropping works the reader already has — is a presentation
+decision, so it lives in the serving layer, not in the models. That keeps the comparison
+table meaning what it meant and makes the fix measurable by switching it off.
+
+**It is free, and for the content model it is better than free** (L45):
+
+| Model | duplicate slots | users affected | HitRate@10 |
+|---|---:|---:|---:|
+| content TF-IDF | 39.1% → **0.0%** | 81.5% → 0% | 0.0228 → **0.0277** |
+| content embeddings | 11.3% → 0.0% | 38.5% → 0% | 0.0109 → 0.0108 |
+| ALS | 1.9% → 0.0% | 11.8% → 0% | 0.0451 → 0.0454 |
+| item-item CF | 1.2% → 0.0% | 7.9% → 0% | 0.0546 → 0.0546 |
+
+Four in five TF-IDF users were being handed a book they already owned. Removing those
+slots does not cost accuracy — it *buys* 21% of it, because a wasted slot gets refilled
+with a real candidate. The collaborative models barely move, and the reason is worth
+saying out loud: two ISBNs of one book are read by *different* people, so they never
+co-occur, and collaborative similarity separates editions for free. Only the text models
+ever had this problem.
+
+**The number that is too clean to trust, and what it actually hides.** Those 0.0%s are
+measured with the same key that did the deduplication, so they are zero by construction —
+not evidence. The independent check is the gallery, and it is less flattering (L47). After
+dedup, item-item and ALS are genuinely clean: **0 of 30** gallery slots are the anchor
+again. TF-IDF still returns **7 of 30** and the embedding model **9 of 30** — and every
+survivor is the same book under a different *title*: *Desde Mi Cielo* and *In meinem
+Himmel* for *The Lovely Bones*, *Philosopher's Stone* and the French, Spanish, Italian and
+German editions for *Harry Potter*. Asked for books like *Harry Potter and the Sorcerer's
+Stone*, the embedding model answers with seven Harry Potter and the Sorcerer's Stones.
+
+No amount of string normalization finds those. It is the same wall as the failed
+cross-lingual lookup in §5 (L38), hit from the other side, and it has the same fix: more
+text per book — LLM-generated descriptions, themes, genre tags — or an external work
+identifier that already knows these are one book. **Two independent measurements now point
+at the enrichment layer**, which is a better reason to build it than the fact that it
+involves an LLM.
+
+### What this changes
+
+- **Ship the serving dedup.** It costs nothing, it fixes the most visible defect in the
+  demo, and it is switchable so the comparison table stays interpretable.
+- **Work-level clustering belongs in data prep, not just at serving.** +18% on the one
+  model measured both ways is too large to leave on the table. The open decision is
+  whether the whole comparison table re-bases to works — Helena's call, because it makes
+  every previously published number non-comparable.
+- **A content model still cannot be the app's similarity engine.** §6 said edition
+  clustering was the precondition. It was necessary and it was not sufficient.
+
+
