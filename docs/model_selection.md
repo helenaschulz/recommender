@@ -284,7 +284,9 @@ purpose — fixing it moves every number in the table, so it needed measuring fi
 24,392 works carry more than one ISBN, covering 59,928 ISBNs — 22% of the catalogue
 (L40). The clustering key is the normalized title with its trailing parenthetical
 stripped, plus the author's surname; the parenthetical is not thrown away but parsed into
-a `series` field (74,233 books have one). The earlier estimate (L15) counted 40,675 ISBNs;
+a `series` field (74,233 books have one — a series name, but also often a volume number,
+a format or an imprint, which is why stripping it needed its own check: L48, 0.023% of
+merged interactions at risk). The earlier estimate (L15) counted 40,675 ISBNs;
 this key finds **47% more**, because an exact author string cannot see that "Fyodor
 Dostoevsky", "Fedor Dostoevsky" and "Fyodor M. Dostoevsky" are one person. L15 was a
 lower bound, and is now labelled as one.
