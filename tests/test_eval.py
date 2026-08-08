@@ -11,7 +11,13 @@ import math
 import numpy as np
 import pytest
 
-from recommender.eval import catalog_coverage_at_k, evaluate, hit_rate_at_k, novelty_at_k
+from recommender.eval import (
+    catalog_coverage_at_k,
+    evaluate,
+    hit_rate_at_k,
+    hit_rate_at_k_by_group,
+    novelty_at_k,
+)
 from recommender.models.base import top_k_from_scores
 
 
@@ -24,6 +30,45 @@ def test_hit_rate_counts_a_hit_anywhere_in_the_list() -> None:
 def test_hit_rate_is_zero_when_nothing_matches() -> None:
     recommended = np.array([["a", "b"], ["c", "d"]], dtype=object)
     assert hit_rate_at_k(recommended, np.array(["z", "y"])) == 0.0
+
+
+class TestGroupCredit:
+    """`hit_rate_at_k_by_group` is the decomposition tool: same lists, coarser hit rule.
+
+    It answers "how much of the work-level lift was the ISBN-keyed metric being unfair",
+    so the property that matters is that it changes *only* the definition of a hit.
+    """
+
+    #: 'a' and 'a2' are two editions of one work; everything else is its own.
+    WORKS = {"a": "w1", "a2": "w1", "b": "w2", "c": "w3", "z": "w9"}
+
+    @staticmethod
+    def _group(ids: list[str]) -> np.ndarray:
+        return np.array([TestGroupCredit.WORKS.get(i, f"isbn:{i}") for i in ids], dtype=object)
+
+    def test_another_edition_of_the_held_out_book_now_counts(self) -> None:
+        """Rank 1 named the right book in the wrong edition. Strict credit: 0. Group: 1."""
+        recommended = np.array([["a2", "b", "c"]], dtype=object)
+        holdout = np.array(["a"])
+        assert hit_rate_at_k(recommended, holdout) == 0.0
+        assert hit_rate_at_k_by_group(recommended, holdout, self._group) == pytest.approx(1.0)
+
+    def test_it_agrees_with_strict_credit_when_nothing_is_grouped(self) -> None:
+        recommended = np.array([["b", "c"], ["c", "z"]], dtype=object)
+        holdout = np.array(["b", "b"])
+        assert hit_rate_at_k_by_group(recommended, holdout, self._group) == pytest.approx(
+            hit_rate_at_k(recommended, holdout)
+        )
+
+    def test_a_wrong_book_stays_wrong(self) -> None:
+        """Coarser credit must not become 'any answer counts'."""
+        recommended = np.array([["b", "c"]], dtype=object)
+        assert hit_rate_at_k_by_group(recommended, np.array(["z"]), self._group) == 0.0
+
+    def test_padding_never_scores(self) -> None:
+        recommended = np.array([[None, None], ["a2", None]], dtype=object)
+        holdout = np.array(["a", "a"])
+        assert hit_rate_at_k_by_group(recommended, holdout, self._group) == pytest.approx(0.5)
 
 
 def test_coverage_counts_distinct_catalogue_items_only() -> None:

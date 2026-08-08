@@ -60,13 +60,18 @@ python -m ipykernel install --user --name recommender --display-name "Python 3.1
 ```
 
 Then: `pytest` for the test suite, `ruff check .` for lint, and the model runner to
-reproduce the comparison table:
+reproduce the **primary** comparison table. The item is a *work*, not an ISBN — editions of
+the same book are merged before the split (see `docs/RESULTS.md` L49):
 
 ```bash
-python scripts/run_model.py --all --gallery
+python scripts/run_model.py --all --gallery --work-level
 ```
 
-The edition-clustering work (same ISBN, many editions) has its own two entry points:
+Drop `--work-level` to reproduce the ISBN-keyed table instead. That one is kept in the
+ledger as the journey record; the two are **not** cell-comparable, because they have
+different items and different coverage denominators.
+
+The edition-clustering work (same book, many ISBNs) has its own entry points:
 
 ```bash
 python scripts/analyze_editions.py --write-sample docs/edition_clusters_sample.md
@@ -74,6 +79,13 @@ python scripts/analyze_editions.py --write-sample docs/edition_clusters_sample.m
 
 ```bash
 python scripts/analyze_dedup.py
+```
+
+And the measurement that explains why the two tables differ by so much more for the text
+models than for the collaborative ones (ledger L58):
+
+```bash
+python scripts/decompose_work_level_lift.py
 ```
 
 ## Repository layout
@@ -84,7 +96,7 @@ python scripts/analyze_dedup.py
 | `notebooks/` | The journey: `01_eda.ipynb` (data understanding), `02_models.ipynb` (model comparison). |
 | `docs/` | [`RESULTS.md`](docs/RESULTS.md) — the measurement ledger — plus [`dataset_findings.md`](docs/dataset_findings.md), the model-selection write-up [`model_selection.md`](docs/model_selection.md), and figures under `docs/img/`. |
 | `src/recommender/` | One module per responsibility: data prep, split, models, evaluation, gallery. |
-| `scripts/` | Entry points: `run_model.py` (evaluate models), `tune_*.py` (hyperparameters on a validation split), `analyze_editions.py` and `analyze_dedup.py` (the edition-clustering measurements). |
+| `scripts/` | Entry points: `run_model.py` (evaluate models), `tune_*.py` (hyperparameters on a validation split), `analyze_editions.py` and `analyze_dedup.py` (the edition-clustering measurements), `decompose_work_level_lift.py` (why the work-keyed table differs from the ISBN-keyed one). |
 | `tests/` | Offline, deterministic tests — no network, no model downloads. |
 
 [`docs/RESULTS.md`](docs/RESULTS.md) is the measurement ledger: every headline number used
@@ -99,6 +111,12 @@ HitRate@10, Coverage@10 and Novelty@10; the table and every negative result behi
 in [`docs/RESULTS.md`](docs/RESULTS.md), and the reasoning behind the choice is written up
 in [`docs/model_selection.md`](docs/model_selection.md). The interface and the
 productionization write-up follow.
+
+The published table is keyed by **work** rather than by ISBN — merging editions before
+training is the largest single accuracy gain in the project, and it is a data-preparation
+change rather than a model one. The ISBN-keyed table is kept beside it as the journey
+record, and the reason the two differ far more for the text models than for the
+collaborative ones is measured rather than asserted (ledger L58).
 
 ## References
 

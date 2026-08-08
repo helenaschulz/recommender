@@ -10,10 +10,16 @@ title. Coverage@10 is therefore the headline metric here, not HitRate.
 **The representation.** TF-IDF over character n-grams of ``"title author"``. Character
 n-grams rather than words, deliberately: the catalogue is multilingual (German, French
 and Spanish titles sit next to English ones), riddled with edition variants of the same
-work (ledger L15 — 17,554 works spread over 40,675 ISBNs), and full of punctuation and
+work (ledger L40 — 24,392 works spread over 59,928 ISBNs), and full of punctuation and
 subtitle noise like ``(Bestselling Backlist)``. Character n-grams degrade gracefully
 across all three, where a word-level vocabulary would treat *Ringe* and *Rings* as
 unrelated tokens and miss most edition duplicates.
+
+**What the item is.** This module vectorizes whatever ``catalog.books`` gives it, one row
+at a time, so it runs unchanged at either item level: at ISBN level that is one vector per
+edition, at work level one vector per work carrying the title and author of its
+most-interacted edition (:func:`recommender.data.work_level_catalog`). The difference is
+not cosmetic for *this* model in particular — see the decomposition in ledger L58.
 
 **The honest limitation.** 10.3% of ratings point at ISBNs with no row in ``Books.csv``
 (ledger L14). Those books have no title to vectorize, so this model can never score them
