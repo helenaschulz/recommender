@@ -18,7 +18,40 @@ import pandas as pd
 from recommender.data import BookCrossing, Interactions, build_interactions
 from recommender.models.base import Recommender, top_k_from_scores
 
-__all__ = ["Recommender", "fit_model", "top_k_from_scores"]
+__all__ = ["ALL_MODELS", "REGISTRY", "Recommender", "build_model", "fit_model", "top_k_from_scores"]
+
+#: name -> (module, class, kwargs, the milestone that builds it). Deliberately complete:
+#: it is the whole ladder, so a rung that does not exist yet fails with a sentence saying
+#: which milestone builds it rather than an ImportError.
+REGISTRY: dict[str, tuple[str, str, dict, str]] = {
+    "popularity": ("popularity", "PopularityRecommender", {}, "M5"),
+    "item-item": ("item_item", "ItemItemRecommender", {}, "M6"),
+    "item-item-explicit": (
+        "item_item",
+        "ItemItemRecommender",
+        {"signal": "explicit", "name": "item-item (explicit-only)"},
+        "M6",
+    ),
+    "tfidf": ("content_tfidf", "TfidfRecommender", {}, "M7"),
+    "als": ("als", "ALSRecommender", {}, "M8"),
+    "embeddings": ("embeddings", "EmbeddingRecommender", {}, "M9"),
+}
+ALL_MODELS = list(REGISTRY)
+
+
+def build_model(name: str) -> Recommender:
+    """Construct an unfitted model by its registry name, importing it lazily.
+
+    Lazy so that a model whose optional dependency is missing breaks only itself.
+    """
+    if name not in REGISTRY:
+        raise SystemExit(f"unknown model {name!r}. Known: {', '.join(ALL_MODELS)}")
+    module_name, class_name, kwargs, milestone = REGISTRY[name]
+    try:
+        module = __import__(f"recommender.models.{module_name}", fromlist=[class_name])
+    except ImportError as exc:
+        raise SystemExit(f"model {name!r} is not available yet (built in milestone {milestone}): {exc}") from exc
+    return getattr(module, class_name)(**kwargs)
 
 
 def fit_model(
