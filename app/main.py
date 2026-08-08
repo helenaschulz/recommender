@@ -67,17 +67,21 @@ EXAMPLE_QUERY = "harry potter stein"
 #: does most of the work.
 STYLE = """
 <style>
-  /* The measure. `layout="wide"` is kept for the sidebar, but body text at 1920px runs to
-     ~200 characters, which is the loudest "this is a script, not a product" signal there
-     is. 46rem lands the reason lines near 80 characters on the beamer. */
-  .block-container {max-width: 46rem; padding-top: 2.2rem;}
+  /* Full width, by Helena's decision on seeing it run (08.08.2026), reversing M15.2's
+     46rem measure. M15.2's argument was typographic — body text at 1920px runs long — and
+     the DoD item about a ~90-character measure goes with it; the deviation is recorded
+     under M15 in STRATEGY.md rather than quietly dropped. What keeps it readable at full
+     width is the row itself: the evidence line sits directly under the title in its own
+     block, so a wide viewport stretches the whitespace to the right of each row rather
+     than the text inside it. */
+  .block-container {max-width: none; padding-top: 2.2rem; padding-left: 3rem; padding-right: 3rem;}
   section[data-testid="stSidebar"] {min-width: 21rem;}
 
   /* The button row: the labels wrap to different numbers of lines, which put the reader
      counts on different baselines. A fixed height squares the row. Selected by testid —
      the emotion class names are generated per build and `div.stButton > button` does not
      match the current DOM, which is why the first attempt silently did nothing. */
-  [data-testid^="stBaseButton"] {min-height: 5rem; height: 5rem; white-space: normal;
+  [data-testid^="stBaseButton"] {min-height: 3.4rem; white-space: normal;
                                  line-height: 1.2; font-size: 14px;}
   /* ...except the tertiary "try this query" link, which is a line of text, not a target. */
   [data-testid="stBaseButton-tertiary"] {min-height: 0; height: auto; font-size: 13px;}
