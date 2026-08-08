@@ -26,13 +26,12 @@ import urllib.error
 import urllib.request
 
 from recommender.data import project_root
+from recommender.gallery import DEMO_BUTTONS
 
-#: Button label -> output slug. The labels must match app.main.ANCHORS.
-ANCHORS = {
-    "The Da Vinci Code": "da_vinci_code",
-    "Harry Potter and the Sorcerer's Stone": "harry_potter",
-    "The Lovely Bones": "lovely_bones",
-}
+#: Button label -> output slug, **derived** from the app's own button list rather than
+#: retyped. The first version duplicated the labels, and when M14.8 changed them this
+#: script sat waiting 30 seconds for a button that no longer existed.
+ANCHORS = {label: label.lower().replace(" ", "_").replace("'", "") for label in DEMO_BUTTONS}
 LOOKUP_QUERY = "harry potter stein"
 
 
