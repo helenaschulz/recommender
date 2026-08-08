@@ -534,4 +534,37 @@ passed it.
 - **Still one split, still offline.** §8 applies unchanged, and re-basing does not make an
   offline proxy any less of a proxy.
 
+## 12 · The demo, and what it deliberately contradicts (M13)
+
+`streamlit run app/main.py`: paste a book, get ten similar books, each with one sentence of
+reason drawn from countable evidence — co-reader count, shared author, shared series,
+similarity value. No language model anywhere in the hot path. It starts in **9.4 s** and
+answers in **21 ms** (L61), with no network and no fitting at query time.
+
+**It runs on ALS, which loses §4.** That is the point rather than an oversight. §6 measured
+the divergence: HitRate@10 scores how well a model ranks a held-out book in a *user's*
+history, and the app asks a different question — given this one book, what is like it. ALS
+is third of six on the first and best in the project on the second (L34, L55). Building the
+demo on the model that wins the table would have meant building it on the model with worse
+neighbourhoods, so the sidebar shows the table where ALS loses, next to the results it
+produces. A panel can then ask the question, and there is an answer.
+
+**It runs on works, like §4**, so the *Harry Potter* anchor returns *Chamber of Secrets*,
+*Prisoner of Azkaban*, *Goblet of Fire* and *Order of the Phoenix* rather than a shelf of
+editions of itself. That is §11's finding made visible.
+
+**The input path needed two serving rules, and they are audited** (L62). Free-text lookup
+resolved only 3 of 9 queries at rank 1 on raw cosine — *Hoopla — Harry Stein* beat Harry
+Potter, exactly as L38 recorded. A support floor (never offer an anchor the engine would
+refuse to answer for) takes it to 7 of 9; a 0.06-cosine tie margin that prefers the
+better-read work among near-equal text matches takes it to 9 of 9. Neither is a model
+change and neither touches a published number — but the second is a UI judgement chosen on
+nine queries, and it is recorded as such rather than presented as a result.
+
+**What the demo cannot hide.** `"herr der ringe"` and `"hobit tolkien"` still find nothing,
+under every rule. Title+author is three to five words, and no amount of serving logic turns
+that into enough signal for a multilingual encoder to bridge. It is the same wall as §10's
+gallery and L59's count, now hit from a third direction — and the third independent
+argument for the metadata-enrichment layer.
+
 

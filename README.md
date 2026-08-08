@@ -88,6 +88,27 @@ models than for the collaborative ones (ledger L58):
 python scripts/decompose_work_level_lift.py
 ```
 
+## The demo
+
+Paste a book, get ten similar books, each with one grounded reason. Build the assets once
+(~4 minutes; writes ~900 MB to the gitignored `artifacts/app/`):
+
+```bash
+python scripts/build_app_assets.py
+```
+
+Then start it — cold start under 10 seconds, no network, no fitting:
+
+```bash
+streamlit run app/main.py
+```
+
+The engine is ALS item factors over the work-keyed matrix with the L34 support floor, and
+the reason sentences come from structured evidence only — co-reader counts, shared author,
+shared series, similarity — never from a language model. Screenshots of the three anchor
+flows are in [`docs/img/`](docs/img/); `python scripts/measure_app_latency.py` and
+`python scripts/audit_app_lookup.py` reproduce ledger lines L61 and L62.
+
 ## Repository layout
 
 | Path | What lives there |
@@ -95,8 +116,9 @@ python scripts/decompose_work_level_lift.py
 | `data/` | The raw Book-Crossing CSVs (not committed — see above). |
 | `notebooks/` | The journey: `01_eda.ipynb` (data understanding), `02_models.ipynb` (model comparison). |
 | `docs/` | [`RESULTS.md`](docs/RESULTS.md) — the measurement ledger — plus [`dataset_findings.md`](docs/dataset_findings.md), the model-selection write-up [`model_selection.md`](docs/model_selection.md), and figures under `docs/img/`. |
-| `src/recommender/` | One module per responsibility: data prep, split, models, evaluation, gallery. |
-| `scripts/` | Entry points: `run_model.py` (evaluate models), `tune_*.py` (hyperparameters on a validation split), `analyze_editions.py` and `analyze_dedup.py` (the edition-clustering measurements), `decompose_work_level_lift.py` (why the work-keyed table differs from the ISBN-keyed one). |
+| `app/` | The Streamlit demo (`main.py`) — widgets only; its engine is `recommender.demo`. |
+| `src/recommender/` | One module per responsibility: data prep, split, models, evaluation, gallery, serving, demo engine. |
+| `scripts/` | Entry points: `run_model.py` (evaluate models), `tune_*.py` (hyperparameters on a validation split), `analyze_editions.py` and `analyze_dedup.py` (the edition-clustering measurements), `decompose_work_level_lift.py` (why the work-keyed table differs from the ISBN-keyed one), `build_app_assets.py` / `measure_app_latency.py` / `audit_app_lookup.py` / `capture_app_screenshots.py` (the demo). |
 | `tests/` | Offline, deterministic tests — no network, no model downloads. |
 
 [`docs/RESULTS.md`](docs/RESULTS.md) is the measurement ledger: every headline number used
@@ -109,8 +131,9 @@ item-item CF (plus an explicit-only ablation), ALS, content TF-IDF and multiling
 sentence embeddings — are fitted on one pinned leave-one-out split and measured on
 HitRate@10, Coverage@10 and Novelty@10; the table and every negative result behind it are
 in [`docs/RESULTS.md`](docs/RESULTS.md), and the reasoning behind the choice is written up
-in [`docs/model_selection.md`](docs/model_selection.md). The interface and the
-productionization write-up follow.
+in [`docs/model_selection.md`](docs/model_selection.md). **The interface is built** — see
+[The demo](#the-demo) above; it starts in under 10 seconds and answers in ~20 ms (L61).
+The productionization write-up follows.
 
 The published table is keyed by **work** rather than by ISBN — merging editions before
 training is the largest single accuracy gain in the project, and it is a data-preparation

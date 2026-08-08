@@ -516,6 +516,40 @@ measurements, one fix**: more text per book (LLM-generated descriptions, themes,
 tags) or an external work identifier that already knows these are one book. That is a Part
 3 proposal with evidence behind it rather than an opinion about LLMs.
 
+## The demo app (milestone M13)
+
+`streamlit run app/main.py` — paste a book, get ten similar books, each with one sentence
+of grounded reason. Two things about it are **not** measurements and must not be read as
+any: it is fitted on the **full** interaction matrix (serving, not evaluation — withholding
+a reader's history would make the product worse for no reason), and it computes no metric.
+The lines below measure the app *as an app*: does it start, does it answer, does the input
+box find the book.
+
+The engine is **ALS item factors over the work-keyed matrix** with the L34 support floor.
+ALS is third of six on HitRate@10 (L55) and has the best item-to-item neighbourhoods in the
+project — the app asks the second question, and the sidebar shows the table where it loses.
+
+| ID | Claim | Number | How measured | Measured |
+|---|---|---|---|---|
+| L61 | **The demo starts in 9 s and answers in 21 ms** | cold start **9.4s** (Streamlit ready 1.3s + first answer in a fresh interpreter 8.2s); warm query **21 ms** (lookup 21 ms + neighbourhood <1 ms), median of 15; assets **894 MB**, build **223 s** | `python scripts/measure_app_latency.py`. Cold start is measured in a *new* Python process — timing it in one that has already imported torch would measure nothing. 7.5 s of the 8.2 s is loading the sentence encoder for the free-text box; the assets themselves memory-map in 0.3 s. Against the Arbeitsplan DoD of cold start < 30 s and query < 1 s, with 3× and 47× of margin | 2026-08-08 |
+| L62 | **The app's two lookup rules take the free-text box from 3/9 to 9/9, and neither touches a model** | resolved at rank 1: cosine alone **3/9** → + support floor **7/9** → + tie margin **9/9**. The two queries L38 identified as genuine failures (`"herr der ringe"`, `"hobit tolkien"`) fail under **all three** | `python scripts/audit_app_lookup.py`, on the L37/L38 query set plus three controls; "resolved" = the rank-1 title contains the expected work. **Rule 1, the support floor:** restrict candidates to works the engine can answer for, the same L34 floor. It removes the one- and two-reader books that were winning the argmax by chance — *Hoopla — Harry Stein* beating Harry Potter, exactly as L38 recorded. **Rule 2, a tie margin of 0.06 cosine:** among works within that margin of the best match, prefer the one with more readers. A margin rather than an additive popularity weight, because an additive weight can promote a *worse* text match when the readership ratio is large enough, and a margin cannot by construction | 2026-08-08 |
+
+**L62 read out loud, including what it does not claim.** Rule 1 is a serving rule with an
+argument behind it: offering an anchor whose neighbourhood the model would refuse to produce
+is a dead end dressed up as a result. Rule 2 is a **user-interface** decision — a reader
+typing a title means the book most readers mean — chosen on **nine queries**, which is a
+small sample and is recorded as one. Neither rule exists anywhere near a published number:
+the recommendation ranking never sees either, and no row in any table above changes by so
+much as a digit.
+
+The honest part is the last column of the audit. The floor and the margin fix the queries
+that were failing for a *countable* reason — a book with one reader outranking a book with
+832 — and they leave the two queries that fail for the reason L38 actually identified
+exactly where they were. Title+author is three to five words, and no serving rule turns that
+into enough signal for a multilingual encoder to bridge German to English. **That is the
+same wall as L47 and L59**, hit from the input side, and it is the third independent
+measurement pointing at the metadata-enrichment layer.
+
 Metric definitions, identical for every row (`src/recommender/eval.py`):
 **HitRate@10** — share of eligible users whose held-out book is in their top-10. Under
 leave-one-out this equals Recall@10, and Precision@10 = HitRate@10 / 10; one number,
