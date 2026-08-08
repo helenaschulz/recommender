@@ -51,11 +51,56 @@ below cites **L19**; without it, no two model numbers are comparable.
 | L20 | **A collaborative model cannot exceed 84.8% HitRate here — by construction** | ceiling **84.81%** (11,518 of 13,581 held-out items) | Share of held-out items that appear at all in the train matrix. The other 15.2% were that book's only interaction, so no co-occurrence model can rank an item it has never seen. This is a property of the data, not of any model, and it is the honest denominator to read every HitRate against | `split.py` + train matrix | 2026-08-04 |
 | L21 | **The content layer raises that ceiling, and a hybrid raises it further** | content **89.31%** · union of both **95.37%** | Share of held-out items reachable by a content model (has a row in `Books.csv`, so it can be embedded even with zero interactions) and by either model class. The 10.6-point gap between L20 and the union is the coverage argument for the hybrid stated as a bound on achievable accuracy, not as a slogan | `split.py` + catalogue | 2026-08-04 |
 
-## The comparison table
+## The primary comparison table — one row per *work*
 
-One command, one split, one run: `python scripts/run_model.py --all --gallery`
-(8m35s end to end on the Mac, 2026-08-04). Every model below was fitted on the same
-1,136,199 train interactions and scored on the same 13,581 held-out books.
+One command, one split, one run: `python scripts/run_model.py --all --gallery --work-level`
+(~8 min end to end on the Mac, 2026-08-08). Every model below was fitted on the same
+1,129,755 train interactions over **235,824 works** and scored on the same 13,580 held-out
+works. **The item is a work, not an ISBN** — milestone M12, defined in L49, and the reason
+the whole table moved is measured in L58.
+
+| Model | HitRate@10 | Coverage@10 | Novelty@10 | vs baseline | Ledger |
+|---|---:|---:|---:|---|---|
+| popularity (baseline) | 0.0155 | 0.027% | 10.54 | — | L52 |
+| **item-item CF** | **0.0644** | 8.190% | 14.17 | **4.2× accuracy, 302× coverage** | L53 |
+| ALS / weighted MF | 0.0545 | 0.897% | 12.29 | 3.5× accuracy, 33× coverage | L55 |
+| item-item, explicit-only | 0.0486 | 10.036% | 15.97 | 3.1× accuracy, 370× coverage | L54 |
+| content TF-IDF | 0.0405 | 16.806% | 17.07 | 2.6× accuracy, 619× coverage | L56 |
+| content embeddings | 0.0141 | **26.143%** | **18.34** | **0.91× accuracy**, 963× coverage | L57 |
+| *structural ceiling* | *0.8666* | — | — | *no CF model can exceed this* | L50 |
+
+Coverage ratios are taken against the baseline's **64 distinct works**, the exact count;
+every percentage in the column is over the same 235,824-work denominator.
+
+**The table has a shape, and the shape is the finding.** Accuracy and coverage run in
+opposite directions almost perfectly: the ranking by HitRate is exactly the reverse of
+the ranking by Coverage, with ALS the only exception. No single model is best. Item-item
+wins accuracy by a clear margin; embeddings reach three times the catalogue at a fifth of
+the accuracy; and the content models are the only ones that can touch a book nobody has
+read. **That shape survived the re-base unchanged** — same ordering, same tension, a
+different item universe — which is the reassuring half of M12.
+
+**What we would actually ship, and why:** item-item as the scoring core, with the content
+layer serving the catalogue it structurally cannot reach (L50: the union of both raises
+the achievable ceiling from 86.7% to 95.3%). That is a hybrid recommended on measurements,
+not on the fact that hybrids sound thorough.
+
+**What none of these numbers prove.** Every row is one offline dataset, one split, one
+proxy for a question the metric cannot answer: whether a reader would click. The ranking
+is evidence about the models; it is not evidence about the product. A live A/B test is
+the only thing that settles that, and it stays true no matter how favourable this table
+looks.
+
+### The ISBN-level table — the journey record, kept on purpose
+
+This was the primary table from M4 to M11 and is **not** deleted, for two reasons: it is
+how the model choice was actually reached, and the distance between it and the table above
+is itself a finding (L58). It is measured on 271,360 ISBNs and 13,581 held-out books, so
+**no cell here is comparable with a cell above**: different items, different denominator,
+different eligibility.
+
+One command, one split, one run: `python scripts/run_model.py --all --gallery` (8m35s,
+2026-08-04).
 
 | Model | HitRate@10 | Coverage@10 | Novelty@10 | vs baseline | Ledger |
 |---|---:|---:|---:|---|---|
@@ -67,27 +112,13 @@ One command, one split, one run: `python scripts/run_model.py --all --gallery`
 | content embeddings | 0.0109 | **23.911%** | **18.42** | **0.75× accuracy**, 1,258× coverage | L35 |
 | *structural ceiling* | *0.8481* | — | — | *no CF model can exceed this* | L20 |
 
-**The table has a shape, and the shape is the finding.** Accuracy and coverage run in
-opposite directions almost perfectly: the ranking by HitRate is exactly the reverse of
-the ranking by Coverage, with ALS the only exception. No single model is best. Item-item
-wins accuracy by a clear margin; embeddings reach twice the catalogue at a third of the
-accuracy; and the content models are the only ones that can touch a book nobody has read.
+## Baselines and models — the ISBN-level rows (M5–M10)
 
-**What we would actually ship, and why:** item-item as the scoring core, with the content
-layer serving the catalogue it structurally cannot reach (L21: the union of both raises
-the achievable ceiling from 84.8% to 95.4%). That is a hybrid recommended on measurements,
-not on the fact that hybrids sound thorough.
-
-**What none of these numbers prove.** Every row is one offline dataset, one split, one
-proxy for a question the metric cannot answer: whether a reader would click. The ranking
-is evidence about the models; it is not evidence about the product. A live A/B test is
-the only thing that settles that, and it stays true no matter how favourable this table
-looks.
-
-## Baselines and models
-
-All rows use the **L19** split (13,581 eligible users, seed 42) and identical metrics.
-Command: `python scripts/run_model.py <name>`.
+All rows use the **L19** split (13,581 eligible users, seed 42) and identical metrics, on
+the **ISBN** item basis. Command: `python scripts/run_model.py <name>`. The work-level
+rows that superseded these as the published table are L52–L57; these stay because the
+reasoning that produced the model choice happened here, and because every "read out loud"
+paragraph below is still the argument, only re-based.
 
 | ID | Model | HitRate@10 | Coverage@10 | Novelty@10 | Parameters | Measured |
 |---|---|---|---|---|---|---|
@@ -334,33 +365,193 @@ descriptions, themes, genre tags) or an external work identifier that already kn
 are one book. That is a Part 3 proposal with two measurements behind it rather than an
 opinion about LLMs being useful.
 
+## The work-level re-base (milestone M12)
+
+L31 named the defect, L44 and L45 measured it on one model at a time, and M12 acts on it:
+**the published comparison table is now keyed by work.** The ISBN-level table is kept above
+as the journey record rather than deleted — it is how the model choice was reached, and the
+distance between the two tables is itself the finding (L58).
+
+The item universe is the M11 key including the transliteration extension (L40, L41, priced
+at 1 wrong merge in 20 by L42). Every model runs unchanged: the content models read
+`catalog.books` by its id column, and `work_level_catalog` hands them one row per work
+carrying the title and author of that work's **most-interacted edition**, counted on train
+only. Source for every line below: `python scripts/run_model.py --all --gallery
+--work-level`, the two `--work-level` tuning scripts, and
+`python scripts/decompose_work_level_lift.py`.
+
+| ID | Claim | Number | How measured | Measured |
+|---|---|---|---|---|
+| L49 | **The split, re-pinned on works** | **13,580 eligible users**, 1,129,755 train interactions, train matrix 105,283 × 303,381 | Identical mechanics to L19 — per-user leave-one-out, **seed 42**, eligible = ≥5 explicit ratings and ≥1 rating ≥8 — applied *after* `to_work_level` collapses every (user, work) pair, so holding out a work removes all of its editions from that user's profile at once. One of L19's 13,581 users loses eligibility when their graded editions merge. The train matrix has 303,381 columns rather than 235,824 because an interaction whose ISBN has no catalogue row becomes its own single-ISBN work — the same structure as L19's 338,496 columns over a 271,360-book catalogue | 2026-08-08 |
+| L50 | **Merging editions barely moves the ceilings — the hybrid argument is invariant** | collaborative **86.66%** (L20: 84.81%) · content **88.98%** (L21: 89.31%) · union **95.34%** (L21: 95.37%) | `benchmark.ceilings`, the same three shares as L20/L21 recomputed on the work universe, and printed by *every* run so no table can quote a ceiling from the other basis. The collaborative ceiling rises 1.85 points because a work that was unreachable as a lone edition becomes reachable once its editions merge; content and union are flat to within 0.4 points. **The 8.7-point gap between collaborative-only and the union — the whole coverage argument for a hybrid — survives the re-base intact**, which is not something one could assume without measuring it twice | 2026-08-08 |
+| L51 | *Null result, recorded because it is a result:* **both hyperparameter sweeps re-selected the ISBN-level values at work level** | item-item **λ=10, 50 neighbours** (0.0573 on the inner split); ALS **128 factors, α=1, reg 0.05** (0.0567) | `scripts/tune_item_item.py --work-level` (15 cells) and `scripts/tune_als.py --work-level` (6 cells), both on a leave-one-out split carved out of *train* (seed 43, **11,015 inner-eligible users**), never on the evaluation holdout. Item-item: λ=0 → 0.0379 at 17.049% coverage, λ=10 → **0.0573 / 6.842%**, λ=20 → 0.0551, λ=50 → 0.0514, λ=100 → 0.0464; 50 neighbours beat 200 and 500 at every λ. ALS at 128 factors: α=1 → **0.0567**, α=5 → 0.0518, α=20 → 0.0411; at 64 factors the same ordering, 0.0500 / 0.0438 / 0.0331. **This retires a caveat**: L44 called its +18% a lower bound because it ran on ISBN-tuned parameters. It was not a lower bound for that reason — the parameters were already the right ones. `models.WORK_LEVEL_PARAMS` is empty by measurement, not by omission | 2026-08-08 |
+| L52 | **popularity** (baseline), work level | **0.0155** · **0.027%** · 10.54 | rank by train interaction count, exclude the user's own train works; `candidate_pool=2000`. **64 distinct works** recommended across all 13,580 users, against 51 ISBNs at ISBN level. 1.79% of the L50 ceiling | 2026-08-08 |
+| L53 | **item-item CF** (shrunk cosine), work level — *the primary row* | **0.0644** · **8.190%** · 14.17 | binarized all-interaction matrix over works, λ=10, 50 neighbours/item, min_support=1, score = Σ similarities over the user's train works. Fit 22s, evaluation 2s. **Reproduces L44 to the digit** on an independently re-tuned parameter set (L51), which is the check that the re-base is deterministic. 7.43% of the L50 ceiling | 2026-08-08 |
+| L54 | item-item, **explicit-only ablation**, work level | 0.0486 · 10.036% · 15.97 | identical model and parameters, fitted on the graded interactions alone over the same work index space. Discarding the ungraded rows now costs **24%** of the hit rate, against 31% at ISBN level (L26) — the same direction, a smaller penalty, because merging editions recovers part of what the explicit-only matrix was losing to fragmentation | 2026-08-08 |
+| L55 | **ALS / weighted MF**, work level | 0.0545 · 0.897% · 12.29 | `implicit` ALS, 128 factors, α=1, regularization 0.05, 20 iterations, seed 42, similarity support floor 20 (L34). Fit 90s, evaluation 36s. Still loses to item-item on all three metrics and is still the most popularity-concentrated real model in the table — the L33 verdict is unchanged by the re-base | 2026-08-08 |
+| L56 | **content TF-IDF** (coverage layer), work level | 0.0405 · **16.806%** · 17.07 | char_wb 3–5-grams over the canonical title+author of each work, min_df=3, **235,824 works vectorized, 215,377 features**. Fit 10s, evaluation 266s. This is the row the M12.6 plausibility gate stopped on: +77.6% against L30. Taken apart in **L58** | 2026-08-08 |
+| L57 | **content embeddings** (multilingual), work level | 0.0141 · **26.143%** · **18.34** | `paraphrase-multilingual-MiniLM-L12-v2`, 384 dims, all 235,824 works encoded from canonical title+author, profile vectors centered, score = mean cosine. Vectors cached separately from the ISBN-level set under `artifacts/embeddings/` — the cache key is a fingerprint of the text encoded, so the two sets coexist instead of overwriting each other. Still the coverage extreme and still below the baseline on accuracy, now by 9% rather than 25% | 2026-08-08 |
+
+**L53 read out loud.** Item-item beats the baseline **4.2× on accuracy and 302× on
+coverage** at once, and captures 7.43% of the achievable ceiling against the baseline's
+1.79%. Both ratios are *better* than the ISBN-level pair (3.8× / 477× — the coverage ratio
+falls because the baseline's own reach grew from 51 items to 64 when its top list stopped
+being split across editions). The model, its parameters and its rank in the table are
+untouched; what changed is the data it was given.
+
+**The item-to-item surface improved in a way no metric in this table can see, and it is
+the most demoable result of the milestone.** L29 recorded that item-item answered *Harry
+Potter and the Sorcerer's Stone* with two unrelated obscure books sharing four readers,
+scoring 0.116, ahead of *Chamber of Secrets* at 0.097. On the work basis the same model,
+same λ, answers: **Chamber of Secrets (0.477), Prisoner of Azkaban (0.424), Goblet of Fire
+(0.380), Order of the Phoenix (0.271)** — the four sequels, in order, followed by
+*Fellowship of the Ring*. The mechanism is the one L43 predicted: the anchor's evidence was
+spread over 120 Harry Potter rows, and the shrinkage term was correctly refusing to trust
+any single fragment of it. **This closes most of L29 as a data-prep consequence rather than
+a re-tuning one** — the endpoint-specific λ that L29 proposed was never needed.
+
+### Why the lift was not the same for every model — the decomposition
+
+The M12.6 plausibility gate (band −20%…+40% relative to each ISBN-level row) **failed on
+TF-IDF at +77.4%** and held the branch. No bug was found: leakage is zero at both levels,
+and the held-out work cannot hide behind a sibling edition because `to_work_level` collapses
+each (user, work) pair before the split. So the number was taken apart instead of waved
+through. `python scripts/decompose_work_level_lift.py` re-runs **both** bases for all six
+models — its work-level column reproduces L52–L57 to the digit, which is the check that it
+is measuring the same thing the table does — and splits each lift in two:
+
+1. **Evaluation fairness.** At ISBN level, recommending the Penguin edition when the reader's
+   held-out book was the Vintage edition scores **zero**: the model named the right book and
+   the metric called it wrong. Isolated with no re-fit at all — same model, same top-10 lists,
+   only the definition of a hit changes (`eval.hit_rate_at_k_by_group`).
+2. **Merged signal.** The residual: co-occurrence counts split across editions become one
+   count, one canonical text per work replaces a pile of near-duplicate strings, the item
+   universe shrinks, and a slot spent on a second edition of a book the reader already has
+   goes to a real candidate instead.
+
+| ID | Claim | Number | How measured | Measured |
+|---|---|---|---|---|
+| L58 | **The +77.4% on TF-IDF is two effects, and the metric is the *smaller* one** | TF-IDF **0.0228 → 0.0250 (work credit) → 0.0405 (work basis)** = evaluation fairness **+9.4%**, merged signal **+62.3%**. Across all six models the fairness component is **+5.4% to +11.4%**; the merged-signal component runs **+0.5% to +62.3%** | Both bases re-run per model; the fairness column re-scores the stored ISBN-level top-10s under work credit. A fourth column repeats the fairness measurement with any slot the reader **already owns** blanked out (`serving.blank_owned_works`), because work credit could otherwise award a hit for recommending a third edition of a book the reader demonstrably has — something the work-level table can never do, since an owned work is blocked from the candidate list. That correction is negligible everywhere: TF-IDF 0.0250 → 0.0245, item-item 0.0588 → 0.0586 | 2026-08-08 |
+
+| model | ISBN basis | + work credit | …owned blocked | work basis | evaluation fairness | merged signal | total | ISBN dup slots (L45) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| popularity | 0.0145 | 0.0155 | 0.0155 | 0.0155 | +6.6% | +0.5% | +7.1% | 0.3% |
+| item-item CF | 0.0546 | 0.0588 | 0.0586 | 0.0644 | +7.5% | +9.5% | +17.8% | 1.2% |
+| ALS / weighted MF | 0.0451 | 0.0503 | 0.0501 | 0.0545 | +11.4% | +8.4% | +20.7% | 1.9% |
+| item-item, explicit-only | 0.0379 | 0.0408 | 0.0406 | 0.0486 | +7.6% | +19.1% | +28.2% | 3.9% |
+| content embeddings | 0.0109 | 0.0115 | 0.0112 | 0.0141 | +5.4% | +22.4% | +29.1% | 11.3% |
+| **content TF-IDF** | **0.0228** | **0.0250** | **0.0245** | **0.0405** | **+9.4%** | **+62.3%** | **+77.4%** | **39.1%** |
+
+**L58 read out loud — and it corrects the branch's own first explanation.** The gate note
+argued that the lift was monotone in the duplicate-slot rate because the re-base "removes a
+defect that was suppressing the text models specifically". The *total* column is indeed
+monotone in that rate, in exact order across all six models. But the decomposition shows the
+two halves behave completely differently, and only one of them is text-specific:
+
+- **Evaluation fairness is roughly uniform and small — +5.4% to +11.4% — and it is not
+  ordered by anything.** ALS has the *largest* fairness component (+11.4%) on a 1.9%
+  duplicate rate; the embedding model has the *smallest* (+5.4%) on 11.3%. The ISBN-keyed
+  metric was mildly unfair to **everybody**, which is a statement about the item key, not
+  about text models.
+- **The merged-signal component is what varies, by two orders of magnitude** (+0.5% for
+  popularity, +62.3% for TF-IDF), and it is what tracks the duplicate-slot rate.
+
+So the mechanism, named precisely: **the ISBN key charged the text models twice — once on
+the output side, where 39.1% of TF-IDF's slots went to an edition the reader already had
+(L45), and once on the scoring side, where naming the right book under the wrong ISBN scored
+zero. Only the first charge was text-specific, and it is the one carrying the number.** The
+second charge fell on everyone equally. L45 sizes the output-side path independently:
+serving-time dedup alone, with nothing else changed, was worth **+21%** on TF-IDF
+(0.0228 → 0.0277). That is a separate measurement rather than a sub-total of the +62.3% —
+it is taken under ISBN credit and refills the freed slots — so it says the path is large,
+not exactly how large a share of the residual it is. The rest of the residual is the
+merged text and the merged profile: one canonical string per work instead of up to 53.
+
+**What the gate got right, and what the band got wrong.** The gate was right to stop: a
+number this far outside the band deserved exactly this examination, and the first explanation
+offered for it turned out to be half wrong. The band was wrong because it assumed the re-base
+was a re-parameterisation; for a model whose similarity is textual — and textually a reprint
+and its original are the *same document* — it is also a defect fix. Both halves of that
+sentence belong in the record.
+
+**What this changes for the recommendation: nothing about the ranking, something about the
+reading.** item-item > ALS > explicit-only > TF-IDF > popularity > embeddings on accuracy at
+both item levels. But TF-IDF was **under-rated by the ISBN-keyed table by a factor, not a
+rounding error**, so anyone reading L30 alone would overstate how far behind the content
+layer sits. The hybrid argument gets stronger, not weaker.
+
+### The gallery on the work basis: what the re-base fixed, and what it did not
+
+| ID | Claim | Number | How measured | Measured |
+|---|---|---|---|---|
+| L59 | **The re-base cleans the collaborative surfaces completely and the content surfaces only halfway — the same shape L47 found, on a better basis** | Same-work neighbours surviving, out of 30 gallery slots per model: item-item **0/30**, item-item explicit-only **0/30**, ALS **0/30**, TF-IDF **7/30**, embeddings **6/30** | Hand count over the work-level 3-anchor gallery (3 anchors × top-10), the same rule as L47: a slot counts as a survivor only if it is the **anchor's own text under a different title** — a translation (*Desde Mi Cielo*, *In meinem Himmel*, *Harry Potter E la Pietra Filosfale*, *à l'école des sorciers*), an alternate regional title (*Philosopher's Stone*, the Welsh *Harri Potter maen yr Athronydd*), a subtitle variant (*The Lovely Bones* against the anchor's *The Lovely Bones: A Novel*), a dual-language title (*El Codigo Da Vinci / The Da Vinci Code*), or a re-credit to the illustrator (*Mary Grandpre* — which also carries a double space, so string normalization misses it twice over). Sequels, adaptations (the pop-up book, the movie poster book) and books *about* the anchor do not count. Worst single case: TF-IDF and embeddings on *Harry Potter*, 3/10 and 4/10 | 2026-08-08 |
+
+### Complementarity, re-measured on the work basis
+
+| ID | Claim | Number | How measured | Measured |
+|---|---|---|---|---|
+| L60 | **The two model classes reach mostly *different* books — the hybrid argument as an overlap rather than as two coverage percentages** | item-item **19,313 works (8.19%)**, TF-IDF **39,632 (16.81%)**, overlap only **6,794**, union **52,151 (22.11%)**; adding the embedding model takes the union to **93,992 works (39.86%)** | Distinct recommended items present in the work catalogue, over 235,824, taken from the same run that produced L53/L56/L57 — `notebooks/02_models.ipynb` §3. Same counting basis as L46 (a recommendation we cannot name does not count), now on the work universe. The ISBN-level analogue was 24,597 / 45,090, overlap 7,451, union 62,236 (22.9%) | 2026-08-08 |
+
+**L60 read out loud.** The overlap is the number that carries the hybrid argument, and it is
+small: of the 52,151 works the two classes reach between them, only **13% are reached by
+both**. Two models with 8.2% and 16.8% coverage could in principle be nested; measured, they
+are nearly disjoint. That is why the recommendation is item-item *with* a content layer
+rather than item-item *or* a content layer — and it is a measurement rather than an appeal
+to the idea that hybrids sound thorough. The union percentage barely moves from the ISBN
+basis (22.11% vs 22.9%), so this argument, like the ceilings in L50, is invariant to the
+re-base.
+
+**L59 read out loud.** Compare with L47, which measured the same thing after serving-time
+dedup on the ISBN basis: item-item 0/30, ALS 0/30, TF-IDF 7/30, embeddings 9/30. **The
+collaborative surfaces were already clean and stayed clean; TF-IDF did not move at all;
+embeddings improved by three slots.** Doing the merge in data prep rather than at serving
+buys a great deal in the *metrics* (L58) and almost nothing on this particular surface,
+because both approaches use the same title-equality key and therefore hit the same wall.
+
+That wall is the honest limit of everything M11 and M12 did: *Harry Potter and the
+Philosopher's Stone*, *Harry Potter à l'école des sorciers* and *Harry Potter E la Pietra
+Filosfale* are one book with three names, and no amount of string normalization discovers
+that from title+author. L38 found the same wall from the lookup side. **Two independent
+measurements, one fix**: more text per book (LLM-generated descriptions, themes, genre
+tags) or an external work identifier that already knows these are one book. That is a Part
+3 proposal with evidence behind it rather than an opinion about LLMs.
 
 Metric definitions, identical for every row (`src/recommender/eval.py`):
 **HitRate@10** — share of eligible users whose held-out book is in their top-10. Under
 leave-one-out this equals Recall@10, and Precision@10 = HitRate@10 / 10; one number,
-three names. **Coverage@10** — distinct catalogue books appearing in any user's top-10,
-over all 271,360; recommended ISBNs absent from `Books.csv` do not count, because a book
-we cannot name is a book we cannot show. **Novelty@10** — mean
-`-log2((train_interactions + 1) / (total_train_interactions + 271,360))`; the +1
+three names. **Coverage@10** — distinct catalogue items appearing in any user's top-10,
+over the whole catalogue; recommended ids absent from the catalogue do not count, because
+a book we cannot name is a book we cannot show. **Novelty@10** — mean
+`-log2((train_interactions + 1) / (total_train_interactions + catalogue size))`; the +1
 smoothing keeps the metric finite for the zero-interaction books only content models can
 reach.
 
+**One denominator per table, and it is never mixed** (the mistake L46 records). The
+work-level rows use **235,824**; the ISBN-level rows use **271,360**. Every run prints the
+denominator it used together with the ceilings measured on the same universe, so a cell can
+be traced to its basis without trusting this paragraph.
+
 ## Open items this ledger will need
 
-- ~~Edition clustering in the data-prep layer (L31, L39)~~ — **done, M11 (L40–L47).** What
-  remains is Helena's decision: does the whole comparison table move to work level? L44
-  says it is worth +18% on the one model measured both ways; the other five have not been
-  re-run at work level, and the content models cannot be until the catalogue itself is
-  work-keyed.
-- **Re-tune item-item on a work-level validation split** (L44 used ISBN-level λ and
-  neighbourhood size, so the +18% is a lower bound).
-- **Beyond title equality** (L47): translations and alternate titles still defeat the
-  clustering, and only the text-based models suffer. Either LLM metadata enrichment or an
-  external work identifier; both also address the lookup failure in L38.
-- The hybrid itself measured, rather than argued from the L21 ceiling: item-item scoring
-  core with the content layer serving what it cannot reach.
+- ~~Edition clustering in the data-prep layer (L31, L39)~~ — **done, M11 (L40–L47).**
+  ~~What remains is Helena's decision: does the whole comparison table move to work
+  level?~~ — **decided and done, M12 (L49–L59).** All six models are re-run on the work
+  basis, and L58 explains why the lift was not uniform across them.
+- ~~**Re-tune item-item on a work-level validation split**~~ — **done, L51: the sweep
+  re-selected λ=10 and 50 neighbours, so L44's "+18% is a lower bound for this reason" is
+  retired.** The +18% stands on its own.
+- **Beyond title equality** (L47, L59): translations and alternate titles still defeat the
+  clustering, and only the text-based models suffer — 7 of 30 gallery slots for TF-IDF and
+  6 of 30 for embeddings, on the work basis. Either LLM metadata enrichment or an external
+  work identifier; both also address the lookup failure in L38.
+- The hybrid itself measured, rather than argued from the L50 ceiling: item-item scoring
+  core with the content layer serving what it cannot reach. **L58 raises the stakes on
+  this**: the content layer is closer to the collaborative one than the ISBN-level table
+  ever suggested.
 - Item-item normalized by profile length, to see whether it removes the long-profile
-  degradation in L28.
+  degradation in L28. Not re-measured at work level.
+- **The strata in L27 and L28 have not been recomputed on the work basis.** They are
+  ISBN-level findings quoted as such; the aggregate rows they explain have moved.
 
 ---
 

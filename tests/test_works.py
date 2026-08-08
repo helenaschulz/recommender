@@ -213,3 +213,76 @@ def test_clustering_is_independent_of_row_order() -> None:
     forward = cluster_works(CRIME_AND_PUNISHMENT)
     reversed_rows = cluster_works(CRIME_AND_PUNISHMENT.iloc[::-1].reset_index(drop=True))
     assert forward.work_of_isbn.to_dict() == reversed_rows.work_of_isbn.to_dict()
+
+
+def test_work_level_catalog_has_one_row_per_work() -> None:
+    """The content models read `catalog.books` by ISBN; at work level that column holds
+    work ids, which is the whole trick that lets them run unchanged."""
+    from recommender.data import work_level_catalog
+
+    catalog = _toy_catalog()
+    works = cluster_works(catalog.books)
+    work_catalog = work_level_catalog(catalog, works)
+    assert len(work_catalog.books) == works.n_works
+    assert set(work_catalog.books["ISBN"]) == set(works.work_of_isbn)
+    assert work_catalog.books["ISBN"].is_unique
+
+
+def test_canonical_text_is_the_most_interacted_edition() -> None:
+    """The pinned M12 rule: a work is represented by the edition most readers met."""
+    from recommender.data import work_level_catalog
+
+    catalog = _toy_catalog()
+    works = cluster_works(catalog.books)
+    work_catalog = work_level_catalog(catalog, works)
+    row = work_catalog.books.set_index("ISBN").loc["crime and punishment|dostoevsky"]
+    # 0553210939 carries three interactions, 0553211757 one -> the former wins.
+    assert row["Book-Title"] == "Crime and Punishment"
+    assert row["Book-Author"] == "Fyodor M. Dostoevsky"
+
+
+def test_canonical_text_never_sees_the_holdout() -> None:
+    """Excluding the held-out pairs must be able to change the winning edition, otherwise
+    passing `holdout` would be decoration rather than leakage discipline."""
+    from recommender.data import work_level_catalog
+
+    catalog = _toy_catalog()
+    works = cluster_works(catalog.books)
+    # Users 2, 3 and 4 are the whole support of edition 0553210939.
+    holdout = pd.DataFrame({"User-ID": [2, 3, 4], "ISBN": ["crime and punishment|dostoevsky"] * 3})
+    key = "crime and punishment|dostoevsky"
+    on_all_data = work_level_catalog(catalog, works)
+    on_train_only = work_level_catalog(catalog, works, holdout=holdout)
+    assert on_all_data.books.set_index("ISBN").loc[key, "Book-Title"] == "Crime and Punishment"
+    # With them held out, 0553211757 (user 1) is the most-interacted edition instead.
+    assert on_train_only.books.set_index("ISBN").loc[key, "Book-Title"].startswith("Crime and Punishment (Crime")
+
+
+def test_work_level_catalog_ratings_are_collapsed() -> None:
+    from recommender.data import work_level_catalog
+
+    catalog = _toy_catalog()
+    works = cluster_works(catalog.books)
+    work_catalog = work_level_catalog(catalog, works)
+    assert set(work_catalog.ratings["ISBN"]) <= set(works.work_of_isbn) | {"isbn:ghost"}
+    user1 = work_catalog.ratings[work_catalog.ratings["User-ID"] == 1]
+    assert user1["ISBN"].is_unique
+
+
+def _toy_catalog():
+    """Crime-and-Punishment rows plus a rating frame with a clear support ordering."""
+    from recommender.data import BookCrossing
+
+    ratings = pd.DataFrame(
+        {
+            "User-ID": [1, 2, 3, 4, 5],
+            "ISBN": ["0553211757", "0553210939", "0553210939", "0553210939", "ghost"],
+            "Book-Rating": [8, 9, 7, 0, 5],
+        }
+    )
+    ratings = ratings.assign(
+        is_explicit=ratings["Book-Rating"] > 0,
+        has_metadata=ratings["ISBN"].isin(set(CRIME_AND_PUNISHMENT["ISBN"])),
+    )
+    users = pd.DataFrame({"User-ID": [1, 2, 3, 4, 5], "Location": ["x"] * 5, "Age": [30.0] * 5})
+    return BookCrossing(ratings=ratings, books=CRIME_AND_PUNISHMENT, users=users, n_repaired=0)

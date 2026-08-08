@@ -38,15 +38,34 @@ REGISTRY: dict[str, tuple[str, str, dict, str]] = {
 }
 ALL_MODELS = list(REGISTRY)
 
+#: Hyperparameters that differ once the model is fitted on the **work-keyed** matrix
+#: (milestone M12.2), each chosen on the work-level inner validation split (seed 43) by
+#: ``scripts/tune_item_item.py --work-level`` and ``scripts/tune_als.py --work-level``.
+#:
+#: A model absent from this mapping is not an omission and not an assumption: it means the
+#: work-level sweep was run and the ISBN-level values won it again. Both outcomes are
+#: recorded in the ledger, because "we re-tuned and nothing moved" is a measurement and
+#: "we forgot to re-tune" looks identical from the outside.
+WORK_LEVEL_PARAMS: dict[str, dict] = {}
 
-def build_model(name: str) -> Recommender:
+
+def build_model(name: str, *, work_level: bool = False) -> Recommender:
     """Construct an unfitted model by its registry name, importing it lazily.
 
     Lazy so that a model whose optional dependency is missing breaks only itself.
+
+    Args:
+        work_level: use the parameter set validated on the work-keyed matrix
+            (:data:`WORK_LEVEL_PARAMS`) instead of the ISBN-level one. The two published
+            tables are measured at different item levels, so they are entitled to
+            different hyperparameters — but only ones chosen on their own validation
+            split, and only ones written down here.
     """
     if name not in REGISTRY:
         raise SystemExit(f"unknown model {name!r}. Known: {', '.join(ALL_MODELS)}")
     module_name, class_name, kwargs, milestone = REGISTRY[name]
+    if work_level:
+        kwargs = {**kwargs, **WORK_LEVEL_PARAMS.get(name, {})}
     try:
         module = __import__(f"recommender.models.{module_name}", fromlist=[class_name])
     except ImportError as exc:

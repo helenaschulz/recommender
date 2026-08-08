@@ -15,27 +15,32 @@ holdout; the chosen values are then run once against the real test split in
 
 from __future__ import annotations
 
+import argparse
 import sys
 import time
 
-from recommender.data import build_interactions, load
+from recommender.benchmark import build_bench, inner_bench
 from recommender.eval import evaluate
 from recommender.models.item_item import ItemItemRecommender
-from recommender.split import make_split
 
 VALIDATION_SEED = 43
 SHRINKAGE_GRID = [0.0, 10.0, 20.0, 50.0, 100.0]
 NEIGHBOUR_GRID = [50, 200, 500]
 
 
-def main() -> int:
-    catalog = load()
-    split = make_split(catalog.ratings)
-    # One level deeper: hold out from train, never from split.test.
-    inner = make_split(split.train, seed=VALIDATION_SEED)
-    inner_train = build_interactions(inner.train, weights="binary")
-    catalog_isbns = set(catalog.books["ISBN"])
-    print(f"validation split (from train only): {inner.describe()}\n", flush=True)
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--work-level", action="store_true", help="tune on the work-keyed matrix (M12.2)")
+    args = parser.parse_args(argv)
+
+    # One level deeper: hold out from train, never from split.test. At work level the
+    # inner universe's canonical text excludes both holdouts -- see recommender.benchmark.
+    outer = build_bench(work_level=args.work_level)
+    inner_universe = inner_bench(outer, seed=VALIDATION_SEED)
+    catalog, inner_train = inner_universe.catalog, inner_universe.train
+    catalog_isbns = inner_universe.catalog_ids
+    inner = inner_universe.split
+    print(f"{outer.item_level}-level validation split (from train only): {inner.describe()}\n", flush=True)
 
     best = None
     print(f"{'shrinkage':>10} {'neighbours':>11} {'HitRate@10':>11} {'Coverage@10':>12} {'fit s':>7}")
@@ -45,7 +50,9 @@ def main() -> int:
             model = ItemItemRecommender(shrinkage=shrinkage, top_k_neighbours=neighbours)
             model.fit(inner_train, catalog)
             fit_seconds = time.perf_counter() - started
-            result = evaluate(model, inner, inner_train, catalog_isbns=catalog_isbns)
+            result = evaluate(
+                model, inner, inner_train, catalog_isbns=catalog_isbns, catalog_size=outer.catalog_size
+            )
             print(
                 f"{shrinkage:>10.0f} {neighbours:>11} {result.hit_rate_at_10:>11.4f} "
                 f"{result.coverage_at_10:>11.3%} {fit_seconds:>7.0f}",

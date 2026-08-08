@@ -23,17 +23,11 @@ import argparse
 import sys
 import time
 
-from recommender.data import CATALOG_SIZE, build_interactions, load, to_work_level
+from recommender.benchmark import build_bench, ceilings
 from recommender.eval import comparison_table, evaluate
 from recommender.gallery import build_gallery, render_markdown
 from recommender.models import ALL_MODELS, build_model, fit_model
 from recommender.serving import WorkDeduped
-from recommender.split import make_split
-
-#: These read `Books.csv` through the ISBN, so they cannot be run on work-keyed items
-#: without a work-level catalogue — out of scope for the M11.4 experiment, which asks
-#: only whether merging editions lifts the *collaborative* signal.
-CATALOGUE_KEYED = {"tfidf", "embeddings"}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -52,31 +46,14 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("name at least one model, or pass --all")
     if args.work_level and args.dedup:
         parser.error("--work-level already has one row per work; --dedup would be a no-op on top of it")
-    if args.work_level and (blocked := sorted(set(names) & CATALOGUE_KEYED)):
-        parser.error(f"--work-level cannot run {', '.join(blocked)}: they vectorize Books.csv per ISBN")
-    if args.work_level and args.gallery:
-        parser.error("--gallery anchors are ISBNs; use --dedup for the work-level demo surface")
 
     started = time.perf_counter()
-    catalog = load()
-    if args.work_level:
-        works = catalog.works
-        ratings = to_work_level(catalog.ratings, works)
-        catalog_isbns = set(works.work_of_isbn)
-        catalog_size = works.n_works
-        print(
-            f"WORK LEVEL: {len(catalog.books):,} ISBNs -> {catalog_size:,} works; "
-            f"{len(catalog.ratings):,} interactions -> {len(ratings):,} rows "
-            f"({len(catalog.ratings) - len(ratings):,} collapsed as same user + same work)"
-        )
-    else:
-        ratings = catalog.ratings
-        catalog_isbns = set(catalog.books["ISBN"])
-        catalog_size = CATALOG_SIZE
-
-    split = make_split(ratings)
-    train = build_interactions(split.train, weights="binary")
-    print(split.describe())
+    bench = build_bench(work_level=args.work_level)
+    catalog, split, train = bench.catalog, bench.split, bench.train
+    print(bench.describe())
+    # Printed with every run, never carried over from another one: a HitRate read against
+    # the ceiling of a different item universe is a wrong number, not a rounded one.
+    print(ceilings(bench).describe())
     print(f"data ready in {time.perf_counter() - started:.0f}s\n", flush=True)
 
     users = None
@@ -91,19 +68,19 @@ def main(argv: list[str] | None = None) -> int:
     results = []
     fitted = []
     for name in names:
-        model = build_model(name)
+        model = build_model(name, work_level=args.work_level)
         t0 = time.perf_counter()
         # One dispatch, shared with the notebook: see recommender.models.fit_model.
         fit_model(model, train, catalog, split.train)
         if args.dedup:
-            model = WorkDeduped(model, catalog.works)
+            model = WorkDeduped(model, bench.catalog.works)
         fit_seconds = time.perf_counter() - t0
         result = evaluate(
             model,
             split,
             train,
-            catalog_isbns=catalog_isbns,
-            catalog_size=catalog_size,
+            catalog_isbns=bench.catalog_ids,
+            catalog_size=bench.catalog_size,
             k=args.k,
             users=users,
             notes=f"evaluated on a seeded sample of {len(users):,} users" if users is not None else "",
@@ -115,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
     print("\n" + comparison_table(results).to_markdown(index=False))
 
     if args.gallery:
-        print("\n" + render_markdown(build_gallery(fitted, catalog, k=args.k)))
+        print("\n" + render_markdown(build_gallery(fitted, catalog, anchors=bench.anchors, k=args.k)))
     return 0
 
 
