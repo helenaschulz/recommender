@@ -11,13 +11,13 @@ how carefully each row was measured.
 
 from __future__ import annotations
 
+import argparse
 import sys
 import time
 
-from recommender.data import build_interactions, load
+from recommender.benchmark import build_bench, inner_bench
 from recommender.eval import evaluate
 from recommender.models.als import ALSRecommender
-from recommender.split import make_split
 
 VALIDATION_SEED = 43
 FACTOR_GRID = [64, 128]
@@ -25,13 +25,19 @@ ALPHA_GRID = [1.0, 5.0, 20.0]
 REGULARIZATION_GRID = [0.05]
 
 
-def main() -> int:
-    catalog = load()
-    split = make_split(catalog.ratings)
-    inner = make_split(split.train, seed=VALIDATION_SEED)
-    inner_train = build_interactions(inner.train, weights="binary")
-    catalog_isbns = set(catalog.books["ISBN"])
-    print(f"validation split (from train only): {inner.describe()}\n", flush=True)
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--work-level", action="store_true", help="tune on the work-keyed matrix (M12.2)")
+    args = parser.parse_args(argv)
+
+    # The inner universe is carved out of train and, at work level, its canonical text
+    # excludes both holdouts -- see recommender.benchmark.
+    outer = build_bench(work_level=args.work_level)
+    inner = inner_bench(outer, seed=VALIDATION_SEED)
+    catalog, inner_train = inner.catalog, inner.train
+    catalog_isbns = inner.catalog_ids
+    print(f"{inner.item_level}-level validation split (from train only): {inner.split.describe()}\n", flush=True)
+    inner = inner.split
 
     best = None
     print(f"{'factors':>8} {'alpha':>7} {'reg':>6} {'HitRate@10':>11} {'Coverage@10':>12} {'fit s':>7}", flush=True)
@@ -42,7 +48,9 @@ def main() -> int:
                 model = ALSRecommender(factors=factors, alpha=alpha, regularization=regularization)
                 model.fit(inner_train, catalog, ratings=inner.train)
                 fit_seconds = time.perf_counter() - started
-                result = evaluate(model, inner, inner_train, catalog_isbns=catalog_isbns)
+                result = evaluate(
+                    model, inner, inner_train, catalog_isbns=catalog_isbns, catalog_size=outer.catalog_size
+                )
                 print(
                     f"{factors:>8} {alpha:>7.0f} {regularization:>6.2f} {result.hit_rate_at_10:>11.4f} "
                     f"{result.coverage_at_10:>11.3%} {fit_seconds:>7.0f}",

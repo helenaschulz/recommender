@@ -87,11 +87,19 @@ def make_split(
     # Sort first so the draw depends only on the seed, never on input row order.
     candidates = candidates.sort_values(["User-ID", "ISBN"], kind="mergesort")
     rng = np.random.default_rng(seed)
-    picked = (
-        candidates.groupby("User-ID", sort=True)
-        .apply(lambda g: g.index[rng.integers(len(g))], include_groups=False)
-        .to_numpy()
-    )
+    if candidates.empty:
+        # No eligible user. Legitimate on a thin frame — a validation split carved out of
+        # an already-thin train set can run out of users — and an empty holdout is the
+        # honest answer. Without this, groupby.apply returns an empty *frame* and the
+        # .loc below fails with "Cannot index with multidimensional key", which says
+        # nothing about the actual cause.
+        picked = np.array([], dtype=ratings.index.dtype)
+    else:
+        picked = (
+            candidates.groupby("User-ID", sort=True)
+            .apply(lambda g: g.index[rng.integers(len(g))], include_groups=False)
+            .to_numpy()
+        )
 
     test = ratings.loc[picked, ["User-ID", "ISBN", "Book-Rating"]].reset_index(drop=True)
     train = ratings.drop(index=picked)

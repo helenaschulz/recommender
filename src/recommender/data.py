@@ -345,6 +345,63 @@ def to_work_level(ratings: pd.DataFrame, works: Works) -> pd.DataFrame:
     )
 
 
+def work_level_catalog(
+    catalog: BookCrossing,
+    works: Works,
+    *,
+    holdout: pd.DataFrame | None = None,
+) -> BookCrossing:
+    """Re-key the whole catalogue to works: one row per work, ratings collapsed.
+
+    This is what lets the *content* models run at work level without a second
+    implementation. They read ``catalog.books`` by its ``ISBN`` column, so handing them a
+    frame whose ``ISBN`` column holds work ids is enough — TF-IDF vectorizes it and the
+    embedding model re-encodes it, and because its cache is keyed by a fingerprint of the
+    text, the work-level vectors land in their own cache file automatically.
+
+    **The canonical text rule (pinned, M12).** A work has one title and one author for
+    scoring purposes: those of its **most-interacted ISBN**, ties broken by ISBN so the
+    choice is deterministic. Picking the most-read edition rather than, say, the
+    alphabetically first means the text a model sees is the one most readers actually
+    encountered — "Harry Potter and the Sorcerer's Stone (Book 1)" rather than an obscure
+    Urdu reprint of it.
+
+    Args:
+        holdout: the work-level test frame. Its ``(User-ID, ISBN)`` pairs are removed
+            before the support counts are taken, so **the canonical text is chosen on
+            train only**. Without this the holdout could decide which edition's title
+            represents a work, which is a thin leakage channel but a real one, and this
+            module's contract is that no statistic it computes depends on the holdout.
+    """
+    ratings = catalog.ratings
+    if holdout is not None and len(holdout):
+        held = set(zip(holdout["User-ID"], holdout["ISBN"], strict=True))
+        keep = [
+            (user, work) not in held
+            for user, work in zip(ratings["User-ID"], works.of(ratings["ISBN"]), strict=True)
+        ]
+        ratings = ratings.loc[keep]
+    support = ratings.groupby("ISBN").size()
+
+    books = catalog.books.assign(
+        _work=works.work_of_isbn.to_numpy(),
+        _support=catalog.books["ISBN"].map(support).fillna(0).astype("int64"),
+    )
+    canonical = (
+        books.sort_values(["_work", "_support", "ISBN"], ascending=[True, False, True], kind="mergesort")
+        .drop_duplicates("_work")
+        .drop(columns=["_support"])
+    )
+    canonical = canonical.assign(ISBN=canonical["_work"]).drop(columns=["_work"]).reset_index(drop=True)
+
+    return BookCrossing(
+        ratings=to_work_level(catalog.ratings, works),
+        books=canonical,
+        users=catalog.users,
+        n_repaired=catalog.n_repaired,
+    )
+
+
 @dataclass(frozen=True)
 class BookCrossing:
     """The three raw tables after loading, repair and flagging."""
