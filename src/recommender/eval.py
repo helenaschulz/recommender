@@ -113,6 +113,7 @@ def evaluate(
     train: Interactions,
     *,
     catalog_isbns: set[str],
+    catalog_size: int = CATALOG_SIZE,
     k: int = 10,
     batch_size: int = 512,
     users: np.ndarray | None = None,
@@ -125,6 +126,10 @@ def evaluate(
         users: restrict evaluation to these User-IDs. Used only for the runtime
             guardrail on long runs; when set, the cap is recorded in
             :attr:`EvalResult.notes` so no ledger line can silently hide it.
+        catalog_size: the Coverage@K denominator. 271,360 ISBNs by default; the
+            work-level experiment passes its own item universe instead, because a
+            coverage percentage is only meaningful against the catalogue it is measured
+            over (ledger L44).
     """
     test = split.test if users is None else split.test[split.test["User-ID"].isin(set(users))]
     user_ids = test["User-ID"].to_numpy()
@@ -145,8 +150,8 @@ def evaluate(
     return EvalResult(
         model=model.name,
         hit_rate_at_10=hit_rate_at_k(recommended, holdout),
-        coverage_at_10=catalog_coverage_at_k(recommended, catalog_isbns),
-        novelty_at_10=novelty_at_k(recommended, popularity, total_interactions),
+        coverage_at_10=catalog_coverage_at_k(recommended, catalog_isbns, catalog_size),
+        novelty_at_10=novelty_at_k(recommended, popularity, total_interactions, catalog_size),
         n_users=len(user_ids),
         k=k,
         params=model.describe_params(),
