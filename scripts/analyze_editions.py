@@ -13,8 +13,10 @@ of the catalogue, measured before anything is trained on it.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 import time
+from collections import defaultdict
 
 import numpy as np
 import pandas as pd
@@ -169,6 +171,75 @@ def cluster_statistics(catalog, works) -> None:
           f"strongest edition {int(counts.iloc[0])}, editions below 5: {int((counts < 5).sum())}")
 
 
+#: What the trailing parenthetical actually holds. It is called `series` because that is
+#: its most common content, but it is really "edition packaging" — see `parenthetical_audit`.
+PARENTHETICAL_KINDS = {
+    "volume/part number": re.compile(
+        r"\b(book|bk|vol|volume|part|pt|no|nr|band|bd|tome|episode|#)\s*\.?\s*\d+|\b\d+\s*$", re.I
+    ),
+    "format": re.compile(r"paperback|hardcover|large print|audio|boxed|box set|pop-up|abridged|unabridged", re.I),
+    "numbered edition": re.compile(r"\b\d+\s*(st|nd|rd|th)?\s*\.?\s*(ed\b|edition|aufl)", re.I),
+}
+_DIGITS = re.compile(r"\d+")
+_ORDINAL_EDITION = re.compile(r"\b(\d+)\s*(st|nd|rd|th)?\s*\.?\s*(ed\b|edition|aufl)", re.I)
+
+
+def parenthetical_audit(catalog, works) -> None:
+    """Does stripping the trailing parenthetical ever merge two genuinely different books?
+
+    The worry is obvious once stated: if the parenthetical is the *only* thing separating
+    two volumes — "(Book 1)" and "(Book 2)" — then stripping it merges two different
+    works. This checks it rather than assuming either way, by finding clusters whose
+    members carry *contradictory* numbers in their parentheticals.
+    """
+    books = catalog.books
+    per_isbn = catalog.ratings.groupby("ISBN").size()
+    with_parens = books.loc[books["series"] != "", "series"]
+
+    print()
+    print("=" * 88)
+    print("6 · What the parenthetical actually contains, and whether stripping it merges wrongly")
+    print("=" * 88)
+    print(f"books carrying a parenthetical      {len(with_parens):>9,}")
+    for label, pattern in PARENTHETICAL_KINDS.items():
+        n = int(with_parens.str.contains(pattern, regex=True).sum())
+        print(f"  looks like a {label:<22} {n:>9,}  ({n / len(with_parens):.1%})")
+    print("  the rest are series names, imprints and awards ('Penguin Classics', 'Trophy Newbery')")
+
+    members: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for work, series, isbn in zip(works.work_of_isbn.to_numpy(), books["series"], books["ISBN"], strict=True):
+        members[work].append((series, isbn))
+
+    multi = {w: m for w, m in members.items() if len(m) > 1}
+    conflicting, ordinal = {}, {}
+    for work, group in multi.items():
+        numbers = {frozenset(_DIGITS.findall(s)) for s, _ in group if s}
+        if len({n for n in numbers if n}) > 1:
+            conflicting[work] = group
+            editions = {m.group(1) for s, _ in group if (m := _ORDINAL_EDITION.search(s))}
+            if len(editions) > 1:
+                ordinal[work] = group
+
+    def weigh(groups: dict) -> tuple[int, int, int]:
+        isbns = [isbn for group in groups.values() for _, isbn in group]
+        return len(groups), len(isbns), int(per_isbn.reindex(isbns).fillna(0).sum())
+
+    print()
+    print(f"{'':<46} {'clusters':>9} {'ISBNs':>8} {'interactions':>13}")
+    for label, groups in (
+        ("all multi-ISBN clusters", multi),
+        ("...with contradictory numbers in the parens", conflicting),
+        ("...of those, real ordinal editions (Nth ed)", ordinal),
+    ):
+        c, i, r = weigh(groups)
+        print(f"{label:<46} {c:>9,} {i:>8,} {r:>13,}")
+    _, _, all_r = weigh(multi)
+    _, _, ord_r = weigh(ordinal)
+    print(f"\nworst case is {ord_r / all_r:.3%} of all merged interactions — see ledger L48.")
+    print("Most 'contradictory numbers' are publisher catalogue numbers (Harlequin 'No 391' vs")
+    print("'No. 504') that differ between reissues of the SAME book, so merging them is correct.")
+
+
 def validation_sample(catalog, works, *, size: int = SAMPLE_SIZE, seed: int = SAMPLE_SEED) -> str:
     """M11.3: seeded-random multi-ISBN clusters, rendered for a human to audit."""
     books = catalog.books.set_index("ISBN")
@@ -277,6 +348,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.no_stats:
         cluster_statistics(catalog, works)
+        parenthetical_audit(catalog, works)
 
     if args.write_sample:
         text = validation_sample(catalog, works) + variant_sample(catalog, works)

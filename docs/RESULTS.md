@@ -257,6 +257,32 @@ of works), which is arithmetic rather than a regression: collapsing editions rem
 duplicated items from the numerator and the denominator at different rates. And the
 clustering itself is the measured-imperfect thing in L42.
 
+### Does stripping the parenthetical ever merge two different books?
+
+Raised by Helena on 08.08 from the §8 gallery: the trailing parenthetical is not always a
+series — *(Book 4)*, *(Trophy Newbery)*, *(3rd Edition)*, *(Paperback)*. If the
+parenthetical were the only thing separating two volumes, stripping it would merge two
+different works. Measured rather than argued: `python scripts/analyze_editions.py` §6.
+
+| ID | Claim | Number | How measured | Measured |
+|---|---|---|---|---|
+| L48 | **The `series` field is misnamed, and the merge risk it implies is 0.023%** | of 74,233 parentheticals: **27.1% volume/part numbers**, 6.7% format, 1.1% numbered editions, the rest series names, imprints and awards. Clusters whose members carry *contradictory* numbers: **100 of 24,392** (1,648 of 480,857 merged interactions, 0.34%); genuinely different books among them: **19 clusters, 113 interactions, 0.023%** | Parenthetical text classified by regex; a cluster is flagged when two members' parentheticals contain different digits, and separately when both contain an ordinal edition (`Nth ed`). The feared collision — *(Book 1)* merging with *(Book 2)* — **does not occur in this catalogue, because the volume is carried by the title** (*Harry Potter and the Goblet of Fire*), not only by the parenthetical. Almost all "contradictory numbers" are publisher catalogue numbers that differ between reissues of the *same* book (*Twilight Magic (Harlequin American Romance, No 16504)* vs *(No. 504)*), where merging is correct | 2026-08-08 |
+
+**L48 read out loud.** The residue splits in two, and only half of it is an error. Textbook
+and handbook revisions — *MLA Handbook* 5th and 6th, *Programming Perl* 2nd and 3rd,
+*Business* 5th and 6th — arguably *should* merge: a reader asking for *Programming Perl*
+wants the book, not an edition. Annual and serial guides should not: *Lonely Planet
+Portugal* 2nd and 3rd, *Frommer's Colorado* 4th and 6th, and *Schroeder's Antiques Price
+Guide* 15th and 19th are different books with different contents, and those are true false
+merges. That subset is roughly a third of 19 clusters and about 20 interactions.
+
+**Not patched, deliberately.** A rule keyed on ordinal editions would separate the travel
+guides and simultaneously split the textbook cases where merging is right — a wash, bought
+with a special case that has to be explained. At 0.023% of merged interactions it is not
+worth the rule; it is worth the line in this ledger. The naming is the other half: the
+field is called `series` because that is its most common content, but it holds edition
+packaging generally. Renaming it (`edition_note`?) is a one-line change if preferred.
+
 ### Deduplication at serving time, and the counting basis
 
 One run, all four models, `python scripts/analyze_dedup.py` (17m12s on the Mac,
