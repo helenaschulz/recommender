@@ -39,6 +39,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--limit-users", type=int, default=None, help="runtime guardrail: evaluate on a seeded sample")
     parser.add_argument("--work-level", action="store_true", help="M11.4: re-key interactions to works pre-split")
     parser.add_argument("--dedup", action="store_true", help="M11.5: collapse output to one ISBN per work at serving")
+    parser.add_argument(
+        "--work-key-punctuation",
+        action="store_true",
+        help="M14.4: work key with whitespace before punctuation removed (prices the re-base; work level only)",
+    )
     args = parser.parse_args(argv)
 
     names = ALL_MODELS if args.all else args.models
@@ -46,9 +51,18 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("name at least one model, or pass --all")
     if args.work_level and args.dedup:
         parser.error("--work-level already has one row per work; --dedup would be a no-op on top of it")
+    if args.work_key_punctuation and not args.work_level:
+        parser.error("--work-key-punctuation changes the work key, so it only means something with --work-level")
 
     started = time.perf_counter()
-    bench = build_bench(work_level=args.work_level)
+    catalog_in, works = None, None
+    if args.work_key_punctuation:
+        from recommender.data import cluster_works, load
+
+        catalog_in = load()
+        works = cluster_works(catalog_in.books, normalize_punctuation=True)
+        print(f"M14.4 key: {works.n_works:,} works instead of the published 235,824")
+    bench = build_bench(work_level=args.work_level, catalog=catalog_in, works=works)
     catalog, split, train = bench.catalog, bench.split, bench.train
     print(bench.describe())
     # Printed with every run, never carried over from another one: a HitRate read against

@@ -550,6 +550,44 @@ into enough signal for a multilingual encoder to bridge German to English. **Tha
 same wall as L47 and L59**, hit from the input side, and it is the third independent
 measurement pointing at the metadata-enrichment layer.
 
+## Reading the demo's output (milestone M14)
+
+M14 exists because someone read the app's answers for eleven anchors instead of reading a
+table. Everything below was invisible to every cell in every table above. **The same rule
+as M13 applies to all of it**: these lines measure the app, which is fitted on the full
+matrix, so none of them is a model result and none may be quoted as one.
+
+| ID | Claim | Number | How measured | Measured |
+|---|---|---|---|---|
+| L63 | **The similarity score is not calibrated across anchors: it is highest where it is least trustworthy** | anchor support 20–30 → median **3.0** co-readers behind a shown book, **72.0%** of slots under 5, median similarity **0.510**; support 600+ → median **35.0** co-readers, **3.2%** thin, median similarity **0.361**. Evidence ×12, score **−29% in the wrong direction** | `python scripts/analyze_anchor_support.py` §1, 60 random nameable anchors per band, **seed 42**, top-10 each, statistics over all (anchor, slot) pairs. The mechanism: a factor fitted from 25 interactions is underdetermined and lands in a sparse region of the 128-dimensional space where high cosines are cheap; a factor pulled by 700 readers sits in a crowded region where nothing reaches 0.8. **This is L34's argument about candidates, applied to the anchor.** The top band holds only 19 nameable works, so its row is thin and says so | 2026-08-08 |
+| L64 | **The work key does not normalise whitespace before punctuation, and 1,198 works are one book counted twice** | 235,824 → **234,626** works (−0.508%); 1,198 merge groups over **2,580 ISBNs** (0.951%); **23,434 interactions** (2.038%) sit on a merged work but only **210 (user, work) rows** collapse (0.0184%); **47** groups have both sides above the support floor, i.e. are visible in the demo. Audit: **0 wrong merges in 30**. Priced on the published table: item-item HitRate@10 **0.0644 → 0.0649** (+0.8%), 13,580 eligible users unchanged, ceilings 86.66 → 86.70 | `python scripts/analyze_work_key_punctuation.py --write-sample docs/work_key_punctuation_sample.md`, seed 42; re-base priced with `python scripts/run_model.py item-item --work-level --work-key-punctuation`. 99.4% of the merges are the colon (`bridget jones : the edge of reason` = `bridget jones: the edge of reason`); the audit is clean because both sides carry *literally the same title*. **Helena's decision: serving only.** The app builds on the fixed key, the published M12 table keeps the M11 key, and `artifacts/app/meta.json` records which is which | 2026-08-08 |
+| L65 | **The floor was one number and had to be two: raising it for candidates buys evidence and pays in relevance** | anchor floor 20 → 50 → 100 → 200: askable works **7,523 → 2,499 → 957 → 334** (3.2% → 0.1% of the nameable catalogue), interaction coverage **39.5% → 26.4% → 17.1% → 9.7%**, thin slots **51.6% → 19.0% → 9.7% → 4.2%**. Raising *both* floors together instead takes thin slots to 9.8% at 50 — and costs *Dune* its **Heretics of Dune**, *Harry Potter* its **Quidditch Through the Ages** and *Fight Club* its **Trainspotting**: 35 of 110 slots across the eleven anchors change | `python scripts/analyze_anchor_support.py` §2/§3, same seed and sample. Interaction coverage is the honest denominator: the share of all interactions pointing at a work the engine would still speak about, i.e. how often a real reader's book can be answered at all. **Helena's decision: anchor floor 50, candidate floor stays at 20 (L34).** Verified: every surviving anchor's top-10 is bit-identical to before, and `"da vinci code"` now resolves to the English edition instead of *El Codigo Da Vinci* (31 readers) | 2026-08-08 |
+| L66 | **It is not returning bestsellers, and the contrast is what makes that a measurement** | over 300 random askable anchors × 10 slots: **2,149 distinct works**, the single most-recurring title appears in **2.7%** of lists, the 100 commonest works take **12.9%** of slots, and **72.8%** of recommended works appear in exactly one list. Pure popularity on the same anchors and the same candidate pool: **11 distinct works, every one in 100% of lists** | `python scripts/analyze_recurrence.py`, seed 42. Popularity computed as a sort of the same pool by `item_support` rather than by fitting `models/popularity.py`, because the app is fitted on the full matrix and the baseline on `split.train` — re-using the fitted baseline would mix two universes. **What it does not claim:** 64.1% of the demo's slots are in the global top 1% of works, but the candidate pool *is* already the top 3.2% of the catalogue, so that figure is a soft bar and is reported with its caveat rather than as a headline | 2026-08-08 |
+| L67 | **The item-to-item surface is reproducible but not robust: a 0.5% change in the item universe replaces a third of every neighbourhood** | ALS item factors **bit-identical** across two fits on the same matrix (seed 42). Across the L64 re-key — 0.5% of works — the eleven anchors keep a mean of **6.8 of 10** neighbours: *Dune* and *Harry Potter* 9/10, but *To Kill a Mockingbird* **4/10**, *The Lovely Bones* 5/10, *Girl with a Pearl Earring* 5/10, *Bridget Jones's Diary* 5/10 | `python scripts/analyze_surface_stability.py`, comparison by title because the ids differ between the keys by construction. **Found by accident** — two anchors' answers changed visibly after a fix that touches 0.5% of the data, and the first suspicion (a non-deterministic optimizer) was checked first and ruled out. Reproducible and robust are different claims and only the first had ever been checked | 2026-08-08 |
+| L68 | **Ten slots were a UI choice; only one of three candidate rules is a truncation at all** | relative score `score_i ≥ 0.55 · score_1` removes **1.4%** of slots over 300 random anchors and 14 of the eleven anchors' 110. The largest-gap (elbow) rule removes **76.4%**, median list **2**, 87% of lists cut below 5. A co-reader-share rule cannot truncate: mean Spearman between score rank and evidence rank inside a top-10 is **0.39**, and in **18.3%** of lists some slot carries ≥2× the evidence of everything above it | `python scripts/analyze_truncation.py`, seed 42. Relative rather than absolute because of L63 — an absolute cutoff would gut a well-supported list and leave a thin one whole. **Wired in at τ = 0.55 and then reverted by Helena on seeing it run**: it ended *Harry Potter* after the four sequels and *Bridget Jones's Diary* after four, and a list of four reads as a broken app in front of a panel. `SCORE_TRUNCATION_TAU` is 0.0; the rule stays reachable per call. It would not have rescued *Guns, Germs, and Steel* either — every slot within 76% of its top score, every slot thin — because that anchor is the **floor's** problem, and conflating the two would be wrong | 2026-08-08 |
+
+**L63 read out loud, because it is the line the deck should carry.** A cosine of 0.49
+against a 25-reader anchor and 0.49 against a 700-reader anchor are the same number meaning
+different things. That is why the raw similarity no longer appears in the app's reason
+sentences (M14.6) — showing it invites exactly the comparison it cannot support — and why
+the truncation rule in L68 had to be relative. It is also the second time this project has
+found the same shape of bug: L34 found it in the candidates, L63 finds it in the anchor.
+
+**Two defects were fixed that no metric could see, and neither moves a published number.**
+`same_author` was an exact string comparison, so *The Vampire Lestat* showed no author tag
+under *Interview with the Vampire* while rank 2 did — the catalogue holds `ANNE RICE` beside
+`Anne Rice`, `CHUCK PALAHNIUK` beside `Chuck Palahniuk`. And the work key kept
+`bridget jones : the edge of reason` apart from `bridget jones: the edge of reason` (L64).
+Both were visible on screen and invisible to every table.
+
+**What M14 did not fix, measured rather than promised.** The remaining duplicates in the
+demo are the *subtitle* class — *Lucky* beside *Lucky : A Memoir*, *The Hobbit* returning
+another edition of itself as *The Hobbit: or There and Back Again*. Collapsing everything
+after a colon would merge **9,523 further works across 30,486 clusters**, eight times L64's
+reach and with real wrong-merge risk (*The Hobbit: or There and Back Again* should merge;
+*Bridget Jones: The Edge of Reason* into *Bridget Jones's Diary* must not). That needs its
+own sampled audit, not an evening — it is written up as an open item below.
+
 Metric definitions, identical for every row (`src/recommender/eval.py`):
 **HitRate@10** — share of eligible users whose held-out book is in their top-10. Under
 leave-one-out this equals Recall@10, and Precision@10 = HitRate@10 / 10; one number,
@@ -586,6 +624,17 @@ be traced to its basis without trusting this paragraph.
   degradation in L28. Not re-measured at work level.
 - **The strata in L27 and L28 have not been recomputed on the work basis.** They are
   ISBN-level findings quoted as such; the aggregate rows they explain have moved.
+- **The subtitle class of duplicate works** (L64's note): 9,523 further works across 30,486
+  clusters would merge if everything after a colon were dropped. Needs an M11.3-style
+  sampled audit before anyone touches it, because the rule cannot tell *The Hobbit: or
+  There and Back Again* (merge) from *Bridget Jones: The Edge of Reason* (do not).
+- **The app and the published table now use different work keys** (L64, Helena's decision).
+  The difference is priced — item-item +0.8%, denominator −0.5% — and recorded in
+  `artifacts/app/meta.json`, but it is a divergence and a slide has to be able to say so.
+- **L67 has no counterpart for the other models.** Neighbourhood stability was measured for
+  the ALS surface the app serves, because that is where it was noticed. Whether item-item's
+  neighbourhoods are steadier under the same perturbation is unmeasured and would be a
+  cheap, genuinely useful comparison.
 
 ---
 

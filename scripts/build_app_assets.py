@@ -46,7 +46,7 @@ import time
 import numpy as np
 import scipy.sparse as sp
 
-from recommender.data import build_interactions, load, work_level_catalog
+from recommender.data import build_interactions, cluster_works, load, work_level_catalog
 from recommender.demo import ASSET_VERSION, assets_dir
 from recommender.models.als import ALSRecommender
 from recommender.models.embeddings import DEFAULT_MODEL, EmbeddingRecommender
@@ -60,7 +60,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--factors", type=int, default=128)
     parser.add_argument("--alpha", type=float, default=1.0)
     parser.add_argument("--regularization", type=float, default=0.05)
-    parser.add_argument("--similar-min-support", type=int, default=20, help="ledger L34")
+    parser.add_argument("--similar-min-support", type=int, default=20, help="candidates; ledger L34")
+    parser.add_argument("--anchor-min-support", type=int, default=50, help="anchors; ledger L63/L65, M14.2")
+    parser.add_argument(
+        "--isbn-work-key",
+        action="store_true",
+        help="build on the published M11 work key instead of the M14.4-fixed one (L64)",
+    )
     parser.add_argument("--skip-warmup", action="store_true", help="do not load the sentence encoder")
     args = parser.parse_args(argv)
 
@@ -72,7 +78,16 @@ def main(argv: list[str] | None = None) -> int:
     # One item per *work*, matching the published table (M12). There is no holdout here --
     # this is serving -- so the canonical per-work text is chosen on everything, which is
     # the right thing for a product and would be leakage in an evaluation.
-    catalog = work_level_catalog(raw, raw.works)
+    #
+    # **The serving key carries the M14.4 punctuation fix; the published table does not.**
+    # Helena's decision, on the priced options: the fix merges 1,198 works with 0 wrong
+    # merges in a 30-cluster audit, and the demo is where it is visible -- without it
+    # "Bridget Jones's Diary" answers with the same book at ranks 1 and 2. Re-basing the
+    # whole M12 table for +0.8% on one row was not worth the day it would cost with the
+    # deck unwritten. The divergence is deliberate, priced in ledger L64, and recorded in
+    # meta.json so nobody has to infer it from a work count.
+    works = raw.works if args.isbn_work_key else cluster_works(raw.books, normalize_punctuation=True)
+    catalog = work_level_catalog(raw, works)
     # The whole matrix on purpose -- see the module docstring. Binarized, matching the
     # pinned signal decision: an interaction is evidence whether or not it carries a grade.
     interactions = build_interactions(catalog.ratings, weights="binary")
@@ -144,10 +159,12 @@ def main(argv: list[str] | None = None) -> int:
             {
                 "asset_version": ASSET_VERSION,
                 "similar_min_support": args.similar_min_support,
+                "anchor_min_support": args.anchor_min_support,
                 "encoder_model": DEFAULT_MODEL,
                 "als": als.describe_params(),
                 "fitted_on": "the full work-keyed interaction matrix (serving, not evaluation)",
                 "item_level": "work",
+                "work_key": "M11" if args.isbn_work_key else "M11 + M14.4 punctuation normalization (L64)",
                 "n_items": int(interactions.n_items),
                 "n_works": int(len(books)),
                 "n_isbns": int(len(raw.books)),
