@@ -145,6 +145,15 @@ def split_series(title: str) -> tuple[str, str]:
     thrown away: 74,233 catalogue rows carry one, and it is display metadata (and a
     candidate content feature) in its own right.
 
+    **The field is called `series` for its most common content, not its only content**
+    (ledger L48): 27.1% of parentheticals are a volume or part number, 6.7% a format,
+    1.1% a numbered edition, and the rest series names, imprints and awards. Stripping a
+    volume number sounds dangerous — "(Book 1)" and "(Book 2)" would merge — but it is
+    measured at 0.023% of merged interactions, because in this catalogue the volume is
+    carried by the title ("Harry Potter and the Goblet of Fire"), not only by the
+    parenthetical. The residue is annual guides whose edition number is the only thing
+    distinguishing them; L48 says why that is not worth a special case.
+
     Nesting is handled by matching brackets from the right, so "(Signet Classics
     (Paperback))" comes off as one unit rather than leaving a dangling "(Signet Classics".
     """
@@ -372,8 +381,9 @@ def load(data_dir: Path | None = None) -> BookCrossing:
     data_dir = data_dir or find_data_dir()
     books_raw = pd.read_csv(data_dir / "Books.csv", dtype=str)
     books, n_repaired = repair_shifted_rows(books_raw)
-    # The trailing parenthetical is edition/series packaging. It leaves the title text
-    # (which is what clusters editions) and becomes a field of its own.
+    # The trailing parenthetical is edition packaging — a series, a volume number, a
+    # format or an imprint (L48). It leaves the title text, which is what clusters
+    # editions, and becomes a field of its own.
     books = books.assign(series=[split_series(title)[1] for title in books["Book-Title"]])
     ratings = pd.read_csv(
         data_dir / "Ratings.csv",
