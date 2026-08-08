@@ -43,6 +43,7 @@ from dataclasses import replace
 import numpy as np
 
 from recommender.demo import DemoEngine, load_assets
+from recommender.display import THIN_EVIDENCE_SHARE, evidence_share
 from recommender.gallery import DEMO_ANCHORS
 
 #: (low, high) interaction counts, high exclusive. The top band is open-ended.
@@ -67,6 +68,7 @@ def measure(engine: DemoEngine, rows: np.ndarray, k: int) -> dict:
     """Run the engine over *rows* and collect every slot's evidence."""
     co_readers: list[int] = []
     scores: list[float] = []
+    shares: list[float] = []
     per_anchor_median: list[float] = []
     empty = 0
     for row in rows.tolist():
@@ -77,9 +79,15 @@ def measure(engine: DemoEngine, rows: np.ndarray, k: int) -> dict:
         counts = [s.evidence.co_readers for s in suggestions]
         co_readers.extend(counts)
         scores.extend(s.evidence.score for s in suggestions)
+        # The share the app's "thin evidence" tag fires on, measured with the *same* rule
+        # the screen uses, so the tag and the ledger cannot drift apart (M15.4).
+        shares.extend(evidence_share(s.evidence) for s in suggestions)
         per_anchor_median.append(float(np.median(counts)))
     counts = np.array(co_readers, dtype=float)
+    share_array = np.array(shares, dtype=float)
     return {
+        "share_tagged": float((share_array < THIN_EVIDENCE_SHARE).mean()) if share_array.size else float("nan"),
+        "median_share": float(np.median(share_array)) if share_array.size else float("nan"),
         "n_anchors": len(rows),
         "n_empty": empty,
         "n_slots": counts.size,
@@ -129,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
     print("=" * 104)
     print(
         f"{'anchor support':<16} {'anchors':>8} {'slots':>7} {'median':>8} {'mean':>7} "
-        f"{'<5 co-readers':>14} {'=0':>7} {'median sim':>11}"
+        f"{'<5 co-readers':>14} {'<2% of anchor':>14} {'=0':>7} {'median sim':>11}"
     )
     rows_out = []
     for low, high in BANDS:
@@ -139,7 +147,8 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"{stats['band']:<16} {stats['n_anchors']:>8,} {stats['n_slots']:>7,} "
             f"{stats['median_co_readers']:>8.1f} {stats['mean_co_readers']:>7.1f} "
-            f"{stats['share_thin']:>13.1%} {stats['share_zero']:>6.1%} {stats['median_score']:>11.3f}",
+            f"{stats['share_thin']:>13.1%} {stats['share_tagged']:>13.1%} "
+            f"{stats['share_zero']:>6.1%} {stats['median_score']:>11.3f}",
             flush=True,
         )
     top, bottom = rows_out[0], rows_out[-1]
@@ -154,6 +163,23 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"thin slots (<{THIN} co-readers): {top['share_thin']:.1%} in the lowest band, "
         f"{bottom['share_thin']:.1%} in the highest."
+    )
+
+    # -- 1b · The self-check M15.4 asks for, on the rule the screen actually uses --------
+    tagged = sum(row["share_tagged"] * row["n_slots"] for row in rows_out)
+    slots = sum(row["n_slots"] for row in rows_out)
+    print(
+        f"\n\"thin evidence\" tag (< {THIN_EVIDENCE_SHARE:.0%} of the anchor's readers) fires on "
+        f"{tagged / slots:.1%} of all {slots:,} slots — the M15.4 self-check ceiling is 30%."
+    )
+    print(
+        "Read the two thin columns against each other, because they disagree by design and the\n"
+        "disagreement is worth knowing: the absolute one falls with support "
+        f"({top['share_thin']:.0%} -> {bottom['share_thin']:.0%}) and the share-based one *rises*\n"
+        f"({top['share_tagged']:.0%} -> {bottom['share_tagged']:.0%}). At {BANDS[0][0]} readers, "
+        f"{THIN_EVIDENCE_SHARE:.0%} of the anchor is under one reader, so a slot cannot be tagged at\n"
+        "all; at 900 readers six shared readers is 0.7% and is tagged. The tag is a statement about\n"
+        "*this anchor's* audience, not about absolute evidence, and it can only mean that."
     )
 
     # -- 2 · What a higher floor costs and buys (M14.2) -------------------------------

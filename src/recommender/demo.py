@@ -35,6 +35,7 @@ the build script rather than left for someone to wonder about.
 
 from __future__ import annotations
 
+import html
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -322,15 +323,31 @@ class DemoEngine:
     # -- metadata -----------------------------------------------------------------
 
     def describe(self, isbn: str) -> Book:
+        """Catalogue metadata for one work, with the dataset's HTML entities resolved.
+
+        The 2004 crawl stored titles as they appeared in HTML, so ``Books.csv`` literally
+        contains ``Angels &amp; Demons`` and ``Marley &amp; Me``. The *work key* has always
+        unescaped them (``split_series`` does it), which is why the id reads
+        ``angels & demons|brown`` — but the displayed title did not, so the app has been
+        printing the entity on screen since M13. Unescaping here rather than in the app
+        means every consumer gets the clean string: the screen, the anchor report, and the
+        anchor name inside a reason sentence.
+
+        Display only. No id, key, count or score is derived from this text.
+        """
         row = self.assets.books.loc[isbn] if isbn in self.assets.books.index else None
+        if row is None:
+            return Book(
+                isbn=isbn, title=f"[unknown ISBN {isbn}]", author="", year="", series="", image_url="", readers=0
+            )
         item = self._index.get(isbn)
         return Book(
             isbn=isbn,
-            title=str(row["Book-Title"]) if row is not None else f"[unknown ISBN {isbn}]",
-            author=str(row["Book-Author"]) if row is not None else "",
-            year=str(row["Year-Of-Publication"]) if row is not None else "",
-            series=str(row["series"]) if row is not None else "",
-            image_url=str(row["Image-URL-M"]) if row is not None else "",
+            title=html.unescape(str(row["Book-Title"])),
+            author=html.unescape(str(row["Book-Author"])),
+            year=str(row["Year-Of-Publication"]),
+            series=html.unescape(str(row["series"])),
+            image_url=str(row["Image-URL-M"]),
             readers=int(self.assets.item_support[item]) if item is not None else 0,
         )
 
