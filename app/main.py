@@ -29,13 +29,34 @@ rows that both stay exactly where the model put them.
 from __future__ import annotations
 
 import html
+import sys
 import time
 
 import streamlit as st
 
-from recommender.demo import DemoEngine, load_assets
-from recommender.display import THIN_EVIDENCE_SHARE, bar_widths, divider_after, evidence_share, is_thin
-from recommender.gallery import DEMO_BUTTONS as ANCHORS  # M14.8 — one source, see its docstring
+try:
+    from recommender.demo import DemoEngine, load_assets
+    from recommender.display import THIN_EVIDENCE_SHARE, bar_widths, divider_after, evidence_share, is_thin
+    from recommender.gallery import DEMO_BUTTONS as ANCHORS  # M14.8 — one source, see its docstring
+except ModuleNotFoundError as error:  # pragma: no cover - the wrong-interpreter path
+    # `streamlit run` uses whichever interpreter is first on PATH, which on this machine is
+    # a pyenv environment that has Streamlit but not this project. The raw traceback points
+    # at line 36 of this file and says nothing about the actual problem, so it gets a
+    # sentence and the command that fixes it — the same rule the stale-asset check follows.
+    #
+    # This is the second time an unrelated pyenv environment has produced a phantom failure
+    # here; M10 recorded the first, when the Jupyter kernel resolved to one and notebook 01
+    # was executed outside the pinned venv.
+    st.set_page_config(page_title="Book recommender — demo", layout="wide")
+    st.error(
+        f"**{error.name} is not installed in the interpreter running this app.**\n\n"
+        f"`streamlit run` used `{sys.executable}`, which is not the project's virtual "
+        "environment. Start it from there instead:\n\n"
+        "```\nsource .venv/bin/activate && streamlit run app/main.py\n```\n\n"
+        "or, without activating anything:\n\n"
+        "```\n.venv/bin/python -m streamlit run app/main.py\n```"
+    )
+    st.stop()
 
 #: The free-text example, offered as a click rather than as a placeholder nobody types. It
 #: is the query that took two serving rules to make work (L62), so it is worth being seen.
@@ -231,15 +252,20 @@ def main() -> None:
         # rather than only asserted on a slide.
         column.caption(f"{engine.describe(isbn).readers:,} readers")
 
+    # Every writer of `st.session_state["query"]` has to run **before** the text input that
+    # owns that key is instantiated — Streamlit raises `StreamlitAPIException` otherwise,
+    # and the first version of this had the example button underneath the field, where it
+    # crashed the app on click. The anchor buttons above were always on the right side of
+    # that line; this one was not.
+    if st.button(f"Try “{EXAMPLE_QUERY}”", type="tertiary"):
+        st.session_state["query"] = EXAMPLE_QUERY
+
     query = st.text_input(
         "Book",
         key="query",
         label_visibility="collapsed",
         placeholder="Type a title however you remember it",
     )
-    if st.button(f"Try “{EXAMPLE_QUERY}”", type="tertiary"):
-        st.session_state["query"] = EXAMPLE_QUERY
-        st.rerun()
     if not query:
         return
 
