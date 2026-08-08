@@ -14,7 +14,7 @@ import pytest
 
 from recommender.data import BookCrossing, Interactions, build_interactions, cluster_works
 from recommender.models.base import Recommender
-from recommender.serving import WorkDeduped, duplicate_slot_rate
+from recommender.serving import WorkDeduped, blank_owned_works, duplicate_slot_rate
 
 #: Two works with two editions each, plus two singletons.
 EDITION_BOOKS = pd.DataFrame(
@@ -141,6 +141,35 @@ def test_duplicate_slot_rate_ignores_empty_slots(works, train) -> None:
     stats = duplicate_slot_rate(recommended, np.array([1, 2]), train, works)
     assert stats["duplicate_slot_share"] == pytest.approx(1.0)
     assert stats["filled_slots"] == 1.0
+
+
+class TestBlankOwnedWorks:
+    """The decomposition's honesty valve: forfeit the slot, never refill it."""
+
+    def test_it_blanks_only_what_the_reader_already_owns(self, works, train) -> None:
+        """User 1 owns h1, so h2 (same work) is blanked; user 2 owns none of these."""
+        recommended = np.array([["h2", "e1"], ["h2", "e1"]], dtype=object)
+        out = blank_owned_works(recommended, np.array([1, 2]), train, works)
+        assert list(out[0]) == [None, "e1"]
+        assert list(out[1]) == ["h2", "e1"]
+
+    def test_it_forfeits_rather_than_refills(self, works, train) -> None:
+        """This is what separates it from WorkDeduped, and the difference is the point:
+        a refilled slot would smuggle an extra candidate into a fairness measurement."""
+        recommended = np.array([["h2", "e1", "s2"]], dtype=object)
+        out = blank_owned_works(recommended, np.array([1]), train, works)
+        assert list(out[0]) == [None, "e1", None]  # h2 owned via h1, s2 owned outright
+        assert sum(x is not None for x in out[0]) < 3
+
+    def test_it_does_not_mutate_its_input(self, works, train) -> None:
+        recommended = np.array([["h2", "e1"]], dtype=object)
+        blank_owned_works(recommended, np.array([1]), train, works)
+        assert list(recommended[0]) == ["h2", "e1"]
+
+    def test_unknown_users_are_left_alone(self, works, train) -> None:
+        recommended = np.array([["h2", "e1"]], dtype=object)
+        out = blank_owned_works(recommended, np.array([999]), train, works)
+        assert list(out[0]) == ["h2", "e1"]
 
 
 def test_params_record_that_dedup_was_on(works, train) -> None:

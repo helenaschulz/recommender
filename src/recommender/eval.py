@@ -30,6 +30,7 @@ the reference every model is read against.
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -46,6 +47,41 @@ def hit_rate_at_k(recommended: np.ndarray, holdout: np.ndarray) -> float:
         return float("nan")
     hits = (recommended == np.asarray(holdout).reshape(-1, 1)).any(axis=1)
     return float(hits.mean())
+
+
+def hit_rate_at_k_by_group(
+    recommended: np.ndarray,
+    holdout: np.ndarray,
+    group_of: Callable[[list[str]], np.ndarray],
+) -> float:
+    """HitRate@K under a *coarser* notion of "correct": same group, not same id.
+
+    ``group_of`` maps ids to group ids — in practice :meth:`recommender.data.Works.of`,
+    so a recommended ISBN counts as a hit when it is any edition of the held-out book.
+
+    This exists to answer one question and should not be used for anything else: **how
+    much of the work-level re-base is the model getting better, and how much is the ISBN
+    keyed metric having been unfair?** Scoring the identical ISBN-level model and the
+    identical recommendations under work-level credit isolates the second part exactly,
+    because nothing else about the run changes. See ``scripts/decompose_work_level_lift.py``
+    and the ledger's decomposition line.
+
+    It is deliberately *not* what the comparison table reports. Under this rule a model can
+    fill all ten slots with ten editions of one book and still score a hit, which is a
+    generous metric, not a better one — the table's job is to compare models, and this
+    function's job is to explain a difference between two tables.
+    """
+    if len(holdout) == 0:
+        return float("nan")
+    flat = np.asarray(recommended, dtype=object)
+    filled = [isbn for isbn in flat.ravel().tolist() if isbn is not None]
+    lookup = dict(zip(filled, group_of(filled).tolist(), strict=True)) if filled else {}
+    target = group_of(list(np.asarray(holdout).tolist()))
+    hits = [
+        any(lookup.get(isbn) == want for isbn in row if isbn is not None)
+        for row, want in zip(flat, target.tolist(), strict=True)
+    ]
+    return float(np.mean(hits))
 
 
 def catalog_coverage_at_k(recommended: np.ndarray, catalog_isbns: set[str], catalog_size: int = CATALOG_SIZE) -> float:

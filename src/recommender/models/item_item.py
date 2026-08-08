@@ -36,7 +36,17 @@ marking your own homework. The sweep is also a result in itself (ledger L25): at
 shrinkage 0 the model scores HitRate@10 0.0296 with 17.5% coverage, at shrinkage 10 it
 scores 0.0532 with 7.6%. Damping coincidental co-occurrence nearly doubles accuracy and
 costs more than half the catalogue reach — the accuracy/coverage tension in one table,
-which is exactly why the hybrid argument is about coverage rather than accuracy.
+which is exactly why the hybrid argument is about coverage rather than accuracy. The sweep
+was **re-run on the work-keyed matrix** in M12 and re-selected the same values (ledger
+L51), so the defaults are not an artefact of the item key.
+
+**What the item key was worth, which is more than any parameter here.** Fitted on works
+instead of ISBNs the identical model scores 0.0644 against 0.0546 (ledger L44, L53). The
+item-to-item surface gains more than the metric does: ledger L29 recorded this model
+answering *Harry Potter and the Sorcerer's Stone* with two obscure books that shared four
+readers with it, ahead of *Chamber of Secrets*. On works, same λ, it answers with the four
+sequels in order. The anchor was never under-damped so much as under-evidenced — its
+evidence was spread across 120 Harry Potter rows.
 
 **The explicit-only ablation** (``signal="explicit"``) is the same model fitted on a
 matrix built from graded ratings alone. It exists to turn the pinned signal decision into

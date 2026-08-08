@@ -23,7 +23,7 @@ import argparse
 import sys
 import time
 
-from recommender.benchmark import build_bench
+from recommender.benchmark import build_bench, ceilings
 from recommender.eval import comparison_table, evaluate
 from recommender.gallery import build_gallery, render_markdown
 from recommender.models import ALL_MODELS, build_model, fit_model
@@ -51,6 +51,9 @@ def main(argv: list[str] | None = None) -> int:
     bench = build_bench(work_level=args.work_level)
     catalog, split, train = bench.catalog, bench.split, bench.train
     print(bench.describe())
+    # Printed with every run, never carried over from another one: a HitRate read against
+    # the ceiling of a different item universe is a wrong number, not a rounded one.
+    print(ceilings(bench).describe())
     print(f"data ready in {time.perf_counter() - started:.0f}s\n", flush=True)
 
     users = None
@@ -65,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
     results = []
     fitted = []
     for name in names:
-        model = build_model(name)
+        model = build_model(name, work_level=args.work_level)
         t0 = time.perf_counter()
         # One dispatch, shared with the notebook: see recommender.models.fit_model.
         fit_model(model, train, catalog, split.train)

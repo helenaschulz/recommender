@@ -11,8 +11,9 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from recommender.benchmark import build_bench, inner_bench
+from recommender.benchmark import build_bench, ceilings, inner_bench
 from recommender.data import CATALOG_SIZE, BookCrossing, cluster_works
+from recommender.models import ALL_MODELS, WORK_LEVEL_PARAMS, build_model
 
 #: Two editions of one work plus three singletons, so work level actually merges something.
 BOOKS = pd.DataFrame(
@@ -143,6 +144,42 @@ def test_inner_bench_keeps_the_outer_denominator() -> None:
     assert inner.catalog_size == outer.catalog_size
     assert inner.catalog_ids == outer.catalog_ids
     assert inner.work_level is outer.work_level
+
+
+@pytest.mark.parametrize("work_level", [False, True])
+def test_ceilings_are_measured_on_the_benchs_own_universe(work_level: bool) -> None:
+    """L20/L21 recomputed per item level. A ceiling carried over from the other table
+    would silently rescale every "share of achievable accuracy" statement."""
+    bench = build_bench(work_level=work_level, catalog=_catalog())
+    bound = ceilings(bench)
+    assert bound.item_level == bench.item_level
+    assert bound.n_holdouts == bench.split.n_eligible
+    # The union can never be below either component, nor above 1.
+    assert bound.union >= max(bound.collaborative, bound.content)
+    assert 0.0 <= bound.union <= 1.0
+
+
+def test_the_collaborative_ceiling_only_counts_items_present_in_train() -> None:
+    """Hand-checkable: the fixture's users all rate all ten books, so every held-out item
+    is still in some other user's train profile and the ceiling is exactly 1."""
+    bench = build_bench(work_level=False, catalog=_catalog())
+    assert ceilings(bench).collaborative == pytest.approx(1.0)
+
+
+def test_work_level_params_are_declared_not_improvised() -> None:
+    """M12.2 pins hyperparameters per item level. Anything in the override table must name
+    a real model, and asking for a level a model has no override for must still build."""
+    assert set(WORK_LEVEL_PARAMS) <= set(ALL_MODELS)
+    for name in ("popularity", "item-item", "item-item-explicit", "tfidf"):
+        assert build_model(name, work_level=True).name == build_model(name).name
+
+
+def test_work_level_overrides_reach_the_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """If a sweep ever does move a parameter, the override must actually take effect —
+    a table that silently ignored it would report tuned numbers from an untuned model."""
+    monkeypatch.setitem(WORK_LEVEL_PARAMS, "item-item", {"shrinkage": 123.0})
+    assert build_model("item-item", work_level=True).shrinkage == 123.0
+    assert build_model("item-item").shrinkage != 123.0
 
 
 @pytest.mark.parametrize("work_level", [False, True])

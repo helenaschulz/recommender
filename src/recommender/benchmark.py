@@ -17,6 +17,12 @@ channel, but this project's contract is that there are none.
 (seed 43). Their canonical text must exclude *both* holdouts, which is what
 ``extra_holdout`` is for. Tuning on a universe that has seen the test set would undo the
 whole point of tuning on validation.
+
+**Ceilings belong here too.** :func:`ceilings` recomputes ledger L20/L21 — what share of
+held-out items any collaborative or content model could reach *at all* — from whatever
+universe the :class:`Bench` describes. It lives beside the universe rather than in a
+script because a HitRate read against the wrong ceiling is worse than one read against
+none, and the work-level re-base moves both numbers.
 """
 
 from __future__ import annotations
@@ -107,6 +113,44 @@ def build_bench(
         anchors={works.of([isbn])[0]: label for isbn, label in ANCHORS.items()},
         works=works,
         work_level=True,
+    )
+
+
+@dataclass(frozen=True)
+class Ceilings:
+    """Ledger L20/L21 on one item universe: what perfect would look like, and it is not 1.0."""
+
+    collaborative: float  # held-out items that appear at all in the train matrix
+    content: float  # held-out items that have a catalogue row, so they can be embedded
+    union: float  # reachable by one or the other — the bound on any hybrid
+    n_holdouts: int
+    item_level: str
+
+    def describe(self) -> str:
+        return (
+            f"ceilings at {self.item_level} level over {self.n_holdouts:,} holdouts: "
+            f"collaborative {self.collaborative:.2%}, content {self.content:.2%}, "
+            f"union {self.union:.2%}"
+        )
+
+
+def ceilings(bench: Bench) -> Ceilings:
+    """Recompute the structural ceilings for *bench*'s item universe.
+
+    A collaborative model cannot rank an item that is absent from the train matrix, and a
+    content model cannot vectorize an item with no catalogue row. Those two shares — and
+    their union — bound every HitRate in the table from above, so they are recomputed on
+    the same basis as the table rather than carried over from the ISBN-level run.
+    """
+    holdout = bench.split.test["ISBN"]
+    in_train = holdout.isin(set(bench.train.item_ids))
+    has_metadata = holdout.isin(bench.catalog_ids)
+    return Ceilings(
+        collaborative=float(in_train.mean()),
+        content=float(has_metadata.mean()),
+        union=float((in_train | has_metadata).mean()),
+        n_holdouts=len(holdout),
+        item_level=bench.item_level,
     )
 
 
