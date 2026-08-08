@@ -20,12 +20,20 @@ dependencies = [
     "implicit==0.7.3",       # ALS / weighted matrix factorization
     "sentence-transformers==5.6.1",
     "torch==2.13.0",         # CPU/MPS backend for sentence-transformers
+    # The demo app (M13). Streamlit brings pyarrow, which is what the app assets are
+    # stored in — the metadata table loads in milliseconds instead of parsing 30 MB of CSV
+    # on every cold start.
+    "streamlit==1.61.1",
+    "pyarrow==24.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest==9.1.1",
     "ruff==0.16.1",
+    # Only for scripts/capture_app_screenshots.py. Needs its browser once:
+    # python -m playwright install chromium
+    "playwright==1.62.0",
 ]
 
 [tool.setuptools.packages.find]
