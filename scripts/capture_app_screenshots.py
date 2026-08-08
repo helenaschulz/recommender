@@ -77,7 +77,10 @@ def main(argv: list[str] | None = None) -> int:
             page = browser.new_page(viewport={"width": args.width, "height": args.height})
             page.goto(f"http://127.0.0.1:{args.port}", wait_until="networkidle")
             # The first render loads ~900 MB of assets behind st.cache_resource.
-            page.wait_for_selector("text=Paste a book", timeout=120_000)
+            # Wait on the app's *structure*, not on its copy. The first version waited for
+            # the H1's text and sat there for two minutes when M15 reworded the heading —
+            # the same duplication that broke the button labels one milestone earlier.
+            page.wait_for_selector('[data-testid="stTextInput"]', timeout=120_000)
 
             for label, slug in ANCHORS.items():
                 page.get_by_role("button", name=label, exact=True).click()
@@ -87,8 +90,9 @@ def main(argv: list[str] | None = None) -> int:
                 page.screenshot(path=str(path), full_page=True)
                 print(f"wrote {path.relative_to(root)}")
 
-            # And the input path, which is the part a panel will actually poke at.
-            box = page.get_by_placeholder("harry potter stein")
+            # And the input path, which is the part a panel will actually poke at. Located
+            # by role, not by placeholder text: the placeholder is copy and M15 changed it.
+            box = page.locator('[data-testid="stTextInput"] input')
             box.fill(LOOKUP_QUERY)
             box.press("Enter")
             page.wait_for_selector("text=Because you liked", timeout=120_000)
