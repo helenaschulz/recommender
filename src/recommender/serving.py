@@ -111,6 +111,38 @@ class WorkDeduped(Recommender):
         return kept
 
 
+def blank_owned_works(
+    recommended: np.ndarray,
+    user_ids: np.ndarray,
+    train: Interactions,
+    works: Works,
+) -> np.ndarray:
+    """Copy of *recommended* with every slot the reader already owns (by work) set to None.
+
+    Deliberately **not** :class:`WorkDeduped`: nothing is refilled, the slot is simply
+    forfeited. That difference is the whole point of the function. It exists for the
+    decomposition in ``scripts/decompose_work_level_lift.py``, which asks what the
+    ISBN-level metric would have scored under work-level *credit* — and work-level credit
+    must not be allowed to reward recommending a book the reader demonstrably already has,
+    because the work-level table cannot do that (an owned work is blocked from the
+    candidate list). Forfeiting rather than refilling keeps the answer a lower bound.
+    """
+    out = np.array(recommended, dtype=object, copy=True)
+    for row, user in enumerate(user_ids):
+        user_row = train.user_index.get(int(user))
+        if user_row is None:
+            continue
+        lo, hi = train.matrix.indptr[user_row], train.matrix.indptr[user_row + 1]
+        owned = set(works.of(train.item_ids[train.matrix.indices[lo:hi]]).tolist())
+        filled = [column for column, isbn in enumerate(out[row]) if isbn is not None]
+        if not filled:
+            continue
+        for column, work in zip(filled, works.of([out[row][c] for c in filled]), strict=True):
+            if work in owned:
+                out[row, column] = None
+    return out
+
+
 def duplicate_slot_rate(
     recommended: np.ndarray,
     user_ids: np.ndarray,
