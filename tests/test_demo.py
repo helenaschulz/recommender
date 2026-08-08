@@ -25,6 +25,7 @@ from recommender.demo import (
     Evidence,
     load_assets,
     reason_sentence,
+    same_author,
 )
 
 HOBBIT, RING, EMMA, DUNE, UBIK = (
@@ -48,7 +49,7 @@ BOOKS = pd.DataFrame(
 ).set_index("ISBN")
 
 
-def _assets(*, support=(50, 50, 50, 50, 3), readers=None, books=BOOKS) -> DemoAssets:
+def _assets(*, support=(50, 50, 50, 50, 3), readers=None, books=BOOKS, anchor_floor=None) -> DemoAssets:
     """Five works in two dimensions, so every similarity below is checkable by hand.
 
     Hobbit at 0 degrees, Fellowship at 4, Emma at 30, Dune at 90, Ubik at 180 — Emma is
@@ -72,6 +73,7 @@ def _assets(*, support=(50, 50, 50, 50, 3), readers=None, books=BOOKS) -> DemoAs
         books=books,
         similar_min_support=20,
         encoder_model="stub",
+        anchor_min_support=anchor_floor,
     )
 
 
@@ -80,7 +82,7 @@ class TestReasonSentence:
 
     def test_shared_readers_lead(self) -> None:
         got = reason_sentence(Evidence(score=0.42, co_readers=27, anchor_readers=806, same_author=False), "Dune")
-        assert got == "27 readers of *Dune* also read this (similarity 0.42)."
+        assert got == "27 readers of *Dune* also read this."
 
     def test_one_reader_is_singular(self) -> None:
         got = reason_sentence(Evidence(score=0.5, co_readers=1, anchor_readers=9, same_author=False), "Dune")
@@ -91,13 +93,19 @@ class TestReasonSentence:
             Evidence(score=0.9, co_readers=4, anchor_readers=10, same_author=True, shared_series="Middle-earth"),
             "The Hobbit",
         )
-        assert got == (
-            "4 readers of *The Hobbit* also read this — same author, same series (Middle-earth) (similarity 0.90)."
-        )
+        assert got == "4 readers of *The Hobbit* also read this — same author, same series (Middle-earth)."
 
     def test_metadata_alone_still_makes_a_sentence(self) -> None:
         got = reason_sentence(Evidence(score=0.7, co_readers=0, anchor_readers=10, same_author=True), "Emma")
-        assert got == "Same author (similarity 0.70)."
+        assert got == "Same author."
+
+    def test_the_similarity_is_never_shown_next_to_evidence(self) -> None:
+        """M14.6: the score is not comparable across anchors (L63), so it never sits beside
+        a number that is. It stays in the Evidence dataclass for anything that measures."""
+        evidence = Evidence(score=0.4867, co_readers=3, anchor_readers=25, same_author=True)
+        assert "0.49" not in reason_sentence(evidence, "Guns, Germs, and Steel")
+        assert "similarity" not in reason_sentence(evidence, "Guns, Germs, and Steel")
+        assert evidence.score == 0.4867
 
     def test_no_evidence_says_so_instead_of_inventing_some(self) -> None:
         got = reason_sentence(Evidence(score=0.31, co_readers=0, anchor_readers=10, same_author=False), "Ubik")
@@ -111,17 +119,17 @@ class TestReasonSentence:
 class TestSimilar:
     def test_the_nearest_work_comes_first(self) -> None:
         engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50)))
-        assert [s.isbn for s in engine.similar(HOBBIT, k=3)] == [RING, EMMA, DUNE]
+        assert [s.isbn for s in engine.similar(HOBBIT, k=3, tau=0)] == [RING, EMMA, DUNE]
 
     def test_the_anchor_never_recommends_itself(self) -> None:
         engine = DemoEngine(_assets())
-        assert HOBBIT not in [s.isbn for s in engine.similar(HOBBIT, k=4)]
+        assert HOBBIT not in [s.isbn for s in engine.similar(HOBBIT, k=4, tau=0)]
 
     def test_low_support_candidates_are_filtered_out(self) -> None:
         """Ledger L34: below the floor an item's factor is a noise direction, and with
         enough of them one will align with anything by chance."""
         engine = DemoEngine(_assets(support=(50, 50, 50, 50, 3)))
-        assert UBIK not in [s.isbn for s in engine.similar(HOBBIT, k=5)]
+        assert UBIK not in [s.isbn for s in engine.similar(HOBBIT, k=5, tau=0)]
 
     def test_a_low_support_anchor_is_refused_rather_than_answered(self) -> None:
         """Stricter than ALSRecommender.similar_items on purpose: the L34 argument applies
@@ -138,12 +146,12 @@ class TestSimilar:
         """10.3% of interactions point at ISBNs with no catalogue row (L14). A card
         reading "[unknown 0432534220]" is worse than one fewer suggestion (L46)."""
         engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50), books=BOOKS.drop(index=[RING])))
-        assert [s.isbn for s in engine.similar(HOBBIT, k=3)] == [EMMA, DUNE, UBIK]
+        assert [s.isbn for s in engine.similar(HOBBIT, k=3, tau=0)] == [EMMA, DUNE, UBIK]
 
     def test_co_reader_counts_come_from_the_matrix(self) -> None:
         """Hobbit is read by users 0 and 2; Emma by user 0 -> exactly one shared reader."""
         engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50)))
-        by_id = {s.isbn: s for s in engine.similar(HOBBIT, k=4)}
+        by_id = {s.isbn: s for s in engine.similar(HOBBIT, k=4, tau=0)}
         assert by_id[EMMA].evidence.co_readers == 1
         assert by_id[EMMA].evidence.anchor_readers == 2
         assert by_id[EMMA].evidence.same_author is False
@@ -153,12 +161,114 @@ class TestSimilar:
 
     def test_every_suggestion_carries_a_reason(self) -> None:
         engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50)))
-        assert all(s.reason for s in engine.similar(HOBBIT, k=4))
+        assert all(s.reason for s in engine.similar(HOBBIT, k=4, tau=0))
 
     def test_scores_are_descending(self) -> None:
         engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50)))
-        scores = [s.evidence.score for s in engine.similar(HOBBIT, k=4)]
+        scores = [s.evidence.score for s in engine.similar(HOBBIT, k=4, tau=0)]
         assert scores == sorted(scores, reverse=True)
+
+
+class TestTruncation:
+    """M14.5, measured and then **reverted** by Helena: the app always returns ten.
+
+    The rule stays reachable through ``tau`` because L68 is a real finding and because a
+    later milestone may want it back — but the default must not shorten a list."""
+
+    def test_the_default_never_shortens_a_list(self) -> None:
+        """The reversal, pinned: a full k comes back even though Dune sits at cosine 0.0
+        from the anchor, which the measured tau of 0.55 would have cut."""
+        engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50)))
+        assert len(engine.similar(HOBBIT, k=4)) == 4
+
+    def test_the_tail_is_cut_when_a_tau_is_asked_for(self) -> None:
+        """Fellowship sits at cos(4 deg) = 0.998 from Hobbit and Emma at cos(30) = 0.866,
+        so Emma clears 0.55 x 0.998; Dune at cos(90) = 0.0 does not."""
+        engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50)))
+        assert [s.isbn for s in engine.similar(HOBBIT, k=4, tau=0.55)] == [RING, EMMA]
+
+    def test_tau_zero_is_the_full_list(self) -> None:
+        engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50)))
+        assert len(engine.similar(HOBBIT, k=4, tau=0)) == 4
+
+    def test_the_best_match_always_survives(self) -> None:
+        """A prefix rule can never empty a non-empty list, whatever tau is."""
+        engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50)))
+        assert [s.isbn for s in engine.similar(HOBBIT, k=4, tau=0.99)] == [RING]
+
+    def test_it_truncates_rather_than_filters(self) -> None:
+        """Nothing behind a cut slot is promoted past it. A filter that reached past a weak
+        slot to keep a strong one would be a re-ranking, which is a different decision."""
+        engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50)))
+        kept = [s.isbn for s in engine.similar(HOBBIT, k=4, tau=0.5)]
+        full = [s.isbn for s in engine.similar(HOBBIT, k=4, tau=0)]
+        assert kept == full[: len(kept)]
+
+
+class TestAnchorFloor:
+    """M14.2. The anchor floor and the candidate floor are two numbers, and this is why."""
+
+    def test_a_raised_anchor_floor_silences_the_anchor(self) -> None:
+        engine = DemoEngine(_assets(support=(30, 50, 50, 50, 50), anchor_floor=50))
+        assert engine.similar(HOBBIT) == []
+
+    def test_it_does_not_touch_the_candidate_pool(self) -> None:
+        """The point of separating them: raising the anchor floor must not remove a
+        thinly-read but relevant candidate. On the real catalogue this is *Dune* keeping
+        *Heretics of Dune* and *Harry Potter* keeping *Quidditch Through the Ages*."""
+        low = DemoEngine(_assets(support=(50, 30, 50, 50, 50)))
+        high = DemoEngine(_assets(support=(50, 30, 50, 50, 50), anchor_floor=50))
+        assert [s.isbn for s in high.similar(HOBBIT, k=4, tau=0)] == [
+            s.isbn for s in low.similar(HOBBIT, k=4, tau=0)
+        ]
+
+    def test_it_defaults_to_the_candidate_floor(self) -> None:
+        """Unset means the M13 behaviour, so old assets keep meaning what they meant."""
+        assert _assets().anchor_floor == 20
+        assert _assets(anchor_floor=50).anchor_floor == 50
+
+    def test_the_picker_uses_the_anchor_floor(self) -> None:
+        """`find` offers anchors, so it must apply the anchor floor — never offer a book
+        and then refuse it."""
+        engine = DemoEngine(
+            _assets(support=(30, 50, 50, 50, 50), anchor_floor=50),
+            encoder=lambda texts: np.array([[1.0, 0.0]], dtype=np.float32),
+        )
+        assert HOBBIT not in [b.isbn for b in engine.find("hobbit", k=5)]
+
+
+class TestSameAuthor:
+    """M14.3. Every string below is a real pair from ``Books.csv``, kept verbatim."""
+
+    @pytest.mark.parametrize(
+        ("left", "right"),
+        [
+            ("ANNE RICE", "Anne Rice"),  # The Vampire Lestat vs Interview with the Vampire
+            ("CHUCK PALAHNIUK", "Chuck Palahniuk"),  # Choke and Survivor vs Fight Club
+            ("J.R.R. TOLKIEN", "J.R.R. Tolkien"),  # The Hobbit's own editions
+            ("Anne Rice ", "Anne Rice"),  # padding, the other half of the fix
+        ],
+    )
+    def test_case_and_padding_do_not_hide_the_same_person(self, left: str, right: str) -> None:
+        assert same_author(left, right)
+        assert same_author(right, left)
+
+    @pytest.mark.parametrize(("left", "right"), [("Anne Rice", "Anne Rivers Siddons"), ("", ""), ("Anne Rice", "")])
+    def test_different_people_stay_different(self, left: str, right: str) -> None:
+        """Not a fuzzy match: this decides a displayed tag, and an empty author is not a
+        match for another empty author — it is two books with no author on record."""
+        assert not same_author(left, right)
+
+    def test_the_engine_tags_a_mixed_case_edition(self) -> None:
+        """The end-to-end regression: a work whose most-interacted edition shouts its
+        author must still be tagged as the anchor's author."""
+        books = BOOKS.copy()
+        books.loc[HOBBIT, "Book-Author"] = "J.R.R. TOLKIEN"
+        books.loc[RING, "Book-Author"] = "J.R.R. Tolkien"
+        engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50), books=books))
+        by_id = {s.isbn: s for s in engine.similar(HOBBIT, k=4, tau=0)}
+        assert by_id[RING].evidence.same_author is True
+        assert by_id[EMMA].evidence.same_author is False
 
 
 class TestFind:
@@ -243,7 +353,7 @@ class TestAssetContract:
     def test_a_round_trip_reproduces_the_engine(self, tmp_path) -> None:
         self._write(tmp_path, ASSET_VERSION)
         engine = DemoEngine(load_assets(tmp_path))
-        assert [s.isbn for s in engine.similar(HOBBIT, k=2)] == [RING, EMMA]
+        assert [s.isbn for s in engine.similar(HOBBIT, k=2, tau=0)] == [RING, EMMA]
         assert engine.assets.item_level == "work"
 
     def test_a_stale_version_is_refused_with_the_command_to_fix_it(self, tmp_path) -> None:

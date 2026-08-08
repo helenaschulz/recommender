@@ -136,6 +136,18 @@ MIN_VARIANT_NAME_LENGTH = 6
 _WHITESPACE = re.compile(r"\s+")
 _NON_WORD = re.compile(r"[^\w]+", re.UNICODE)
 
+#: Whitespace sitting in front of a punctuation mark. ``Bridget Jones : The Edge of
+#: Reason`` and ``Bridget Jones: The Edge of Reason`` are one book typed by two
+#: cataloguers, and the key as pinned in M11 keeps them apart — see
+#: :func:`normalize_title` and ledger L64.
+_SPACE_BEFORE_PUNCTUATION = re.compile(r"\s+([:;,.!?])")
+
+
+def _key_text(base: str, *, normalize_punctuation: bool) -> str:
+    """The shared normalization step, so the key has exactly one definition."""
+    text = _WHITESPACE.sub(" ", base).strip().lower()
+    return _SPACE_BEFORE_PUNCTUATION.sub(r"\1", text) if normalize_punctuation else text
+
 
 def split_series(title: str) -> tuple[str, str]:
     """Split a raw title into ``(title without trailing parentheticals, series text)``.
@@ -180,10 +192,21 @@ def split_series(title: str) -> tuple[str, str]:
     return text, " | ".join(reversed(found))
 
 
-def normalize_title(title: str) -> str:
-    """The clustering form of a title: series stripped, unescaped, lower-cased, collapsed."""
+def normalize_title(title: str, *, normalize_punctuation: bool = False) -> str:
+    """The clustering form of a title: series stripped, unescaped, lower-cased, collapsed.
+
+    Args:
+        normalize_punctuation: additionally drop whitespace sitting in front of ``:;,.!?``
+            (M14.4). **Off by default, because the published table is keyed by the M11
+            key** and turning it on silently would move every denominator in it. The
+            argument for turning it on is that ``bridget jones : the edge of reason`` and
+            ``bridget jones: the edge of reason`` are one book, and the demo shows them at
+            ranks 1 and 2 under *Bridget Jones's Diary* — which is exactly the defect
+            work-clustering exists to remove. What it costs is measured, in isolation, by
+            ``scripts/analyze_work_key_punctuation.py`` and recorded as ledger L64.
+    """
     base, _ = split_series(title)
-    return _WHITESPACE.sub(" ", base).strip().lower()
+    return _key_text(base, normalize_punctuation=normalize_punctuation)
 
 
 def author_last_name(author: str) -> str:
@@ -293,17 +316,29 @@ class Works:
         return str(label) if isinstance(label, str) else f"[no metadata: {work_id}]"
 
 
-def cluster_works(books: pd.DataFrame, *, merge_author_variants: bool = True) -> Works:
+def cluster_works(
+    books: pd.DataFrame,
+    *,
+    merge_author_variants: bool = True,
+    normalize_punctuation: bool = False,
+) -> Works:
     """Cluster the catalogue's ISBNs into works. Pure function of ``Books.csv``.
 
     Args:
         merge_author_variants: run the transliteration pass described above. Turning it
             off yields exactly the pinned title+last-name key, which is the comparison
             the ledger reports the extension against.
+        normalize_punctuation: see :func:`normalize_title`. Off by default so the key that
+            produced the published table stays the default until Helena decides otherwise
+            (M14.4); the two keys are compared by
+            ``scripts/analyze_work_key_punctuation.py``.
     """
     isbns = books["ISBN"].to_numpy(dtype=object)
     split = [split_series(title) for title in books["Book-Title"]]
-    titles = pd.Series([_WHITESPACE.sub(" ", base).strip().lower() for base, _ in split], index=books.index)
+    titles = pd.Series(
+        [_key_text(base, normalize_punctuation=normalize_punctuation) for base, _ in split],
+        index=books.index,
+    )
     series = pd.Series([parens for _, parens in split], index=books.index)
     names = books["Book-Author"].map(author_last_name)
 

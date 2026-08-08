@@ -75,6 +75,7 @@ def build_bench(
     catalog: BookCrossing | None = None,
     seed: int = SEED,
     extra_holdout: pd.DataFrame | None = None,
+    works: Works | None = None,
 ) -> Bench:
     """Load, re-key if asked, split, and build the train matrix — in that order.
 
@@ -82,6 +83,11 @@ def build_bench(
         extra_holdout: further ``(User-ID, ISBN)`` rows to keep out of the canonical-text
             support counts, on top of ``split.test``. Used by the tuning scripts for their
             inner validation holdout.
+        works: an alternative edition clustering, replacing ``catalog.works``. This exists
+            so a *change to the key itself* can be priced against the published table on
+            identical machinery (M14.4) instead of being argued about — and so that pricing
+            it never requires a second copy of the setup below. Ignored at ISBN level, where
+            there is no clustering.
     """
     catalog = catalog if catalog is not None else load()
 
@@ -98,7 +104,7 @@ def build_bench(
             work_level=False,
         )
 
-    works = catalog.works
+    works = works if works is not None else catalog.works
     split = make_split(to_work_level(catalog.ratings, works), seed=seed)
     holdout = split.test[["User-ID", "ISBN"]]
     if extra_holdout is not None and len(extra_holdout):

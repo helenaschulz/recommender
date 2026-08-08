@@ -24,14 +24,8 @@ import time
 import streamlit as st
 
 from recommender.demo import DemoEngine, load_assets
+from recommender.gallery import DEMO_BUTTONS as ANCHORS  # M14.8 — one source, see its docstring
 
-#: The three gallery anchors (``recommender.gallery``), as **work** ids — the app's items
-#: are works, so the buttons pin an item directly and bypass the free-text lookup.
-ANCHORS = {
-    "The Da Vinci Code": "the da vinci code|brown",
-    "Harry Potter and the Sorcerer's Stone": "harry potter and the sorcerer's stone|rowling",
-    "The Lovely Bones": "the lovely bones: a novel|sebold",
-}
 #: The dataset ships cover URLs, and every one of them is a 2004 ``images.amazon.com`` link
 #: that now answers **403**. Rendering them gives a page full of broken-image icons, which
 #: reads as a bug rather than as a dead third party — so the app draws its own placeholder
@@ -73,8 +67,13 @@ def main() -> None:
             "An **item-to-item** surface: one book in, similar books out, with no user "
             "identity at query time — which is exactly the question the brief asks.\n\n"
             "**Engine:** ALS item factors over the **work-keyed** matrix (editions merged "
-            "before fitting, **L49**), similarity = cosine, with a 20-interaction support "
-            "floor (**L34**).\n\n"
+            "before fitting, **L49**), similarity = cosine.\n\n"
+            "**Two support floors, not one** (**L63**, **L65**): a candidate needs 20 "
+            "interactions (**L34**), an *anchor* needs 50. The similarity score is not "
+            "comparable across anchors — below 30 readers, 72% of the books it would show "
+            "share fewer than five readers with the anchor, at the same cosine. So the app "
+            "shows counts and refuses anchors it cannot support, and never prints the "
+            "similarity next to a number that *is* comparable.\n\n"
             "**Why ALS,** when it is only third of six on HitRate@10 (**L55**)? Because "
             "accuracy on held-out *user histories* and quality of *item neighbourhoods* "
             "are different questions, and this app asks the second one. ALS wins it "
@@ -96,11 +95,22 @@ def main() -> None:
         st.caption(f"Cold start {cold_start:.1f}s · assets loaded once, no network, no fitting.")
 
     st.caption("Type a title however you remember it — the lookup is embedding-based, not string matching.")
+    # One button label runs to two lines and the others to one, which drops that button's
+    # reader count half a line below its neighbours'. A fixed height keeps the row square:
+    # the buttons are the first thing on screen and a ragged row reads as carelessness.
+    st.markdown(
+        "<style>div.stButton > button {height: 3.4rem; white-space: normal; line-height: 1.15;}</style>",
+        unsafe_allow_html=True,
+    )
     columns = st.columns(len(ANCHORS))
     for column, (label, isbn) in zip(columns, ANCHORS.items(), strict=True):
         if column.button(label, use_container_width=True):
             st.session_state["query"] = label
             st.session_state["pinned_isbn"] = isbn
+        # The reader count belongs on the button, not in a footnote. Without it a thinly
+        # read anchor looks like a broken app; with it, L63's calibration story is visible
+        # in the product instead of only asserted on a slide.
+        column.caption(f"{engine.describe(isbn).readers:,} readers")
 
     query = st.text_input("Book", key="query", placeholder="harry potter stein")
     if not query:
@@ -132,9 +142,10 @@ def main() -> None:
     elapsed = time.perf_counter() - started
     if not suggestions:
         st.info(
-            "No neighbourhood for this book: it has fewer than 20 interactions, and below "
-            "that threshold the model's nearest neighbours are noise rather than "
-            "recommendations (ledger L34). An honest empty answer beats a fabricated list."
+            f"No neighbourhood for this book: {book.readers:,} interactions, below the "
+            f"{engine.assets.anchor_floor} an anchor needs. Under that line the model's "
+            "nearest neighbours are noise wearing a confident similarity score (ledger "
+            "L34, L63). An honest empty answer beats a fabricated list."
         )
         return
 

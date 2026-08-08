@@ -50,7 +50,46 @@ ASSETS_SUBDIR = "artifacts/app"
 
 #: Bumped when the on-disk layout changes, so an app started against stale assets fails
 #: with a sentence instead of a shape mismatch three frames later.
-ASSET_VERSION = 2
+ASSET_VERSION = 3
+
+#: Tail cutoff, **off by default: Helena reverted it on 08.08.2026 after seeing it run.**
+#: Ten results are what the demo shows; a list that ends at four reads as a broken app in
+#: front of a panel, whatever the ledger says about the tail. Set it to 0.55 (or pass
+#: ``tau=`` per call) to get the behaviour M14.5 measured. The measurement stands as ledger
+#: **L68** and is worth saying out loud — "ten slots are a layout choice, not a claim that
+#: ten good neighbours exist" — it simply is not wired into the product.
+#:
+#: The rest of this docstring records what was measured, because the finding survives the
+#: reversal and the alternatives should not have to be re-derived.
+#:
+#: Ten slots were a UI choice, never a claim that ten good neighbours exist. *The Hobbit*
+#: ran out after four and finished with *Magic the Gathering: Arena*; *The Da Vinci Code*
+#: finished with three books sharing a tenth of its top match's score.
+#:
+#: **Relative, and that is forced rather than chosen.** L63 measures that absolute cosines
+#: are not comparable across anchors — 0.49 is a good score for a 700-reader anchor and a
+#: meaningless one for a 25-reader anchor — so an absolute cutoff would gut a
+#: well-supported list and leave a thin one whole. A fraction of the anchor's *own* top
+#: score has no such problem.
+#:
+#: Two alternatives were measured and rejected, both in `scripts/analyze_truncation.py`:
+#: the largest consecutive gap (an elbow) cuts 76% of all slots and leaves a median list of
+#: two, and a threshold on co-readers-per-anchor-reader cannot be a truncation at all,
+#: because the score does not order the evidence — mean Spearman 0.39, and in 18.3% of
+#: lists some slot carries at least twice the evidence of everything above it. Cutting at
+#: the first weak slot would have thrown away *The Secret Life of Bees* at rank 9 under
+#: *The Lovely Bones*, which 185 of its 1,295 readers also read.
+#:
+#: 0.55 removes 1.4% of slots over 300 random anchors: a targeted fix for anchors with a
+#: strong head, not a broad change. It does **not** rescue *Guns, Germs, and Steel* — every
+#: one of its slots is within 76% of its top score, and all of them are thin. That anchor is
+#: the support floor's problem, not truncation's, and conflating the two would be wrong.
+#:
+#: Where it was aggressive it was *too* aggressive for a demo: *Harry Potter* ended after
+#: the four sequels and *Bridget Jones's Diary* after four. Defensible as a claim about
+#: evidence, wrong as a product surface — which is exactly the sort of thing that only
+#: shows up once it is on screen.
+SCORE_TRUNCATION_TAU = 0.0
 
 #: Candidates fetched per requested slot before filtering. Over-fetching is what lets a
 #: full top-10 survive dropping the unnameable and the already-seen.
@@ -80,6 +119,28 @@ LOOKUP_TIE_MARGIN = 0.06
 
 def assets_dir(root: Path | None = None) -> Path:
     return (root or project_root()) / ASSETS_SUBDIR
+
+
+def same_author(left: str, right: str) -> bool:
+    """Do these two author strings name the same person, ignoring case and padding?
+
+    The catalogue holds ``ANNE RICE`` next to ``Anne Rice``, ``CHUCK PALAHNIUK`` next to
+    ``Chuck Palahniuk`` and ``J.R.R. TOLKIEN`` next to ``J.R.R. Tolkien``, because a work's
+    displayed author comes from its most-interacted *edition* and different editions were
+    catalogued by different people. An exact string comparison therefore dropped the "same
+    author" tag from exactly the rows where it was most obviously true — *The Vampire
+    Lestat* at rank 1 under *Interview with the Vampire* showed none while rank 2 did.
+
+    Casefold rather than lower, because it is the comparison that also folds ``ß`` and the
+    Turkish dotted I, and this catalogue is multilingual. Deliberately **not** a fuzzy
+    match: this decides a displayed tag, and "probably the same author" is not a claim the
+    app should make from a string edit distance. The work key already carries the one
+    fuzzy rule this project accepted, and it is measured (ledger L41/L42).
+
+    This changes the *explanation* only. No ranking, and therefore no published number,
+    depends on it.
+    """
+    return bool(left) and left.strip().casefold() == right.strip().casefold()
 
 
 @dataclass(frozen=True)
@@ -125,9 +186,21 @@ def reason_sentence(evidence: Evidence, anchor_title: str) -> str:
 
     The clauses are ordered by what a reader would actually find convincing: shared
     readership first, because "people who read that read this" is the claim the model is
-    really making; then the two metadata coincidences; and the raw similarity only when
-    there is nothing better to say. The similarity number is never the *whole* sentence
-    when a count is available, because "0.57" persuades nobody.
+    really making; then the two metadata coincidences.
+
+    **The raw similarity is printed only when there is nothing else to say** (M14.6). It
+    used to be appended to every sentence, and the 14.1 sweep is the argument for removing
+    it: a cosine of 0.49 against a 25-reader anchor and 0.49 against a 700-reader anchor
+    are the same number meaning different things, so putting it on screen invites precisely
+    the comparison it cannot support — between one anchor's list and another's, or between
+    two rows whose evidence differs by a factor of twenty. A count does not have that
+    problem: "169 readers of X also read this" means the same thing on every anchor.
+
+    Slightly wider than M14.6 as written, which asked for the number to go "where a count
+    is available": it goes wherever *any* clause exists, including the metadata-only case
+    ("Same author"). Keeping it there would have kept the incomparable number on screen for
+    the same reason it was removed elsewhere. The value stays in :class:`Evidence`, so
+    nothing that measures anything loses access to it.
 
     Deterministic and pure — same evidence, same sentence — which is what makes it
     testable without the app, the assets or the data.
@@ -149,7 +222,24 @@ def reason_sentence(evidence: Evidence, anchor_title: str) -> str:
     sentence = clauses[0][0].upper() + clauses[0][1:]
     if len(clauses) > 1:
         sentence += " — " + ", ".join(clauses[1:])
-    return f"{sentence} (similarity {evidence.score:.2f})."
+    return f"{sentence}."
+
+
+def _truncate(suggestions: list[Suggestion], tau: float) -> list[Suggestion]:
+    """Drop the tail once the score falls below *tau* times the best one.
+
+    A prefix, not a filter: the first slot under the bar ends the list, and nothing behind
+    it is promoted. Truncating rather than filtering keeps the model's ranking intact — a
+    filter that reached past a weak slot to keep a strong one would be a re-ranking, and a
+    re-ranking is a different product decision from "stop when the evidence runs out".
+    """
+    if tau <= 0 or not suggestions:
+        return suggestions
+    cutoff = suggestions[0].evidence.score * tau
+    kept = 1
+    while kept < len(suggestions) and suggestions[kept].evidence.score >= cutoff:
+        kept += 1
+    return suggestions[:kept]
 
 
 @dataclass(frozen=True)
@@ -164,9 +254,25 @@ class DemoAssets:
     lookup_ids: np.ndarray  # (n_books,) ISBN per lookup row
     lookup_support: np.ndarray  # (n_books,) interactions per lookup row, for the same floor
     books: pd.DataFrame  # id-indexed metadata: title, author, year, series, image
-    similar_min_support: int
+    similar_min_support: int  # the L34 floor, applied to *candidates*
     encoder_model: str
     item_level: str = "work"
+    #: The floor applied to the **anchor**, which is a different question from the floor
+    #: applied to the candidates and was one number until M14.2 measured them apart.
+    #: ``None`` means "the same as :attr:`similar_min_support`", i.e. the M13 behaviour.
+    #:
+    #: Why they must be separable: L34 pins the candidate floor at 20 and it is validated —
+    #: raising it removes genuinely relevant but thinly-read books, and the eleven-anchor
+    #: read shows exactly that (*Dune* loses *Heretics of Dune*, *Harry Potter* loses
+    #: *Quidditch Through the Ages*). L63 is a claim about the **anchor**: a factor fitted
+    #: from 25 interactions cannot support any similarity, however well-read the candidate
+    #: is. Raising the anchor floor removes *anchors*; it never degrades a surviving
+    #: anchor's list, because it does not touch the candidate pool.
+    anchor_min_support: int | None = None
+
+    @property
+    def anchor_floor(self) -> int:
+        return self.similar_min_support if self.anchor_min_support is None else self.anchor_min_support
 
     @property
     def item_index(self) -> dict[str, int]:
@@ -200,6 +306,7 @@ def load_assets(directory: Path | None = None) -> DemoAssets:
         similar_min_support=int(meta["similar_min_support"]),
         encoder_model=str(meta["encoder_model"]),
         item_level=str(meta.get("item_level", "work")),
+        anchor_min_support=int(meta["anchor_min_support"]) if "anchor_min_support" in meta else None,
     )
 
 
@@ -259,7 +366,9 @@ class DemoEngine:
         vector = self._encode(text)
         support = self.assets.lookup_support
         scores = np.asarray(self.assets.lookup_vectors @ vector)
-        scores = np.where(support >= self.assets.similar_min_support, scores, -np.inf)
+        # The *anchor* floor, because what this method offers is an anchor. Keeping the two
+        # in step is the rule that makes `find` coherent: never offer a book, then refuse it.
+        scores = np.where(support >= self.assets.anchor_floor, scores, -np.inf)
         take = min(k * OVERSAMPLE, scores.size)
         best = np.argpartition(-scores, kth=take - 1)[:take]
         best = best[np.argsort(-scores[best], kind="stable")]
@@ -296,7 +405,7 @@ class DemoEngine:
 
     # -- the answer ---------------------------------------------------------------
 
-    def similar(self, isbn: str, k: int = 10) -> list[Suggestion]:
+    def similar(self, isbn: str, k: int = 10, *, tau: float | None = None) -> list[Suggestion]:
         """The k most similar books to *isbn*, deduplicated by work, each with a reason.
 
         Empty when the anchor has no ALS factor, **or when the anchor itself sits below the
@@ -310,10 +419,16 @@ class DemoEngine:
         argument in L34 — that a factor built from one interaction is a noise direction —
         applies just as much to the vector being queried as to the vectors being ranked. It
         is also what makes the rule in :meth:`find` coherent: never offer an anchor, then
-        actually refuse it.
+        actually refuse it. Since M14.2 the two floors are separate numbers, because raising
+        the candidate floor buys evidence and pays for it in relevance — see
+        :attr:`DemoAssets.anchor_min_support`.
+
+        Returns k suggestions whenever k exist. The score-gap truncation measured in M14.5
+        is **off** (:data:`SCORE_TRUNCATION_TAU` is 0.0, Helena's reversal); pass an
+        explicit ``tau`` to apply it.
         """
         anchor = self._index.get(isbn)
-        if anchor is None or self.assets.item_support[anchor] < self.assets.similar_min_support:
+        if anchor is None or self.assets.item_support[anchor] < self.assets.anchor_floor:
             return []
 
         scores = np.asarray(self.assets.factors @ np.asarray(self.assets.factors[anchor]))
@@ -350,9 +465,7 @@ class DemoEngine:
                 score=float(scores[row]),
                 co_readers=int(np.intersect1d(anchor_readers, self._readers_of(row), assume_unique=True).size),
                 anchor_readers=int(anchor_readers.size),
-                same_author=bool(
-                    anchor_book is not None and book.author and book.author == str(anchor_book["Book-Author"])
-                ),
+                same_author=anchor_book is not None and same_author(book.author, str(anchor_book["Book-Author"])),
                 shared_series=book.series
                 if anchor_book is not None and book.series and book.series == str(anchor_book["series"])
                 else "",
@@ -371,7 +484,7 @@ class DemoEngine:
             )
             if len(out) == k:
                 break
-        return out
+        return _truncate(out, SCORE_TRUNCATION_TAU if tau is None else tau)
 
     def _readers_of(self, item_row: int) -> np.ndarray:
         readers = self.assets.readers

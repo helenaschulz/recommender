@@ -39,6 +39,58 @@ ANCHORS: dict[str, str] = {
     "0316666343": "The Lovely Bones",
 }
 
+#: The demo app's buttons, in presentation order (M14.8, Helena's decision). Label -> work
+#: id. It lives here rather than in ``app/main.py`` because two other things need the same
+#: list — ``scripts/capture_app_screenshots.py`` drives these buttons by label, and it
+#: silently timed out the first time the labels changed in only one of the two places.
+#:
+#: The order is the argument: the trivial case first (three of *The Da Vinci Code*'s top
+#: four are Dan Brown), then the series case, then the payoff (*To Kill a Mockingbird*
+#: reaches Steinbeck, Golding, Kesey with **zero** same-author hits), then the
+#: counterexample — *Fight Club* has 102 interactions and an excellent list, which is what
+#: stops L63's support story from collapsing into "less data = worse".
+#:
+#: Labels are display text only: a button pins the work id beside it and never goes through
+#: :meth:`recommender.demo.DemoEngine.find`, so no button can fail for a lookup reason.
+#: The Harry Potter button carries its **full title** (Helena, 08.08.2026, reversing the
+#: short label M14.8 specified): the buttons are the first thing on screen and a truncated
+#: title reads as a different book, which is a worse cost than a wrapped line.
+DEMO_BUTTONS: dict[str, str] = {
+    "The Da Vinci Code": "the da vinci code|brown",
+    "Harry Potter and the Sorcerer's Stone": "harry potter and the sorcerer's stone|rowling",
+    "To Kill a Mockingbird": "to kill a mockingbird|lee",
+    "Fight Club": "fight club|palahniuk",
+}
+
+#: The demo's reading set (M14), keyed by **work id** because the app's item is a work.
+#:
+#: The three above are chosen to compare *models* on identical input. These eleven are
+#: chosen to read one model's *output* — which is what found M14 at all, since no cell in
+#: the comparison table shows a missing author tag, a duplicate at rank 2, or a noise slot
+#: at rank 9. Ten are the anchors Helena's manual pass named; *Dune* is Cody's addition,
+#: because the other ten are literary fiction, thriller and fantasy and a set with no
+#: science fiction in it cannot notice a genre-specific failure.
+#:
+#: The set deliberately spans the support bands `scripts/analyze_anchor_support.py`
+#: measures, from *Guns, Germs, and Steel* at 67 interactions to *The Lovely Bones* at
+#: 1,295. A uniformly well-supported anchor set would hide the calibration problem.
+DEMO_ANCHORS: dict[str, str] = {
+    "the da vinci code|brown": "The Da Vinci Code",
+    "harry potter and the sorcerer's stone|rowling": "Harry Potter and the Sorcerer's Stone",
+    "the lovely bones: a novel|sebold": "The Lovely Bones",
+    "to kill a mockingbird|lee": "To Kill a Mockingbird",
+    "girl with a pearl earring|chevalier": "Girl with a Pearl Earring",
+    "interview with the vampire|rice": "Interview with the Vampire",
+    "fight club|palahniuk": "Fight Club",
+    "bridget jones's diary|fielding": "Bridget Jones's Diary",
+    # No space before the colon: these ids follow the **serving** key, which carries the
+    # M14.4 punctuation fix (ledger L64). Under the published M11 key this one reads
+    # "the hobbit : the enchanting prelude ...".
+    "the hobbit: the enchanting prelude to the lord of the rings|tolkien": "The Hobbit",
+    "guns, germs, and steel: the fates of human societies|diamond": "Guns, Germs, and Steel",
+    "dune|herbert": "Dune",
+}
+
 
 def similar_books(model: Recommender, isbn: str, catalog: BookCrossing, k: int = 10) -> list[str]:
     """Human-readable top-k neighbours of *isbn* under *model*."""
