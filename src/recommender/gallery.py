@@ -49,9 +49,15 @@ ANCHORS: dict[str, str] = {
 #: reaches Steinbeck, Golding, Kesey with **zero** same-author hits), then the
 #: counterexample — *Fight Club* has 102 interactions and an excellent list, which is what
 #: stops L63's support story from collapsing into "less data = worse".
+#:
+#: Labels are display text only: a button pins the work id beside it and never goes through
+#: :meth:`recommender.demo.DemoEngine.find`, so no button can fail for a lookup reason.
+#: The Harry Potter button carries its **full title** (Helena, 08.08.2026, reversing the
+#: short label M14.8 specified): the buttons are the first thing on screen and a truncated
+#: title reads as a different book, which is a worse cost than a wrapped line.
 DEMO_BUTTONS: dict[str, str] = {
     "The Da Vinci Code": "the da vinci code|brown",
-    "Harry Potter": "harry potter and the sorcerer's stone|rowling",
+    "Harry Potter and the Sorcerer's Stone": "harry potter and the sorcerer's stone|rowling",
     "To Kill a Mockingbird": "to kill a mockingbird|lee",
     "Fight Club": "fight club|palahniuk",
 }

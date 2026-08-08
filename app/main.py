@@ -95,6 +95,13 @@ def main() -> None:
         st.caption(f"Cold start {cold_start:.1f}s · assets loaded once, no network, no fitting.")
 
     st.caption("Type a title however you remember it — the lookup is embedding-based, not string matching.")
+    # One button label runs to two lines and the others to one, which drops that button's
+    # reader count half a line below its neighbours'. A fixed height keeps the row square:
+    # the buttons are the first thing on screen and a ragged row reads as carelessness.
+    st.markdown(
+        "<style>div.stButton > button {height: 3.4rem; white-space: normal; line-height: 1.15;}</style>",
+        unsafe_allow_html=True,
+    )
     columns = st.columns(len(ANCHORS))
     for column, (label, isbn) in zip(columns, ANCHORS.items(), strict=True):
         if column.button(label, use_container_width=True):
