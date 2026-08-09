@@ -166,7 +166,7 @@ def render_row(rank: int, suggestion, width: float) -> str:
     )
 
 
-def sidebar(engine: DemoEngine, asset_seconds: float) -> None:
+def sidebar(engine: DemoEngine) -> None:
     """The pinned M15.5 copy.
 
     **Register, which is the decision behind every line.** This is a demo shown to a client
@@ -177,7 +177,10 @@ def sidebar(engine: DemoEngine, asset_seconds: float) -> None:
     the floor, the refusal, the evidence, the table where this engine loses — in fewer words.
     """
     with st.sidebar:
-        st.markdown("### What this is")
+        # "Book Recommender" rather than the pinned copy's "What this is" (the project owner,
+        # 09.08.2026): the sidebar's first line is the only place the thing gets named, and
+        # a section label is not a name.
+        st.markdown("### Book Recommender")
         st.markdown(
             "One book in, similar books out. No login and no reading history: the only "
             "input is the book you name."
@@ -218,17 +221,15 @@ def sidebar(engine: DemoEngine, asset_seconds: float) -> None:
             "Hit rate @10: how often a reader's held-out book turns up in their top ten. "
             "Same data split for all six."
         )
-        st.caption(
-            "Cover images are omitted: the dataset's image links date from 2004 and no "
-            "longer resolve."
-        )
-        # Deviation from the pinned copy, and the only one: it read "cold start 0.3 s". That
-        # figure is the asset load, while the app's measured cold start is 9.4 s (L61) — most
-        # of it the sentence encoder for the free-text box. Printing 0.3 s under the words
-        # "cold start" would put a number on the surface that contradicts a ledger line, so
-        # the label says what the number measures. Nothing else in the copy changed.
-        st.caption(f"Runs offline from precomputed data · assets loaded in {asset_seconds:.1f} s.")
-        st.caption("Every number on this screen is measured. The measurement ledger is in the repository.")
+        # The sidebar ends on the table's own footnote. Three closing captions used to
+        # follow — dead cover images, offline/cold start, and "every number here is
+        # measured" — and all three were cut on seeing them run. The last of those was
+        # M15's pinned decision 1; the deviation is recorded with the milestone.
+        #
+        # It reads better as a cut: each line answered a question no reader had
+        # asked yet, and the ledger claim in particular is worth more said out loud in
+        # response to "how do you know that" than printed pre-emptively where it looks
+        # defensive.
 
 
 def main() -> None:
@@ -236,12 +237,12 @@ def main() -> None:
     st.markdown(STYLE, unsafe_allow_html=True)
 
     try:
-        engine, asset_seconds = get_engine()
+        engine, _ = get_engine()
     except (FileNotFoundError, RuntimeError) as error:
         st.error(f"{error}\n\nRun `python scripts/build_app_assets.py` first.")
         return
 
-    sidebar(engine, asset_seconds)
+    sidebar(engine)
 
     st.title("Name a book, get books like it")
     st.markdown(f'<div class="provenance">{html.escape(corpus_line(engine))}</div>', unsafe_allow_html=True)
