@@ -63,3 +63,19 @@ def test_different_seed_can_give_a_different_holdout(toy_ratings: pd.DataFrame) 
     """User 1 has three relevant books, so some seed must pick a different one."""
     picks = {make_split(toy_ratings, seed=s).holdout_by_user[1] for s in range(12)}
     assert len(picks) > 1
+
+
+def test_eligibility_is_seed_independent(toy_ratings: pd.DataFrame) -> None:
+    """Every seed scores the *same readers* and differs only in which book was withheld.
+
+    This is what makes a multi-seed sweep a **paired** sample rather than five unrelated
+    experiments (M21, ledger L84). It holds by construction — eligibility is an
+    ``intersect1d`` over two data thresholds and the seed enters at a single
+    ``rng.integers`` — and until this test it was asserted only in prose, in the very
+    docstring the sweep relies on. A property a published number leans on should not be
+    checked solely by the thing leaning on it.
+    """
+    splits = [make_split(toy_ratings, seed=seed) for seed in (42, 44, 45, 46, 47)]
+    reference = set(splits[0].test["User-ID"])
+    assert all(set(s.test["User-ID"]) == reference for s in splits)
+    assert all(len(s.test) == len(splits[0].test) for s in splits)

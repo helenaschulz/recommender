@@ -152,7 +152,7 @@ class TfidfRecommender(Recommender):
 
         for start in range(0, len(profiles), self.batch_size):
             chunk = profiles[start : start + self.batch_size]
-            scores = np.asarray((sp.vstack(chunk) @ self.vectors.T).todense())
+            scores = np.asarray((sp.vstack(chunk) @ self._transposed()).todense())
             picked = top_k_from_scores(scores, k, blocked=blocked[start : start + self.batch_size])
             for local, row in enumerate(targets[start : start + self.batch_size]):
                 chosen = picked[local]
@@ -161,13 +161,18 @@ class TfidfRecommender(Recommender):
                 out_scores[row, : usable.sum()] = scores[local, chosen[usable]]
         return out, out_scores
 
+    def _transposed(self) -> sp.csr_matrix:
+        """``vectors.T`` as CSR, computed once. Both scoring paths multiply against it."""
+        if self._vectors_t is None:
+            self._vectors_t = self.vectors.T.tocsr()
+        return self._vectors_t
+
     def similar_items(self, isbn: str, k: int = 10) -> list[tuple[str, float]]:
         self._require_fit()
         item = self._index.get(isbn)
         if item is None:
             return []
-        transposed = self._vectors_t if self._vectors_t is not None else self.vectors.T.tocsr()
-        scores = np.asarray((self.vectors[item] @ transposed).todense()).ravel()
+        scores = np.asarray((self.vectors[item] @ self._transposed()).todense()).ravel()
         scores[item] = -np.inf
         take = min(k, scores.size - 1)
         best = np.argpartition(-scores, kth=take - 1)[:take]

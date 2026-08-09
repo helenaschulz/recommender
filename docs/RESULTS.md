@@ -973,6 +973,28 @@ demo to item-item would cost nothing measurable and would remove an explanation 
 sidebar; leaving it on ALS costs nothing measurable either. **That is a decision for the project owner,
 and this section exists so it is taken on numbers rather than on a sentence from 04.08.**
 
+## Every number is conditional on one draw (milestone M21)
+
+L74 answers "how certain is this" for one of the two sources and says so: its Wilson intervals
+and paired tests hold the drawn holdout **fixed** and quantify sampling across *readers*. Seed
+42 also decides **which** of a reader's favourites is withdrawn, and the paragraph under that
+table names it as the larger uncovered source and records that it was not done. This section
+does it, on **five draws — 42, 44, 45, 46, 47**. *Seed 43 is skipped deliberately: it already
+names the inner validation split in L51 and L77, and two different draws sharing one number is
+how a reader ends up believing a sweep tuned on its own test set.*
+
+**The claim under test is the ordering, not the level.** L73 has item-item at 0.0000 / 0.0170 /
+0.0571 / 0.1198 across the support bands — a factor of seven, and the draw decides which band a
+reader's book lands in. The models are strong in *different* bands, so a deeper draw does not
+move all six rows down together, it moves them **against each other**. Five levels tell you the
+number wobbles; five paired deltas tell you whether the ordering does.
+
+Command: `python scripts/measure_seed_sensitivity.py` (`--drift-only` runs the gate alone).
+
+| ID | Claim | Number | How measured | Measured |
+|---|---|---|---|---|
+| L84 | **The embedding cache cannot detect the drift it exists to detect: it checks 0.22% of the catalogue and missed a real change on four seeds out of four** | Changing the seed moves the canonical title of **76–80 works** per draw (**0.032–0.034%** of 235,824). Across the sweep that is 313 drift *events* on **167 distinct works** (**0.0708%**) — the overlap is the point: the works that flip are the ones whose two best editions have near-equal support, so the same ones flip on almost every draw (*About a Boy* on all four, *A Fortunate Life* and *A Man Called Intrepid* on two each). The cause is that `work_level_catalog` picks each work's text from its **most-interacted edition counted on train only**, and a single withheld book flips that argmax — e.g. *about a boy (movie tie-in) nick hornby* → *about a boy nick hornby*. `_fingerprint` hashes the model name, the array length and every `len//512`-th text: **513 of 235,824 positions, 0.2175%**. Expected catches for a 78-work drift: **0.17**. Observed: **0 of 4**. The fingerprint was **identical** (`db505f300fedb737`) on all five seeds | `python scripts/measure_seed_sensitivity.py --drift-only`, diffing the full text array with no model in the loop — never the fingerprint, which is the thing under test. **This is a stale cache *hit*, not a miss, and that is the dangerous direction:** a plain multi-seed run scores each seed with the *first* seed's vectors and reports it as a measurement. **Blast radius, checked rather than assumed:** every published number is seed 42, whose cache is self-consistent, and the shipped app calls `work_level_catalog` with **no holdout** (`scripts/build_app_assets.py:90`), so it is seed-independent and unaffected. The exposure is multi-seed experiments — i.e. exactly this milestone, which is why the gate ran before anything was fitted. **Not fixed tonight, deliberately:** hashing the full array is the right fix and it invalidates every cached set, forcing an unplanned ~2-hour re-encode twelve hours before a demo. Logged as the first item of the next session; M21's sweep instead **reuses the cache knowingly and bounds the error**, reporting per seed how many held-out books carry a stale vector | 2026-08-09 |
+
 ## Open items this ledger will need
 
 - ~~Edition clustering in the data-prep layer (L31, L39)~~ — **done, M11 (L40–L47).**
