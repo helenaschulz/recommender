@@ -66,7 +66,7 @@ the whole table moved is measured in L58.
 | ALS / weighted MF | 0.0545 | 0.897% | 12.29 | 3.5× accuracy, 33× coverage | L55 |
 | item-item, explicit-only | 0.0486 | 10.036% | 15.97 | 3.1× accuracy, 370× coverage | L54 |
 | content TF-IDF | 0.0405 | 16.806% | 17.07 | 2.6× accuracy, 619× coverage | L56 |
-| content embeddings | 0.0141 | **26.143%** | **18.34** | **not measurably different from the baseline** (0.91×, z ≈ 1.0), 963× coverage | L57 |
+| content embeddings | 0.0141 | **26.143%** | **18.34** | **not measurably different from the baseline** (0.91×; McNemar p = 0.342, L74), 963× coverage | L57 |
 | *structural ceiling* | *0.8666* | — | — | *no CF model can exceed this* | L50 |
 
 Coverage ratios are taken against the baseline's **64 distinct works**, the exact count;
@@ -102,8 +102,11 @@ below the baseline"; both were reworded on 2026-08-09 to say what the sample sup
 is that the two are not measurably different. The ISBN-level analogue was genuinely
 different — 0.0109 against 0.0145 is z ≈ 2.7 — so the re-base moved embeddings *up* into the
 noise band rather than the wording having always been wrong. Every other gap in the table
-exceeds three standard errors. The proper test is
-paired (McNemar over per-user hit vectors), it is cheap, and it is open — see the open items.
+exceeds three standard errors. **The proper test is paired, and it has now been run: L74
+measures McNemar over the per-user hit vectors and agrees with this derivation** — embeddings
+against the baseline is 190 wins to 210 losses, p = 0.342, and every other comparison in the
+table is distinguishable, the narrowest of them (ALS against item-item) at p = 2.7e-06. The
+95% interval on each cell is in L74; they run **±0.002 to ±0.004**.
 
 **What we would actually ship, and why:** item-item as the scoring core, with the content
 layer serving the catalogue it structurally cannot reach (L50: the union of both raises
@@ -415,7 +418,7 @@ only. Source for every line below: `python scripts/run_model.py --all --gallery
 | L54 | item-item, **explicit-only ablation**, work level | 0.0486 · 10.036% · 15.97 | identical model and parameters, fitted on the graded interactions alone over the same work index space. Discarding the ungraded rows now costs **24%** of the hit rate, against 31% at ISBN level (L26) — the same direction, a smaller penalty, because merging editions recovers part of what the explicit-only matrix was losing to fragmentation | 2026-08-08 |
 | L55 | **ALS / weighted MF**, work level | 0.0545 · 0.897% · 12.29 | `implicit` ALS, 128 factors, α=1, regularization 0.05, 20 iterations, seed 42, similarity support floor 20 (L34). Fit 90s, evaluation 36s. Still loses to item-item on all three metrics and is still the most popularity-concentrated real model in the table — the L33 verdict is unchanged by the re-base | 2026-08-08 |
 | L56 | **content TF-IDF** (coverage layer), work level | 0.0405 · **16.806%** · 17.07 | char_wb 3–5-grams over the canonical title+author of each work, min_df=3, **235,824 works vectorized, 215,377 features**. Fit 10s, evaluation 266s. This is the row the M12.6 plausibility gate stopped on: **+77.4%** against L30. Taken apart in **L58** | 2026-08-08 |
-| L57 | **content embeddings** (multilingual), work level | 0.0141 · **26.143%** · **18.34** | `paraphrase-multilingual-MiniLM-L12-v2`, 384 dims, all 235,824 works encoded from canonical title+author, profile vectors centered, score = mean cosine. Vectors cached separately from the ISBN-level set under `artifacts/embeddings/` — the cache key is a fingerprint of the text encoded, so the two sets coexist instead of overwriting each other. Still the coverage extreme. **On accuracy it is no longer distinguishable from the baseline**: 0.0141 against 0.0155 is 19 users of 13,580, z ≈ 1.0 (reworded 2026-08-09 — the row previously read "still below the baseline on accuracy, now by 9% rather than 25%", which claimed a difference the sample cannot support). At ISBN level (L35) the same comparison was 0.0109 against 0.0145, z ≈ 2.7, and *did* clear the bar; the re-base moved embeddings up into the noise band, it did not move the baseline | 2026-08-08 |
+| L57 | **content embeddings** (multilingual), work level | 0.0141 · **26.143%** · **18.34** | `paraphrase-multilingual-MiniLM-L12-v2`, 384 dims, all 235,824 works encoded from canonical title+author, profile vectors centered, score = mean cosine. Vectors cached separately from the ISBN-level set under `artifacts/embeddings/` — the cache key is a fingerprint of the text encoded, so the two sets coexist instead of overwriting each other. Still the coverage extreme. **On accuracy it is no longer distinguishable from the baseline**: 0.0141 against 0.0155 is 19 users of 13,580, z ≈ 1.0, and the paired test confirms it (190 wins to 210 losses, p = 0.342, L74) (reworded 2026-08-09 — the row previously read "still below the baseline on accuracy, now by 9% rather than 25%", which claimed a difference the sample cannot support). At ISBN level (L35) the same comparison was 0.0109 against 0.0145, z ≈ 2.7, and *did* clear the bar; the re-base moved embeddings up into the noise band, it did not move the baseline | 2026-08-08 |
 
 **L53 read out loud.** Item-item beats the baseline **4.2× on accuracy and 302× on
 coverage** at once, and captures 7.43% of the achievable ceiling against the baseline's
@@ -749,7 +752,7 @@ retrain cost" has an answer that traces line by line.
 | ID | Claim | Number | How measured | Measured |
 |---|---|---|---|---|
 | L71 | **The demo ships 890 MB and the recommender is 17.5% of it — the rest is the search box and a padded id column** | assets **890.0 MB**: free-text lookup (encoder vectors 234,626 × 384 float32, plus ids and support) **372.2 MB / 41.8%**, the item id column **328.3 MB / 36.9%**, the ALS factor matrix that actually answers the query **155.6 MB / 17.5%**, the reader matrix **3.0 MB**, catalogue parquet **28.4 MB**. The id column is stored as fixed-width `<U270`, i.e. 1,080 bytes per id whatever the id's length; the same ids as int32 codes plus a utf-8 dictionary are **11.4 MB, 96.5% smaller** | Byte sizes of every file in `artifacts/app/` as the demo loads them, plus shapes and dtypes; the dictionary figure sums the utf-8 length of all 304,001 ids. **This is a finding about the demo's asset builder, not about the method** — it is a serving-layer packing choice and no published number depends on it. It is the concrete answer to "what is the model artefact": 155.6 MB of float32, and it would be 155.6 MB on any platform | 2026-08-09 |
-| L72 | **A precomputed answer table for the whole product is 1.5 MB — 586× smaller than what the demo ships** | **2,532 askable anchors** (support ≥ 50, the L65 floor) × top-10 = **25,320 rows / 0.3 MB** per engine, **126,600 rows / 1.5 MB** for the five-engine shortlist, at 12 bytes a row (int32 anchor, int32 item, float32 score). For contrast: item-item at 50 neighbours per item is 15,200,050 entries / **121.6 MB**, and the dense similarity matrix nobody ever builds is 92,416,608,001 cells / **370 GB** | Derived arithmetic on measured inputs (`n_items` = 304,001 and the anchor support vector from the shipped `meta.json` and `item_support.npy`; 50 neighbours from L53, 128 factors from L55). **This is the number that decides the serving design**: at 1.5 MB the answer table fits in any cache, a key-value store is sufficient and neither a vector database nor a live model server is required for the shipped use case. They become required exactly when the anchor floor comes down or personalization arrives, and that is the trade to state on the slide rather than the technology | 2026-08-09 |
+| L72 | **A precomputed answer table for the whole product is 1.5 MB — 591× smaller than what the demo ships** | **2,508 askable anchors** (support ≥ 50, the L65 floor) × top-10 = **25,080 rows / 0.30 MB** per engine, **125,400 rows / 1.5 MB** for the five-engine shortlist, at 12 bytes a row (int32 anchor, int32 item, float32 score). For contrast: item-item at 50 neighbours per item is 15,200,050 entries / **121.6 MB**, and the dense similarity matrix nobody ever builds is 92,416,608,001 cells / **370 GB** | Derived arithmetic on measured inputs (`n_items` = 304,001 and the anchor support vector from the shipped `meta.json` and `item_support.npy`; 50 neighbours from L53, 128 factors from L55). Every MB here is 10⁶ bytes, the same convention as L71. *(Corrected 2026-08-09 by M18.5's sweep: this line first said 2,532 anchors, which is `support ≥ 50` over all 304,001 item rows, **24 of them ids the app has no catalogue row for and therefore cannot name**. "Askable" is L65's word and L65's filter — an anchor a visitor cannot type is not askable — and the nameable count is 2,508, which is what L65's floor table already published and what the paragraph below always quoted at floor 20. The design conclusion is untouched: 1.5 MB either way.)* **This is the number that decides the serving design**: at 1.5 MB the answer table fits in any cache, a key-value store is sufficient and neither a vector database nor a live model server is required for the shipped use case. They become required exactly when the anchor floor comes down or personalization arrives, and that is the trade to state on the slide rather than the technology | 2026-08-09 |
 
 **L71 and L72 read out loud, and it is one argument.** The demo is 890 MB because it carries
 a sentence encoder's output so a human can type a title, and because ids were written out as
@@ -760,7 +763,7 @@ because for this use case (anonymous reader, one book in, ten books out) every a
 computed in advance. That is why the architecture is a batch job writing a small table, and
 not a model server — and it is a measurement, not a preference.
 
-**The floor is what moves these numbers, and the honest caveat comes with it.** 2,532
+**The floor is what moves these numbers, and the honest caveat comes with it.** 2,508
 anchors is **1.1% of the 234,626 works**: the system can answer for the books people
 actually read and refuses the rest (L65 prices the refusal — at floor 50 the askable works
 cover 26.6% of all interactions). Drop the floor to 20 and it is 7,541 anchors, the table is
@@ -790,11 +793,45 @@ fast that is (L18: there are no timestamps)**, which makes it a discovery questi
 client rather than a parameter to assert on a slide. Daily is defensible and cheap;
 justifying it from this data is not possible, and saying so is the stronger answer.
 
-*Note on 2,532 against L65's 2,508.* L65 measured the anchor count before the M14.4 work key
-reached the serving path; this line counts the shipped assets. The 24-anchor difference is
-the same 0.5% re-key that **L67** measures, arriving in a third place. The shipped number is
-the one quoted here, for the reason the re-measurement note above gives: a line that does not
-reproduce from what the app actually serves is worth nothing.
+*Note on 2,508, and on the 2,532 this line first said.* The two numbers are the same filter
+run with and without one clause, on the same shipped assets: `item_support.npy` has
+**2,532** rows at support ≥ 50 and **2,508** of them have a catalogue row the app can name.
+L65's askable count is the nameable one, so 2,508 is the number that belongs here, and the
+shipped assets reproduce L65's whole floor table exactly — 7,541 / 2,508 / 959 / 339 at
+floors 20 / 50 / 100 / 200. **This note previously attributed the 24-anchor gap to the M14.4
+re-key (L67) and that was wrong**: the re-key explanation was written from the plausible
+mechanism rather than from a re-run, and the re-run shows the gap is entirely the missing
+nameable filter. Corrected by M18.5's sweep, 2026-08-09. It is a small number with a general
+lesson attached, which is why the wrong version is kept visible rather than deleted: a
+difference that has a plausible cause is exactly the kind that never gets measured.
+
+## How certain is any of this, and where does it come from (milestone M18)
+
+Two questions the ledger had never answered about its own primary table, both answered from
+**one** run of the six models on the pinned work-level split (L49) and **one** artefact: the
+per-user hit vector, 13,580 booleans per model, cached to `artifacts/significance/`. L73
+groups those vectors; L74 compares them. Every published cell is asserted against this run
+before either question is asked — `scripts/measure_significance.py` exits non-zero if one has
+moved — and on 2026-08-09 **all eighteen reproduced**: six models × HitRate@10 to four
+decimals, Coverage@10 to three decimals of a percent, Novelty@10 to two. That check is the
+precondition for the milestone, not a by-product of it: an interval around a number that has
+quietly drifted would be worse than no interval at all.
+
+| ID | Claim | Number | How measured | Measured |
+|---|---|---|---|---|
+| L73 | **L27 and L28 at work level: the baseline is still narrow, item-item still degrades on long profiles, and the content models are the only ones that score where no reader has been** | HitRate@10 by the **held-out work's train support** (0 / 1–4 / 5–49 / 50+ over 1,812 · 2,410 · 4,591 · 4,767 users): popularity **0.0000 / 0.0000 / 0.0000 / 0.0443**, item-item **0.0000 / 0.0170 / 0.0571 / 0.1198**, ALS 0.0000 / 0.0000 / 0.0109 / **0.1447**, item-item explicit-only 0.0000 / 0.0116 / 0.0431 / 0.0910, TF-IDF **0.0304 / 0.0303 / 0.0414 / 0.0487**, embeddings **0.0138 / 0.0091 / 0.0155 / 0.0153**. By the **reader's train-profile length** (0–9 / 10–24 / 25–74 / 75+ over 3,562 · 4,596 · 3,153 · 2,269 users): item-item **0.0679 / 0.0716 / 0.0695 / 0.0370**, ALS 0.0528 / 0.0568 / 0.0603 / 0.0445, TF-IDF 0.0528 / 0.0424 / 0.0390 / **0.0194**, embeddings 0.0225 / 0.0150 / 0.0105 / **0.0040**, popularity 0.0174 / 0.0159 / 0.0146 / 0.0132, explicit-only 0.0522 / 0.0472 / 0.0555 / 0.0361 | `python scripts/analyze_hit_strata.py`, grouping the cached hit vectors; support and profile length both counted on **train only**. The strata boundaries are L27's and L28's unchanged, so the columns line up with the ISBN-level lines. Cross-check that the split is the one it claims to be: the leftmost stratum is **1,812 users = 13.34%**, i.e. exactly L50's `100% − 86.66%` collaborative ceiling. **This closes the state the notebook was in** — `notebooks/02_models.ipynb` §2.1 printed the popularity row of the first table and nothing recorded it. *Also derived from these vectors, and it is a bound rather than a result:* TF-IDF and embeddings between them hit **320** users item-item missed, **61** of those at zero support, so an oracle that always picked the right one of the three would score **0.0879** against item-item's 0.0644 (item-item with TF-IDF alone: 0.0856). **No hybrid scores that** — picking the right model per user is the whole problem, and M19 measures what a real rule gets | 2026-08-09 |
+| L74 | **The paired test confirms the ranking and disarms exactly the one cell the derivation disarmed: embeddings against the baseline** | 95% Wilson intervals: item-item **0.0644 [0.0604, 0.0686]**, ALS 0.0545 [0.0508, 0.0584], explicit-only 0.0486 [0.0451, 0.0523], TF-IDF 0.0405 [0.0373, 0.0439], popularity 0.0155 [0.0136, 0.0178], embeddings 0.0141 [0.0122, 0.0162]. Paired McNemar **against item-item**, every model: ALS 337 wins / 471 losses, **p = 2.7e-06**; explicit-only 204/418, p = 6.3e-18; TF-IDF 288/612, p = 1.3e-27; popularity 161/824, p = 8.5e-108; embeddings 87/770, p = 1.8e-137 — **all five distinguishable**. Against the baseline: item-item p = 8.5e-108, ALS p = 6.8e-79, explicit-only p = 1.2e-57, TF-IDF p = 7.1e-36 — and **embeddings 190 wins / 210 losses, Δ = −0.0015 [−0.0044, +0.0014], p = 0.342: not distinguishable** | `python scripts/measure_significance.py`. Exact two-sided binomial on the discordant pairs; Wilson rather than Wald because these proportions are small. The paired interval on a difference is `(b−c)/n ± 1.96·√(b+c)/n`, tighter than the unpaired one because the models hit largely the same users. **The prediction under the primary table held**: the unpaired derivation put embeddings-vs-baseline at z ≈ 1.0 and the two cells were reworded to "not measurably different" on that basis on 09.08, *before* this ran; the paired test agrees (p = 0.342) and no wording had to be reverted. The narrowest comparison that still clears the bar is ALS against item-item — 0.0099 apart, p = 2.7e-06 — so the table's ordering is safe everywhere except the one pair already labelled | 2026-08-09 |
+
+| L75 | **The consistency sweep: 479 numeric literals across every artefact a reader can open, six of them wrong** | **479** numeric literals in `README.md`, `docs/*.md`, both notebooks' markdown, `app/main.py` and every module docstring, each checked against this ledger — 479 is the count *before* the corrections were written, and a re-run after them scans **508**, because every correction quotes the number it replaces. **Six wrong**, all now corrected and each carrying its old wording: L72's **2,532** askable anchors (nameable filter missing, 2,508) *and the note that explained the 24-anchor gap as the M14.4 re-key*, `demo.py`'s "**a series 27% of the time**" (L48's 27.1% is volume/part numbers, the one class that is certainly not a series), `analyze_recurrence.py`'s **7,523** works above the candidate floor (L65: 7,541), and in `notebooks/02_models.ipynb` "**below the popularity baseline**" (L74 says tie), "**ten points at either item level**" (L50: 8.7 at work level, 10.6 at ISBN) and "reverse of the coverage ranking **with ALS the only exception**" (the primary table's own correction). Four further claims were **stale rather than wrong** — three saying intervals and work-level strata were unmeasured, now L73/L74, plus a pointer to a section item that never existed. Two numbers were **sound but unsourced and now have this line**: the `series` parenthetical holds *Penguin Classics* on **378** works and *Dover Thrift Editions* on **268**; and the M17 evidence example — on *The Little Prince*, rank 1 shows **16** shared readers and rank 2 **17**, at cosines 0.3982 and 0.3516 | Literals extracted mechanically (dates, DOIs, ISBNs and section numbers excluded), then every survivor adjudicated by hand against the line it should trace to, and a second independent read of the same artefacts for claims that quote a *right* number for a *wrong* thing — which is where four of the six came from, since a wrong number that exists elsewhere in the ledger passes a verbatim check. The two unsourced figures were re-measured on the shipped assets (`artifacts/app/books.parquet`, and `DemoEngine.similar` on the resolved anchor) and reproduced exactly. **The class of error this found is not arithmetic**: nothing was miscalculated. Five of the six are a number that was correct when written and was overtaken by a later measurement, which is the failure mode a ledger is supposed to catch and only catches if something sweeps | 2026-08-09 |
+
+**What L74 changes about how this table should be read, and what it does not.** It does not
+promote a single row: the ranking it confirms is the ranking that was already published. What
+it removes is one specific over-claim — that content embeddings are *worse* than recommending
+bestsellers — and it removes it with a test rather than an argument. **13,580 users can order
+five of these six models and cannot order the sixth against the baseline**, and that is the
+honest sentence. The intervals also set the resolution of every future comparison on this
+split: **±0.002 to ±0.004**, so a hybrid, a re-tune or a new model that moves HitRate by less
+than about 0.004 has not been shown to move it at all.
 
 ## Open items this ledger will need
 
@@ -814,29 +851,36 @@ reproduce from what the app actually serves is worth nothing.
   this**: the content layer is closer to the collaborative one than the ISBN-level table
   ever suggested.
 - Item-item normalized by profile length, to see whether it removes the long-profile
-  degradation in L28. Not re-measured at work level.
-- **The strata in L27 and L28 have not been recomputed on the work basis** *as ledger
-  lines*. They are ISBN-level findings quoted as such; the aggregate rows they explain have
-  moved. **Correction, 2026-08-09: `notebooks/02_models.ipynb` §2.1 has in fact already
-  computed the work-level L27 strata** (unreachable 1,812 · 1–4 2,410 · 5–49 4,591 · 50+
-  4,767, aggregate 0.0443) and those numbers are in an executed notebook with no line here.
-  So this is not "unmeasured", it is **measured and unrecorded**, which is the worse of the
-  two states: the notebook and this ledger currently disagree about what exists. Either it
-  becomes a line or the notebook cell goes.
-- **No uncertainty is quantified anywhere in this ledger.** Every HitRate is a point
-  estimate over 13,580 users with no interval, and one published comparison does not survive
-  the omission: popularity 0.0155 against embeddings 0.0141 is 19 users, well inside
-  sampling noise (derivation under the primary table, 2026-08-09). Every other gap in the
-  table clears three standard errors, so the ranking is safe and one cell is not. The fix is
-  a paired McNemar test over the stored per-user hit vectors — minutes of compute, and it
-  was already flagged as a [HELENA] decision in the 04.08 overnight report and never taken.
+  degradation in L28. **Still open, and L73 sharpens it rather than closing it**: at work
+  level the degradation is 0.0716 at 10–24 items against 0.0370 at 75+, and ALS over the same
+  users loses far less (0.0568 → 0.0445), which points at the summation rule rather than at
+  long profiles being intrinsically hard.
+- ~~**The strata in L27 and L28 have not been recomputed on the work basis** *as ledger
+  lines*~~ — **done, L73 (2026-08-09).** Both strata, all six models, from the same per-user
+  hit vectors as L74. The state this item described — the notebook's §2.1 printing numbers
+  the ledger did not carry — is what L73 closes.
+- ~~**No uncertainty is quantified anywhere in this ledger.**~~ — **done, L74
+  (2026-08-09).** 95% Wilson intervals on all six cells and paired McNemar over the per-user
+  hit vectors, every model against item-item and against the baseline. The one comparison
+  this item said the ledger did not survive — popularity against embeddings — is the one the
+  test declines to order (p = 0.342), and the wording it had already been given on 09.08 was
+  right. **What is still open is narrower**: the ISBN-level table has had no such treatment,
+  and Coverage and Novelty have no intervals at all. Coverage is not a per-user proportion,
+  so the same machinery does not apply to it — a bootstrap over users would, and it is
+  unmeasured.
 - **The subtitle class of duplicate works** (L64's note): 9,523 further works across 30,486
   clusters would merge if everything after a colon were dropped. Needs an M11.3-style
   sampled audit before anyone touches it, because the rule cannot tell *The Hobbit: or
   There and Back Again* (merge) from *Bridget Jones: The Edge of Reason* (do not).
-- **The app and the published table now use different work keys** (L64, the decision).
+- ~~**The app and the published table now use different work keys** (L64, the decision).
   The difference is priced — item-item +0.8%, denominator −0.5% — and recorded in
-  `artifacts/app/meta.json`, but it is a divergence and a slide has to be able to say so.
+  `artifacts/app/meta.json`, but it is a divergence and a slide has to be able to say so.~~
+  **Closed 2026-08-09, the project owner: it does not go on a slide.** The divergence stays exactly
+  where it is — priced in L64, stamped into `artifacts/app/meta.json`, and explained here —
+  and it is answered if it is asked, not volunteered. Recorded as a decision rather than
+  deleted, so nobody re-opens it: at +0.8% on one row, seven users of 13,580 and well inside
+  the ±0.0021 standard error, it is not a finding, and a slide spent on it would buy
+  precision nobody asked for at the cost of the minute that carries the argument.
 - **L67 has no counterpart for the other models.** Neighbourhood stability was measured for
   the ALS surface the app serves, because that is where it was noticed. Whether item-item's
   neighbourhoods are steadier under the same perturbation is unmeasured and would be a

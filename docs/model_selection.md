@@ -42,7 +42,7 @@ Three properties of Book-Crossing drove every subsequent choice
 
 **62.3% of the rows carry no grade** (L4). A `Book-Rating` of 0 is an interaction, not a
 score. Discarding them is the default in almost every public notebook on this dataset,
-and it throws away two thirds of the signal. They are kept here, binarized, with the
+and it throws away 62.3% of the rows. They are kept here, binarized, with the
 explicit ratings doing two jobs: relevance labels in evaluation, and confidence weights
 in ALS. The decision was then *measured* rather than asserted — see §5.
 
@@ -132,18 +132,33 @@ One command, one split, one run
 | content TF-IDF | 0.0405 | 16.806% | 17.07 | L56 |
 | content embeddings | 0.0141 | **26.143%** | **18.34** | L57 |
 
-**The table has a shape, and the shape is the finding.** The ranking by accuracy is almost
-exactly the reverse of the ranking by reach, with ALS the only exception. There is no
-single best model, so "which model" is the wrong question — "which model for which job" is
-the right one.
+**The table has a shape, and the shape is the finding.** Among the four real models the
+ranking by accuracy is exactly the reverse of the ranking by reach: item-item > ALS >
+explicit-only > TF-IDF on HitRate, TF-IDF > explicit-only > item-item > ALS on Coverage.
+**The baseline sits outside that trade-off rather than at one end of it** — last on accuracy
+among the real models and last on coverage too, so it buys nothing in either direction and
+only marks the zero point. There is no single best model, so "which model" is the wrong
+question — "which model for which job" is the right one.
+
+*(Corrected 2026-08-09, together with the same sentence in `RESULTS.md`. It previously read
+"almost exactly the reverse … with ALS the only exception", which the table above
+contradicts: the baseline is displaced by four places and item-item by three.)*
+
+**One row is a tie, not a loss.** Content embeddings at 0.0141 against the baseline's 0.0155
+is **19 users out of 13,580**, z ≈ 1.0 — inside sampling noise, so the two are not
+distinguishable and the row must be read as "matches the baseline on accuracy while reaching
+963× more of the catalogue", never as "worse than the baseline". Every other gap in the table
+clears three standard errors. The derivation is under the primary table in `RESULTS.md`; §8
+is where the general caveat lives.
 
 **The baseline is narrow, not weak** (L27 on the ISBN basis, L52 on the work basis). It
 scores 0.0155 overall — hundreds of times better than random. But broken down by the
 held-out book's popularity it scores **essentially 0.0000** for every user whose target has
 fewer than 50 interactions, which is **73% of them at ISBN level and 65% at work level**.
-Note the two bases in that sentence: the stratification is L27's and has no work-level
-ledger line yet, so it is quoted as an ISBN-level finding beside a work-level aggregate, and
-the share is given both ways rather than rounded into one. Its entire hit rate comes from
+Note the two bases in that sentence: the stratification is L27's at ISBN level and
+**L73's at work level** (measured 09.08.2026, M18.2), and the share is given both ways
+rather than rounded into one. The work-level strata say the same thing more sharply — the
+baseline scores 0.0000 in all three strata below 50 interactions and 0.0443 in the fourth. Its entire hit rate comes from
 users who were going to be handed a bestseller anyway, and it ever recommends **64 distinct
 works** across all 13,580 users.
 Any aggregate metric hides this, which is a good reason never to report just one.
@@ -219,7 +234,7 @@ re-base changed it and the change is the point.
 |---|---|---|
 | popularity | bestsellers — no notion of similarity; the control | unchanged; still the control |
 | item-item | two unrelated obscure books first, *then* Chamber of Secrets (L29) | **Chamber of Secrets, Azkaban, Goblet of Fire, Order of the Phoenix — in order** |
-| content TF-IDF | five ISBNs of *Sorcerer's Stone* itself (L39) | the pop-up book, the illustrator re-credit, *Philosopher's Stone*, the Welsh edition |
+| content TF-IDF | **eight** ISBNs of *Sorcerer's Stone* itself, its whole top 8 (L31) | the pop-up book, the illustrator re-credit, *Philosopher's Stone*, the Welsh edition |
 | content embeddings | five editions of *Sorcerer's Stone* itself (L39) | *Pietra Filosfale*, *à l'école des sorciers*, *Philosopher's Stone* |
 | **ALS** | ***Fellowship of the Ring*, then Harry Potter 3, 2 and 4** (L34) | Chamber of Secrets, Azkaban, Goblet of Fire, Order of the Phoenix |
 
@@ -268,10 +283,29 @@ item-item and TF-IDF touch between them, only 6,794 — 13% — are reached by b
 sharpens this further: the ISBN-keyed table had been *under-rating* the content layer, so
 the gap between the two model classes is smaller than the first run suggested.
 
+**Both numbers behind that recommendation are *bounds*, and the hybrid itself has not been
+run.** L50 is a ceiling on what a hybrid could reach and L60 is an overlap; neither is a
+HitRate. The recommendation is made on the strongest evidence available and it is not the
+same thing as a measured row, which is stated here rather than left for a reviewer to notice.
+Milestone M19 measures three combination rules — cascade, score fusion and reciprocal rank
+fusion — and the prediction is written down **before** the run, because a hybrid is the kind
+of result everyone expects to win. *(This sentence pointed at "§9 item 6" until M18.5's
+sweep; §9 has five items and never had a sixth.)* What L73 already says about the shape of
+that prediction: the works only a content layer can reach are the works with no interaction
+evidence, and there TF-IDF scores 0.0304 against every collaborative model's 0.0000 — a real
+number, and a small one.
+
 **ALS kept in the plan for what the metrics do not show.** Free personalization from the
 same fit, the best item-to-item neighbourhoods of any model here, and the only model that
 ports to Spark without a rewrite — which makes productionization a port rather than a
 second project.
+
+**None of this is expensive to run, and that is measured too.** The model artefact is
+**155.6 MB** of float32 factors, the precomputed answer table for the whole product is
+**1.5 MB**, and a full retrain of all six models is **about eight minutes** on a laptop
+(L71, L72). Compute is not the constraint on this system; evidence is. The sizing argument
+belongs to Part 3 and is only pointed at here so that "what would be built" and "what it
+costs to run it" are not two disconnected claims.
 
 **Edition clustering in data prep, before any of it ships.** It is the single largest
 accuracy gain in the project — **+18% on item-item's hit rate for a data-prep change**
@@ -299,8 +333,15 @@ hyperparameter. See §10 and §11.
 
 ## 8 · What these numbers are not
 
-One dataset, one split, one draw — seeded and reproducible, but no confidence intervals,
-so differences of a few tenths of a percent are not real. And every metric is a proxy:
+One dataset, one split, one draw — seeded and reproducible, and **no measured confidence
+intervals**. What can be said without a run: HitRate over 13,580 users is a binomial
+proportion, so its standard error is `sqrt(p(1-p)/n)` = **±0.0010 to ±0.0021** on these
+rows. Read the table with that in mind — one comparison (embeddings against the baseline)
+does not survive it, and every other one clears three standard errors comfortably. The
+proper test is paired McNemar over the per-user hit vectors, and **it has now been run:
+L74 measures it and confirms the derivation** — embeddings against the baseline is 190 wins
+to 210 losses, p = 0.342, and every other comparison in the table is distinguishable, the
+narrowest (ALS against item-item) at p = 2.7e-06. And every metric is a proxy:
 "was the held-out book in the top ten" stands in for "would a reader click, buy, or
 enjoy this". A recommendation the reader has never heard of scores zero whether it was a
 brilliant discovery or a mistake — which is precisely the outcome a long-tail recommender
@@ -318,21 +359,46 @@ not chosen by accident.
    They do different jobs (§10), and the table did move (§11, M12). Serving dedup stays in
    the serving layer for the app, because the app's engine is fitted on the full
    interaction matrix and still has to collapse editions on the way to the screen.
-2. **Which model should drive the app?** Item-item has the best numbers; **ALS has by far
-   the best neighbourhoods** (L34), and the app is an item-to-item surface. Showing ALS
-   *and* the table where it loses is a better account than either number alone — it just
-   requires explaining why the metric and the demo disagree.
-3. **Re-tune item-item for the similarity endpoint?** (L29) A higher λ or a minimum
-   co-occurrence floor would fix the Harry Potter neighbourhood. Not done, because
-   choosing a parameter to make a demo look better is exactly the move this project argues
-   against — but there is a legitimate version: tune the *similarity* endpoint on its own
-   validation objective rather than on HitRate.
-4. **Confidence intervals.** Currently none. A handful of seeds per model would give error
-   bars for perhaps twenty minutes of compute, and would pre-empt "is that difference
-   real?".
+2. ~~**Which model should drive the app?**~~ **Answered: ALS**, and §12 gives the reason.
+   Item-item has the best numbers; **ALS has by far the best neighbourhoods** (L34), and the
+   app is an item-to-item surface. The demo shows ALS *and* the table where it loses, which
+   is a better account than either number alone.
+3. ~~**Re-tune item-item for the similarity endpoint?**~~ **Answered, and the answer was
+   "no re-tuning was needed".** L29 proposed a higher λ or a co-occurrence floor for the
+   Harry Potter neighbourhood. On the work basis the same model with the same λ returns
+   *Chamber of Secrets* at 0.477 (§6, L53): the anchor was under-*evidenced*, not
+   under-damped, and the fix was data prep. The legitimate residue — tuning the similarity
+   endpoint on its own validation objective rather than on HitRate — is still unbuilt, but
+   it is now a refinement rather than a defect.
+4. **Confidence intervals.** ~~Still none measured.~~ **Measured 09.08.2026, L74**: 95%
+   Wilson intervals on all six cells, running **±0.002 to ±0.004**, plus the paired McNemar
+   this item proposed. §8 carries the derived standard error that preceded it, and the
+   measurement agreed with it: every pair in the table is distinguishable except embeddings
+   against the baseline (190 wins / 210 losses, **p = 0.342**), which had already been
+   reworded to a tie on the derivation alone.
+
+   **What L74 does *not* cover, and it is the honest remaining gap.** A Wilson interval and
+   McNemar both treat the **drawn held-out item as given** and ask about sampling across
+   users. Seed 42 also decides *which* of a user's ≥8-rated books is held out, and on a
+   catalogue this long-tailed it matters a great deal whether that book was a bestseller or a
+   one-reader title. That variance is invisible to both tests. Re-running the split under
+   several seeds is the way to measure it, it is cheap, and it is not done.
+
+   *(Correction, 2026-08-09, and it is the reason the paragraph above exists. This item was
+   first rewritten to dismiss the multi-seed idea, on the grounds that "re-seeding changes
+   which users are eligible, so the runs would not be comparable". **That is false.**
+   Eligibility in `split.py` is `≥5 explicit ratings and ≥1 rating ≥8` — a deterministic
+   property of the data, computed by an `intersect1d` with no seed anywhere near it. The seed
+   enters at exactly one line, `rng.integers`, choosing the held-out item. The eligible set is
+   therefore **identical across seeds**, multi-seed runs are perfectly comparable, and they
+   measure a second source of variance rather than a spurious one. The two measurements
+   answer different questions and the project wants both: McNemar for "is this difference
+   bigger than user-sampling noise" — done, L74 — and seeds for "does the conclusion survive
+   a different draw" — not done.)*
 5. **Cross-lingual lookup is weak** (L38) — `"herr der ringe"` finds nothing. Title+author
    is too thin for a multilingual encoder to bridge. This is the concrete, now-measured
    argument for an LLM metadata-enrichment layer.
+
 
 ## 10 · Edition clustering, measured (M11)
 
@@ -536,16 +602,22 @@ passed it.
   still answer *Sorcerer's Stone* with *Philosopher's Stone*, the Italian and French
   editions, and the Welsh one — 7 of 30 gallery slots for TF-IDF, 6 of 30 for embeddings.
   Only more text per book or an external work identifier fixes that.
-- **L27 and L28 were not recomputed on the work basis.** They are per-stratum findings about
-  the ISBN-level rows, quoted as such.
+- ~~**L27 and L28 have no work-level ledger line.**~~ **Closed 09.08.2026 by M18.2: they
+  are L73**, both strata, all six models, grouped from the same per-user hit vectors as L74.
+  The state this item described — `notebooks/02_models.ipynb` §2.1 holding the popularity
+  strata with no ledger line behind them — is what L73 closes. **What the work-level version
+  adds:** the content models are the only ones that score at all where the held-out work has
+  no train interactions (TF-IDF 0.0304, embeddings 0.0138, every collaborative model exactly
+  0.0000), which is the hybrid argument as a measurement rather than as a ceiling.
 - **Still one split, still offline.** §8 applies unchanged, and re-basing does not make an
   offline proxy any less of a proxy.
 
 ## 12 · The demo, and what it deliberately contradicts (M13)
 
 `streamlit run app/main.py`: paste a book, get ten similar books, each with one sentence of
-reason drawn from countable evidence — co-reader count, shared author, shared series,
-similarity value. No language model anywhere in the hot path. It starts in **10.6 s** and
+reason drawn from countable evidence — **co-reader count and shared author** — beside the
+similarity, shown as a bar scaled to the top of that list plus the absolute number. No
+language model anywhere in the hot path. It starts in **10.6 s** and
 answers in **20 ms** (L69 — L61 measured 9.4 s / 21 ms before the M15 surface rebuild;
 L69 is the shipped app), with no network and no fitting at query time.
 
@@ -569,10 +641,27 @@ better-read work among near-equal text matches takes it to 9 of 9. Neither is a 
 change and neither touches a published number — but the second is a UI judgement chosen on
 nine queries, and it is recorded as such rather than presented as a result.
 
+**Two things the surface says explicitly, because it was caught not saying them** (M15, M17).
+The list is sorted by similarity, and until M17 that quantity was nowhere on screen while the
+only visible quantity — shared readers — contradicted the order (rank 1: 16 readers, rank 2:
+17). It now shows both and says which one sorts. The picker got a measured relevance cutoff
+in the same pass: a candidate more than **0.12 cosine** below the best match is not an
+alternative reading of the query, which stops *A Little Princess* and a Stephen King being
+offered beside *The Little Prince*, and the cutoff sits at twice the tie margin so it can
+never change what a query resolves to (L70).
+
+**The `series` field is computed and deliberately not shown** (M17.6). It holds the title's
+trailing parenthetical, which is a real series often enough to have earned the name and a
+publisher imprint or format note the rest of the time — *Penguin Classics* on 378 works,
+*Dover Thrift Editions* on 268, *Harry Potter (Paperback)* on the demo's own anchor. A "same
+series" tag built on exact string equality would therefore assert a publisher as a series and
+miss the real ones, which appear as *Vampire Chronicles (Paperback)*, *The Vampire
+Chronicles, Book 6* and *Vampire Chronicles, No 5*. A real series entity is a data-layer
+project and is on the roadmap, not in the demo. The field's role in the clustering key (§10)
+is unaffected — it is stripped before the key is built, and L48 prices that at 0.023%.
+
 **What the demo cannot hide.** `"herr der ringe"` and `"hobit tolkien"` still find nothing,
 under every rule. Title+author is three to five words, and no amount of serving logic turns
 that into enough signal for a multilingual encoder to bridge. It is the same wall as §10's
 gallery and L59's count, now hit from a third direction — and the third independent
 argument for the metadata-enrichment layer.
-
-

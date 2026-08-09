@@ -11,11 +11,6 @@
   and all interactions of users who are not eligible. Sparse data is not a reason to
   throw signal away.
 
-Why leave-one-out and not a temporal split: ``Ratings.csv`` has no time column at all
-(ledger L18), so "train on the past, test on the future" is not expressible on this
-dataset. With real production logs the split would be temporal, and a random split there
-would leak the future into training.
-
 **Leakage discipline.** This module is the only place a holdout is chosen. Everything
 downstream — item popularity, similarities, factors, IDF statistics — is computed from
 :attr:`Split.train` and never from :attr:`Split.test`. That is the property the tests in

@@ -216,10 +216,14 @@ class Evidence:
 
     :attr:`shared_series` is **computed and not displayed** since M17.6. It is kept because
     it is a fact about the row and the field it is derived from is real; what is not real is
-    the name. ``series`` holds the title's trailing parenthetical, which is a series 27% of
-    the time and a publisher imprint, a format or an edition number the rest — *Penguin
-    Classics* covers 378 works, *Dover Thrift Editions* 268, and *Dune* carries *Remembering
-    Tomorrow*. A tag reading "same series (Penguin Classics)" is a false claim printed as
+    the name. ``series`` holds the title's trailing parenthetical, and ledger L48 classified
+    74,233 of them: **27.1% are volume or part numbers**, 6.7% format, 1.1% numbered
+    editions, and series names share the remaining 65% with imprints and awards. So a real
+    series is the *plurality* reading of this field and nothing like a reliable one —
+    *Penguin Classics* covers 378 works, *Dover Thrift Editions* 268, and *Dune* carries
+    *Remembering Tomorrow*. *(This docstring read "a series 27% of the time" until M18.5's
+    sweep: 27.1% is L48's count of volume numbers, which is the one category that is
+    certainly not a series name.)* A tag reading "same series (Penguin Classics)" is a false claim printed as
     fact, and the comparison also under-fires on the real thing, because one series appears
     as ``Vampire Chronicles (Paperback)``, ``The Vampire Chronicles, Book 6`` and ``Vampire
     Chronicles, No 5``. It comes back when a series is an entity rather than a substring;

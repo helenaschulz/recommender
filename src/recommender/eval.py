@@ -43,12 +43,24 @@ from recommender.models.base import Recommender
 from recommender.split import Split
 
 
+def hit_vector(recommended: np.ndarray, holdout: np.ndarray) -> np.ndarray:
+    """Per-user booleans: was that user's held-out item somewhere in their top-K list?
+
+    HitRate@K is the mean of this vector, and everything that asks a *narrower* question —
+    the support and profile-length strata (ledger L27, L28, L73) and the paired McNemar
+    tests (L74) — is this vector grouped or compared rather than a second definition of a
+    hit. One definition, so a stratum can never disagree with the aggregate it sits under.
+    """
+    if len(holdout) == 0:
+        return np.zeros(0, dtype=bool)
+    return (recommended == np.asarray(holdout).reshape(-1, 1)).any(axis=1)
+
+
 def hit_rate_at_k(recommended: np.ndarray, holdout: np.ndarray) -> float:
     """Share of users whose single held-out item is somewhere in their top-K list."""
     if len(holdout) == 0:
         return float("nan")
-    hits = (recommended == np.asarray(holdout).reshape(-1, 1)).any(axis=1)
-    return float(hits.mean())
+    return float(hit_vector(recommended, holdout).mean())
 
 
 def hit_rate_at_k_by_group(

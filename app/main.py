@@ -17,10 +17,10 @@ than hidden.
 **Why there is no engine switcher yet, corrected.** M13.2 dropped one on the grounds that
 each engine would need its own similarity artefact and would cost the cold start this app
 is built around. **M16 measured that false and this docstring carried the dead reason for
-two milestones.** With the anchor floor at 50 only ~2,500 works are reachable as anchors at
-all, so the artefact is not a second 156 MB factor matrix but a precomputed top-N table —
-about 125,000 rows across five engines, a few MB of parquet. Cold start goes *down*: a
-table lookup replaces a 156 MB memory map. It is also the Part 3 Gold-table serving
+two milestones.** With the anchor floor at 50 only 2,508 works are reachable as anchors at
+all, so the artefact is not a second 155.6 MB factor matrix but a precomputed top-N table —
+125,400 rows across five engines, 1.5 MB (ledger L72; the matrix is L71). Cold start goes
+*down*: a table lookup replaces a 155.6 MB memory map. It is also the Part 3 Gold-table serving
 pattern, built instead of drawn on a slide.
 
 What actually holds the switcher back is a **schedule gate, not a cost**: M16 runs only

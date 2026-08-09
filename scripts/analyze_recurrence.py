@@ -27,7 +27,9 @@ by interaction count, and doing it on the app's own numbers keeps both columns c
 scripts.
 
 One thing this measurement cannot do, stated up front: the candidate pool is already the
-7,523 works above the support floor, i.e. the top 3.2% of the nameable catalogue. So "share
+7,541 works above the candidate support floor of 20, i.e. the top 3.2% of the nameable
+catalogue (ledger L65; the docstring said 7,523 until M18.5 checked it against the shipped
+assets). So "share
 of slots in the global top 1% of works" is a soft bar here and is reported next to the pool
 size rather than on its own.
 """
