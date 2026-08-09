@@ -4,10 +4,17 @@ Right now it holds one thing, and one thing is enough to justify the layer exist
 
 **Work-level deduplication.** The models score ISBNs, because that is what the
 interaction data is keyed on. A reader does not want ISBNs. Ledger L31 measured the
-consequence: 31.6% of the TF-IDF model's recommendation slots are another *edition* of a
-book already in the user's profile, and 73.4% of users see at least one — the top seven
-neighbours of *The Da Vinci Code* are seven ISBNs of *The Da Vinci Code*. L39 found the
-same failure on the embedding model's similarity surface.
+consequence on an exact title+author key: 31.6% of the TF-IDF model's recommendation slots
+are another *edition* of a book already in the user's profile, and 73.4% of users see at
+least one — the top seven neighbours of *The Da Vinci Code* are seven ISBNs of *The Da Vinci
+Code*. L39 found the same failure on the embedding model's similarity surface.
+
+**Those two figures understate it, and L45 is the number this module is measured by:** on
+the M11 work key the rates are **39.1% of slots and 81.5% of users**, because the better key
+finds duplicates an exact string cannot. L45 is also where the dedup is priced (TF-IDF
++21% HitRate, everything else flat) and where its limit is recorded — the duplicate rate is
+measured with the same key that performed the dedup, so 0.0% afterwards is arithmetic, not
+evidence. The independent check is the gallery (L47, L59).
 
 This is deliberately **not** fixed inside the models, and not by re-keying the whole
 pipeline to works. Two reasons:

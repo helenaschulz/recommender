@@ -1,0 +1,44 @@
+# Theme for the demo app (milestone M15.1).
+#
+# The brief: one restrained palette, a serif display face against the sans body, and a base
+# size one step down from Streamlit's default. Everything here has to work with **no
+# network** — the app's whole premise is that it runs offline from precomputed assets, and a
+# webfont request would break that for a decoration.
+#
+# So the faces are the ones already on the machine, named in a fallback chain rather than
+# downloaded:
+#   - headings: a serif stack. On the presentation Mac this resolves to Iowan Old Style,
+#     then Palatino, then Georgia, then the generic serif. Any of the four is fine; the
+#     point is a serif against the sans, not a specific designer's face.
+#   - body: the system UI sans, which is what the OS already renders text in.
+# If a face is missing the browser falls back down the chain silently, which is exactly the
+# behaviour wanted for a demo that must not depend on its environment.
+#
+# Colours: one accent and nothing else coloured. The accent is a muted ink blue, dark enough
+# to pass contrast on the off-white background at body size and quiet enough that it does
+# not compete with the text it sits next to. Deliberately NOT one of the six saturated hues
+# the old `spine()` blocks used — those were assigned by a title hash and were noise.
+#
+# Base size 15px rather than Streamlit's 16: the result list is dense and the reason lines
+# are secondary text, so a step down keeps a full top-10 on one beamer screen without
+# scrolling.
+
+[theme]
+base = "light"
+primaryColor = "#2f4858"          # muted ink blue: the single accent
+backgroundColor = "#fbfaf8"       # off-white, warmer than pure white under a projector
+secondaryBackgroundColor = "#f2efea"  # sidebar and input fills
+textColor = "#1c1c1e"
+linkColor = "#2f4858"
+baseFontSize = 15
+font = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+headingFont = "'Iowan Old Style', Palatino, 'Palatino Linotype', Georgia, serif"
+codeFont = "ui-monospace, SFMono-Regular, Menlo, monospace"
+borderColor = "#e2ded7"
+showWidgetBorder = true
+
+[client]
+toolbarMode = "minimal"           # no "Deploy" button in front of a client
+
+[browser]
+gatherUsageStats = false

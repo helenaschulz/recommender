@@ -24,7 +24,7 @@ profile centroid **0.883**, against 0.518 for the item vectors themselves). The 
 then recommends the same generic region to everybody. Subtracting the global mean from
 the item vectors and renormalizing removes that shared direction. On the inner validation
 split (seed 43, never the test holdout) it lifts HitRate@10 from 0.0036 to **0.0095** and
-Coverage@10 from 3.7% to **20.4%**, and drops profile collapse from 0.893 to 0.193. It is
+Coverage@10 from 3.7% to **20.4%**, and drops profile collapse from 0.883 to 0.193. It is
 on by default; ``center=False`` reproduces the uncentered ablation.
 
 **Two products from one artefact.** The same vectors serve the recommender *and* the

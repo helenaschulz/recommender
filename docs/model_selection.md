@@ -137,11 +137,15 @@ exactly the reverse of the ranking by reach, with ALS the only exception. There 
 single best model, so "which model" is the wrong question — "which model for which job" is
 the right one.
 
-**The baseline is narrow, not weak** (L27, L52). It scores 0.0155 overall — hundreds of
-times better than random. But broken down by the held-out book's popularity it scores
-**essentially 0.0000** for every user whose target has fewer than 50 interactions, which is
-two thirds of them. Its entire hit rate comes from users who were going to be handed a
-bestseller anyway, and it ever recommends **64 distinct works** across all 13,580 users.
+**The baseline is narrow, not weak** (L27 on the ISBN basis, L52 on the work basis). It
+scores 0.0155 overall — hundreds of times better than random. But broken down by the
+held-out book's popularity it scores **essentially 0.0000** for every user whose target has
+fewer than 50 interactions, which is **73% of them at ISBN level and 65% at work level**.
+Note the two bases in that sentence: the stratification is L27's and has no work-level
+ledger line yet, so it is quoted as an ISBN-level finding beside a work-level aggregate, and
+the share is given both ways rather than rounded into one. Its entire hit rate comes from
+users who were going to be handed a bestseller anyway, and it ever recommends **64 distinct
+works** across all 13,580 users.
 Any aggregate metric hides this, which is a good reason never to report just one.
 
 **Item-item wins on both axes at once**: 4.2× the baseline's accuracy *and* 302× its
@@ -188,8 +192,11 @@ measured: raising it to 5 drops the reachable share of held-out books from 84.8%
 continuously. (Measured on the ISBN basis; L43 is the same argument from the other side —
 per-ISBN filtering deletes 23,429 editions of works that clear the threshold.)
 
-**Dense embeddings needed a fix that is invisible unless you look for it** (L36). The
-first embedding run scored 0.0042 — worse than the baseline. The cause: averaging a
+**Dense embeddings needed a fix that is invisible unless you look for it** (L36). Before
+the fix the model scored **0.0036** on the validation split against **0.0095** after it —
+worse than the popularity baseline either way. *(This sentence previously quoted 0.0042 as
+the first run's score. That number has no line in `RESULTS.md` and could not be traced to a
+run, so it was replaced by L36's measured pair on 2026-08-09.)* The cause: averaging a
 user's book vectors produces almost the same vector for every user (mean cosine to the
 global profile centroid 0.883). Sentence embeddings share a large common direction and
 averaging amplifies it. Centering the item vectors drops that to 0.193 and, on
@@ -538,8 +545,9 @@ passed it.
 
 `streamlit run app/main.py`: paste a book, get ten similar books, each with one sentence of
 reason drawn from countable evidence — co-reader count, shared author, shared series,
-similarity value. No language model anywhere in the hot path. It starts in **9.4 s** and
-answers in **21 ms** (L61), with no network and no fitting at query time.
+similarity value. No language model anywhere in the hot path. It starts in **10.6 s** and
+answers in **20 ms** (L69 — L61 measured 9.4 s / 21 ms before the M15 surface rebuild;
+L69 is the shipped app), with no network and no fitting at query time.
 
 **It runs on ALS, which loses §4.** That is the point rather than an oversight. §6 measured
 the divergence: HitRate@10 scores how well a model ranks a held-out book in a *user's*

@@ -32,7 +32,22 @@ from recommender.gallery import DEMO_BUTTONS
 #: retyped. The first version duplicated the labels, and when M14.8 changed them this
 #: script sat waiting 30 seconds for a button that no longer existed.
 ANCHORS = {label: label.lower().replace(" ", "_").replace("'", "") for label in DEMO_BUTTONS}
-LOOKUP_QUERY = "harry potter stein"
+
+#: The typed queries, which are the part a visitor will actually poke at: ``query -> (slug,
+#: the title it must resolve to)``. Two, since M17: "harry potter stein" takes two serving
+#: rules to resolve (L62), and "little prince" is the anchor M17 came from — the list whose
+#: shared-reader counts run backwards against the order, which is what put the similarity
+#: back on screen.
+#:
+#: **The expected title is not decoration, it is the wait condition** (M17). Waiting on the
+#: literal "Because you liked" matched the *previous* anchor's heading, which was still on
+#: the page while Streamlit re-ran, and the script photographed a greyed-out stale frame
+#: showing *Fight Club* under a box reading "little prince". Waiting for the resolved title
+#: cannot match the frame before it, and it turns each screenshot into a lookup assertion.
+LOOKUP_QUERIES = {
+    "harry potter stein": ("app_lookup", "Harry Potter and the Sorcerer's Stone"),
+    "little prince": ("app_lookup_little_prince", "The Little Prince"),
+}
 
 
 def wait_for_health(port: int, timeout: float = 120.0) -> None:
@@ -77,25 +92,45 @@ def main(argv: list[str] | None = None) -> int:
             page = browser.new_page(viewport={"width": args.width, "height": args.height})
             page.goto(f"http://127.0.0.1:{args.port}", wait_until="networkidle")
             # The first render loads ~900 MB of assets behind st.cache_resource.
-            page.wait_for_selector("text=Paste a book", timeout=120_000)
+            # Wait on the app's *structure*, not on its copy. The first version waited for
+            # the H1's text and sat there for two minutes when M15 reworded the heading —
+            # the same duplication that broke the button labels one milestone earlier.
+            page.wait_for_selector('[data-testid="stTextInput"]', timeout=120_000)
 
+            def assert_no_exception(where: str) -> None:
+                """A screenshot of a crashed app is still a screenshot.
+
+                The script used to photograph whatever was on the page, so a Streamlit
+                traceback would have been captured and committed as evidence that the demo
+                works. It happened: the example-query button wrote to `session_state` after
+                the widget owning that key existed, which raises, and nothing here noticed.
+                """
+                if page.locator('[data-testid="stException"]').count():
+                    text = page.locator('[data-testid="stException"]').first.inner_text()
+                    raise SystemExit(f"the app raised on {where}:\n{text[:800]}")
+
+            assert_no_exception("first load")
             for label, slug in ANCHORS.items():
                 page.get_by_role("button", name=label, exact=True).click()
                 page.wait_for_selector("text=Because you liked", timeout=120_000)
-                page.wait_for_timeout(1_200)  # let the lazy cover images settle or fail
+                page.wait_for_timeout(1_200)
+                assert_no_exception(f"anchor {label!r}")
                 path = out / f"app_{slug}.png"
                 page.screenshot(path=str(path), full_page=True)
                 print(f"wrote {path.relative_to(root)}")
 
-            # And the input path, which is the part a visitor will actually poke at.
-            box = page.get_by_placeholder("harry potter stein")
-            box.fill(LOOKUP_QUERY)
-            box.press("Enter")
-            page.wait_for_selector("text=Because you liked", timeout=120_000)
-            page.wait_for_timeout(1_200)
-            path = out / "app_lookup.png"
-            page.screenshot(path=str(path), full_page=True)
-            print(f"wrote {path.relative_to(root)}  (free-text query {LOOKUP_QUERY!r})")
+            # And the input path, which is the part a visitor will actually poke at. Located
+            # by role, not by placeholder text: the placeholder is copy and M15 changed it.
+            for query, (slug, resolves_to) in LOOKUP_QUERIES.items():
+                box = page.locator('[data-testid="stTextInput"] input')
+                box.fill(query)
+                box.press("Enter")
+                page.wait_for_selector(f'h4:has-text("Because you liked {resolves_to}")', timeout=120_000)
+                page.wait_for_timeout(1_200)
+                assert_no_exception(f"free-text query {query!r}")
+                path = out / f"{slug}.png"
+                page.screenshot(path=str(path), full_page=True)
+                print(f"wrote {path.relative_to(root)}  (free-text query {query!r})")
 
             browser.close()
     finally:
