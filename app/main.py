@@ -86,7 +86,12 @@ STYLE = """
   /* ...except the tertiary "try this query" link, which is a line of text, not a target. */
   [data-testid="stBaseButton-tertiary"] {min-height: 0; height: auto; font-size: 13px;}
 
-  .provenance {font-size: 13px; color: #6b6862; margin: -0.6rem 0 1.6rem 0;}
+  /* The reader count belongs *to* its button, so it sits against it rather than floating in
+     the middle of the gap Streamlit puts between two elements in a column. Scoped to the
+     keyed container, so every other caption in the app keeps its normal spacing. */
+  .st-key-anchor-row [data-testid="stElementContainer"]:has([data-testid="stCaptionContainer"])
+    {margin-top: -0.85rem;}
+
   .legend {font-size: 12px; color: #6b6862; margin: 0.2rem 0 0.9rem 0;}
 
   /* One row of the result list. No card, no fill, no border — a hairline and the type
@@ -181,6 +186,11 @@ def sidebar(engine: DemoEngine) -> None:
         # 09.08.2026): the sidebar's first line is the only place the thing gets named, and
         # a section label is not a name.
         st.markdown("### Book Recommender")
+        # M15.6's provenance line, moved here from under the page title (review,09.08.).
+        # Its rule is unchanged and is the reason it is a function rather than a string:
+        # exactly one place in the app states the corpus size, and it is counted off the
+        # assets at runtime.
+        st.caption(corpus_line(engine))
         st.markdown(
             "One book in, similar books out. No login and no reading history: the only "
             "input is the book you name."
@@ -245,17 +255,19 @@ def main() -> None:
     sidebar(engine)
 
     st.title("Name a book, get books like it")
-    st.markdown(f'<div class="provenance">{html.escape(corpus_line(engine))}</div>', unsafe_allow_html=True)
 
-    columns = st.columns(len(ANCHORS))
-    for column, (label, isbn) in zip(columns, ANCHORS.items(), strict=True):
-        if column.button(label, use_container_width=True):
-            st.session_state["query"] = label
-            st.session_state["pinned_isbn"] = isbn
-        # The reader count belongs on the button. Without it a thinly read anchor looks like
-        # a broken app; with it, the calibration story (L63) is visible in the product
-        # rather than only asserted on a slide.
-        column.caption(f"{engine.describe(isbn).readers:,} readers")
+    # Keyed so the CSS above can pull the reader counts up against their buttons without
+    # touching every other caption in the app.
+    with st.container(key="anchor-row"):
+        columns = st.columns(len(ANCHORS))
+        for column, (label, isbn) in zip(columns, ANCHORS.items(), strict=True):
+            if column.button(label, use_container_width=True):
+                st.session_state["query"] = label
+                st.session_state["pinned_isbn"] = isbn
+            # The reader count belongs on the button. Without it a thinly read anchor looks
+            # like a broken app; with it, the calibration story (L63) is visible in the
+            # product rather than only asserted on a slide.
+            column.caption(f"{engine.describe(isbn).readers:,} readers")
 
     # Every writer of `st.session_state["query"]` has to run **before** the text input that
     # owns that key is instantiated — Streamlit raises `StreamlitAPIException` otherwise,
