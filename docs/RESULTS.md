@@ -833,6 +833,16 @@ honest sentence. The intervals also set the resolution of every future compariso
 split: **±0.002 to ±0.004**, so a hybrid, a re-tune or a new model that moves HitRate by less
 than about 0.004 has not been shown to move it at all.
 
+**And the uncertainty these intervals do *not* cover, because it is the larger one.** Both
+L74's interval and its paired test hold the drawn holdout fixed and quantify sampling across
+*users*. Seed 42 also decides **which** of a reader's favourites is held out, and L73 is the
+argument that this second draw is not a detail: HitRate differs by a factor of seven between
+the lowest and the highest support stratum, so which stratum a reader's drawn book lands in
+matters more than most model differences in the table. Measuring it means re-running the
+whole comparison on several seeds — cheap at eight minutes a seed, and **not done**. Every
+number in this ledger is therefore conditional on one draw, and that sentence belongs in the
+talk track next to the interval, not instead of it.
+
 ## Open items this ledger will need
 
 - ~~Edition clustering in the data-prep layer (L31, L39)~~ — **done, M11 (L40–L47).**

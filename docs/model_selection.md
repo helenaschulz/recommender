@@ -333,15 +333,20 @@ hyperparameter. See §10 and §11.
 
 ## 8 · What these numbers are not
 
-One dataset, one split, one draw — seeded and reproducible, and **no measured confidence
-intervals**. What can be said without a run: HitRate over 13,580 users is a binomial
-proportion, so its standard error is `sqrt(p(1-p)/n)` = **±0.0010 to ±0.0021** on these
-rows. Read the table with that in mind — one comparison (embeddings against the baseline)
-does not survive it, and every other one clears three standard errors comfortably. The
-proper test is paired McNemar over the per-user hit vectors, and **it has now been run:
-L74 measures it and confirms the derivation** — embeddings against the baseline is 190 wins
-to 210 losses, p = 0.342, and every other comparison in the table is distinguishable, the
-narrowest (ALS against item-item) at p = 2.7e-06. And every metric is a proxy:
+One dataset, **one split, one draw** — seeded and reproducible. The uncertainty across users
+is measured: 95% Wilson intervals run ±0.002 to ±0.004, and paired McNemar distinguishes
+every pair in §4 except embeddings against the baseline (190 wins to 210 losses, p = 0.342);
+the narrowest that does clear the bar is ALS against item-item at p = 2.7e-06 (L74). It
+confirms the plain binomial standard error, ±0.0010 to ±0.0021, that was derived before it
+was run.
+
+**What that does not cover, said plainly because it is the kind of thing a reader should not
+have to find.** Both tests hold the *drawn* held-out item fixed and ask about sampling across
+users. Seed 42 also chooses **which** of a reader's favourites is held out, and on a
+catalogue this long-tailed that draw carries real variance of its own — L73 shows why: hit
+rates differ by a factor of seven between the lowest and highest support stratum, so it
+matters a great deal which stratum the drawn book landed in. Several seeds would measure it;
+it has not been done. And every metric is a proxy:
 "was the held-out book in the top ten" stands in for "would a reader click, buy, or
 enjoy this". A recommendation the reader has never heard of scores zero whether it was a
 brilliant discovery or a mistake — which is precisely the outcome a long-tail recommender
