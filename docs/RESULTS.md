@@ -108,10 +108,18 @@ against the baseline is 190 wins to 210 losses, p = 0.342, and every other compa
 table is distinguishable, the narrowest of them (ALS against item-item) at p = 2.7e-06. The
 95% interval on each cell is in L74; they run **±0.002 to ±0.004**.
 
-**What we would actually ship, and why:** item-item as the scoring core, with the content
-layer serving the catalogue it structurally cannot reach (L50: the union of both raises
-the achievable ceiling from 86.7% to 95.3%). That is a hybrid recommended on measurements,
-not on the fact that hybrids sound thorough.
+**What we would actually ship, and why — and this paragraph is now a measurement rather
+than a bound.** Item-item as the scoring core, with the content layer as a **backfill**:
+where item-item cannot fill ten slots, TF-IDF fills the rest. **Measured (L76): HitRate@10
+0.0644 → 0.0650, Coverage@10 8.190% → 8.529%, nine readers gained and none lost, paired
+p = 0.0039.** That is the whole of it, and it is small — the coverage argument this project
+has made since M10 (L50: the union raises the achievable ceiling from 86.7% to 95.3%) is
+worth about half a percent of item-item's hits once it has to be *ranked* rather than merely
+reached. Two rules score higher — score fusion 0.0690, RRF 0.0687 — and **neither is
+recommended**, because L79 measures what they cost: a third of readers would see another
+edition of a book they already own, and the accuracy is taken from well-evidenced readers
+rather than added. The hybrid is real, it is the modest version of itself, and saying so is
+the finding.
 
 **What none of these numbers prove.** Every row is one offline dataset, one split, one
 proxy for a question the metric cannot answer: whether a reader would click. The ranking
@@ -561,8 +569,16 @@ The lines below measure the app *as an app*: does it start, does it answer, does
 box find the book.
 
 The engine is **ALS item factors over the work-keyed matrix** with the L34 support floor.
-ALS is third of six on HitRate@10 (L55) and has the best item-to-item neighbourhoods in the
+ALS is second of six on HitRate@10 (L55) and has the best item-to-item neighbourhoods in the
 project — the app asks the second question, and the sidebar shows the table where it loses.
+
+*Corrected 2026-08-09: this paragraph read "third of six" and so did the app's sidebar, one
+line above a table that showed ALS second. The ordinal was read off the **ISBN-level** table
+in M13, where the work-level item-item row (0.0644) sits beside the ISBN-level one (0.0546)
+as a pointer, putting two item-item rows above ALS's 0.0451. Against the published work-level
+table (L52–L57) there is one item-item row and ALS is second. **No measured value changes**;
+the same wording is corrected in `app/main.py`, `recommender.demo`, `docs/model_selection.md`
+and the milestone notes.*
 
 | ID | Claim | Number | How measured | Measured |
 |---|---|---|---|---|
@@ -822,7 +838,7 @@ quietly drifted would be worse than no interval at all.
 | L73 | **L27 and L28 at work level: the baseline is still narrow, item-item still degrades on long profiles, and the content models are the only ones that score where no reader has been** | HitRate@10 by the **held-out work's train support** (0 / 1–4 / 5–49 / 50+ over 1,812 · 2,410 · 4,591 · 4,767 users): popularity **0.0000 / 0.0000 / 0.0000 / 0.0443**, item-item **0.0000 / 0.0170 / 0.0571 / 0.1198**, ALS 0.0000 / 0.0000 / 0.0109 / **0.1447**, item-item explicit-only 0.0000 / 0.0116 / 0.0431 / 0.0910, TF-IDF **0.0304 / 0.0303 / 0.0414 / 0.0487**, embeddings **0.0138 / 0.0091 / 0.0155 / 0.0153**. By the **reader's train-profile length** (0–9 / 10–24 / 25–74 / 75+ over 3,562 · 4,596 · 3,153 · 2,269 users): item-item **0.0679 / 0.0716 / 0.0695 / 0.0370**, ALS 0.0528 / 0.0568 / 0.0603 / 0.0445, TF-IDF 0.0528 / 0.0424 / 0.0390 / **0.0194**, embeddings 0.0225 / 0.0150 / 0.0105 / **0.0040**, popularity 0.0174 / 0.0159 / 0.0146 / 0.0132, explicit-only 0.0522 / 0.0472 / 0.0555 / 0.0361 | `python scripts/analyze_hit_strata.py`, grouping the cached hit vectors; support and profile length both counted on **train only**. The strata boundaries are L27's and L28's unchanged, so the columns line up with the ISBN-level lines. Cross-check that the split is the one it claims to be: the leftmost stratum is **1,812 users = 13.34%**, i.e. exactly L50's `100% − 86.66%` collaborative ceiling. **This closes the state the notebook was in** — `notebooks/02_models.ipynb` §2.1 printed the popularity row of the first table and nothing recorded it. *Also derived from these vectors, and it is a bound rather than a result:* TF-IDF and embeddings between them hit **320** users item-item missed, **61** of those at zero support, so an oracle that always picked the right one of the three would score **0.0879** against item-item's 0.0644 (item-item with TF-IDF alone: 0.0856). **No hybrid scores that** — picking the right model per user is the whole problem, and M19 measures what a real rule gets | 2026-08-09 |
 | L74 | **The paired test confirms the ranking and disarms exactly the one cell the derivation disarmed: embeddings against the baseline** | 95% Wilson intervals: item-item **0.0644 [0.0604, 0.0686]**, ALS 0.0545 [0.0508, 0.0584], explicit-only 0.0486 [0.0451, 0.0523], TF-IDF 0.0405 [0.0373, 0.0439], popularity 0.0155 [0.0136, 0.0178], embeddings 0.0141 [0.0122, 0.0162]. Paired McNemar **against item-item**, every model: ALS 337 wins / 471 losses, **p = 2.7e-06**; explicit-only 204/418, p = 6.3e-18; TF-IDF 288/612, p = 1.3e-27; popularity 161/824, p = 8.5e-108; embeddings 87/770, p = 1.8e-137 — **all five distinguishable**. Against the baseline: item-item p = 8.5e-108, ALS p = 6.8e-79, explicit-only p = 1.2e-57, TF-IDF p = 7.1e-36 — and **embeddings 190 wins / 210 losses, Δ = −0.0015 [−0.0044, +0.0014], p = 0.342: not distinguishable** | `python scripts/measure_significance.py`. Exact two-sided binomial on the discordant pairs; Wilson rather than Wald because these proportions are small. The paired interval on a difference is `(b−c)/n ± 1.96·√(b+c)/n`, tighter than the unpaired one because the models hit largely the same users. **The prediction under the primary table held**: the unpaired derivation put embeddings-vs-baseline at z ≈ 1.0 and the two cells were reworded to "not measurably different" on that basis on 09.08, *before* this ran; the paired test agrees (p = 0.342) and no wording had to be reverted. The narrowest comparison that still clears the bar is ALS against item-item — 0.0099 apart, p = 2.7e-06 — so the table's ordering is safe everywhere except the one pair already labelled | 2026-08-09 |
 
-| L75 | **The consistency sweep: 479 numeric literals across every artefact a reader can open, six of them wrong** | **479** numeric literals in `README.md`, `docs/*.md`, both notebooks' markdown, `app/main.py` and every module docstring, each checked against this ledger — 479 is the count *before* the corrections were written, and a re-run after them scans **508**, because every correction quotes the number it replaces. **Six wrong**, all now corrected and each carrying its old wording: L72's **2,532** askable anchors (nameable filter missing, 2,508) *and the note that explained the 24-anchor gap as the M14.4 re-key*, `demo.py`'s "**a series 27% of the time**" (L48's 27.1% is volume/part numbers, the one class that is certainly not a series), `analyze_recurrence.py`'s **7,523** works above the candidate floor (L65: 7,541), and in `notebooks/02_models.ipynb` "**below the popularity baseline**" (L74 says tie), "**ten points at either item level**" (L50: 8.7 at work level, 10.6 at ISBN) and "reverse of the coverage ranking **with ALS the only exception**" (the primary table's own correction). Four further claims were **stale rather than wrong** — three saying intervals and work-level strata were unmeasured, now L73/L74, plus a pointer to a section item that never existed. Two numbers were **sound but unsourced and now have this line**: the `series` parenthetical holds *Penguin Classics* on **378** works and *Dover Thrift Editions* on **268**; and the M17 evidence example — on *The Little Prince*, rank 1 shows **16** shared readers and rank 2 **17**, at cosines 0.3982 and 0.3516 | Literals extracted mechanically (dates, DOIs, ISBNs and section numbers excluded), then every survivor adjudicated by hand against the line it should trace to, and a second independent read of the same artefacts for claims that quote a *right* number for a *wrong* thing — which is where four of the six came from, since a wrong number that exists elsewhere in the ledger passes a verbatim check. The two unsourced figures were re-measured on the shipped assets (`artifacts/app/books.parquet`, and `DemoEngine.similar` on the resolved anchor) and reproduced exactly. **The class of error this found is not arithmetic**: nothing was miscalculated. Five of the six are a number that was correct when written and was overtaken by a later measurement, which is the failure mode a ledger is supposed to catch and only catches if something sweeps | 2026-08-09 |
+| L75 | **The consistency sweep: 479 numeric literals across every artefact a reader can open, six of them wrong** | **479** numeric literals in `README.md`, `docs/*.md`, both notebooks' markdown, `app/main.py` and every module docstring, each checked against this ledger — 479 is the count *before* the corrections were written, and a re-run after them scans **508**, because every correction quotes the number it replaces. **Six wrong**, all now corrected and each carrying its old wording: L72's **2,532** askable anchors (nameable filter missing, 2,508) *and the note that explained the 24-anchor gap as the M14.4 re-key*, `demo.py`'s "**a series 27% of the time**" (L48's 27.1% is volume/part numbers, the one class that is certainly not a series), `analyze_recurrence.py`'s **7,523** works above the candidate floor (L65: 7,541), and in `notebooks/02_models.ipynb` "**below the popularity baseline**" (L74 says tie), "**ten points at either item level**" (L50: 8.7 at work level, 10.6 at ISBN) and "reverse of the coverage ranking **with ALS the only exception**" (the primary table's own correction). Four further claims were **stale rather than wrong** — three saying intervals and work-level strata were unmeasured, now L73/L74, plus one pointer the sweep called dangling that was not — `model_selection.md` §9 item 6 existed and had been lost to a concurrent edit, and it was restored the same evening. Two numbers were **sound but unsourced and now have this line**: the `series` parenthetical holds *Penguin Classics* on **378** works and *Dover Thrift Editions* on **268**; and the M17 evidence example — on *The Little Prince*, rank 1 shows **16** shared readers and rank 2 **17**, at cosines 0.3982 and 0.3516 | Literals extracted mechanically (dates, DOIs, ISBNs and section numbers excluded), then every survivor adjudicated by hand against the line it should trace to, and a second independent read of the same artefacts for claims that quote a *right* number for a *wrong* thing — which is where four of the six came from, since a wrong number that exists elsewhere in the ledger passes a verbatim check. The two unsourced figures were re-measured on the shipped assets (`artifacts/app/books.parquet`, and `DemoEngine.similar` on the resolved anchor) and reproduced exactly. **The class of error this found is not arithmetic**: nothing was miscalculated. Five of the six are a number that was correct when written and was overtaken by a later measurement, which is the failure mode a ledger is supposed to catch and only catches if something sweeps. **The sweep has a blind spot and the next check walked straight into it the same evening**: it extracts *numeric literals*, so "ALS places **third of six** on HitRate@10" in `app/main.py` and `model_selection.md` was invisible to it — an ordinal written as a word, wrong since the M12 re-base (ALS is second), sitting on the demo's own sidebar above a table that said second. Corrected 09.08.2026. A ranking claim is a number; a regex for digits is not a sweep for claims | 2026-08-09 |
 
 **What L74 changes about how this table should be read, and what it does not.** It does not
 promote a single row: the ranking it confirms is the ranking that was already published. What
@@ -839,9 +855,75 @@ L74's interval and its paired test hold the drawn holdout fixed and quantify sam
 argument that this second draw is not a detail: HitRate differs by a factor of seven between
 the lowest and the highest support stratum, so which stratum a reader's drawn book lands in
 matters more than most model differences in the table. Measuring it means re-running the
-whole comparison on several seeds — cheap at eight minutes a seed, and **not done**. Every
+whole comparison on several seeds — cheap at eight minutes a seed, and **not done**.
+
+*One property that makes those seeds comparable, recorded because it was briefly got wrong
+in `model_selection.md` §9 and corrected on 09.08.* **Eligibility does not depend on the
+seed.** In `split.py` it is an `intersect1d` over two data thresholds (≥5 explicit ratings,
+≥1 rating ≥8); the seed enters at a single `rng.integers` call that draws the held-out item.
+So a multi-seed run scores **the same 13,580 users** every time and the runs differ only in
+which book each of them had withheld — which is precisely the variance to be measured, with
+nothing else moving underneath it. Every
 number in this ledger is therefore conditional on one draw, and that sentence belongs in the
 talk track next to the interval, not instead of it.
+
+## The hybrid, measured at last (milestone M19)
+
+Since M10 this project's headline recommendation has been *item-item as the scoring core,
+with the content layer serving the catalogue it structurally cannot reach*. That sentence
+rested on two **bounds** — L50 (the union raises the achievable ceiling from 86.66% to
+95.34%) and L60 (the two model classes reach different parts of the catalogue) — and never
+on a row. M19 runs it: three combination rules over the *same* two fitted models, on the
+pinned work-level split, with `python scripts/measure_hybrid.py --tune --gallery`.
+
+**The prediction, written before the run and quoted here unedited** (the advisor, 09.08.2026):
+*"Coverage will move a lot and HitRate will barely move, possibly down. The held-out items
+only the content layer can reach are by definition items with little or no interaction
+evidence… the 8.7 points of extra reachable ceiling are reachable in principle and mostly
+unrankable in practice."*
+
+**Verdict: falsified as stated, and held in its reasoning.** No rule produced the predicted
+combination. The rule the recommendation actually describes (cascade) moved coverage
+*barely* — 8.190% → 8.529%, not "a lot" — and moved HitRate by nine users, exactly as
+predicted. The two fusion rules moved coverage a lot **and** moved HitRate measurably up,
+which the prediction ruled out. The reasoning underneath it was right and is the more useful
+half: the pure coverage play is worth **9 users out of 13,580**. Everything above that comes
+from somewhere the prediction never considered — reranking readers the collaborative model
+already serves — and L79 is why that is not free.
+
+Both base models were re-fitted and checked before anything was combined: item-item
+(0.0644 · 8.190% · 14.17) and TF-IDF (0.0405 · 16.806% · 17.07) reproduce to the digit and
+their per-user hit vectors are **bit-identical** to M18's. The escalation gate held too:
+score fusion beats item-item by **+7.1% relative**, inside the +15% band M19 set, so no
+plausibility escalation was triggered.
+
+| ID | Claim | Number | How measured | Measured |
+|---|---|---|---|---|
+| L76 | **The hybrid this project has recommended for four milestones is worth nine users out of 13,580 — and it is the only rule that costs nothing** | **Cascade / backfill**, item-item filling the list and TF-IDF filling what is left: HitRate@10 **0.0644 → 0.0650** (883 hits against 874), Coverage@10 **8.190% → 8.529%**, Novelty@10 14.17 → 14.19, slots filled 99.585% → 99.887%. Paired McNemar against item-item: **9 wins, 0 losses, p = 0.0039** — distinguishable, and every one of the nine is a pure addition. By held-out support: **+8 at zero support, +1 at 1–4, nothing at all above that, and no losses in any stratum.** With a support floor of 5 it becomes 0.0652 but **+51/−39, p = 0.246 — not distinguishable**, and coverage *falls* to 6.955%; at floor 20 it is 0.0596, +104/−169, **p = 0.0001 distinguishably worse** | `python scripts/measure_hybrid.py`, work-level split L49, both base models untouched and re-checked first. The floor variants price the second half of the rule ("or where a slot would go to an item below a support floor"): raising it buys thin-stratum hits and pays for them in the 5–49 band at a rate that turns negative between 5 and 20. **Coverage falling as the floor rises is not a paradox** — the floor evicts exactly the low-support collaborative items that were the coverage | 2026-08-09 |
+| L77 | **Score fusion is the accuracy winner and the tuning that produced it bought nothing** | `α · norm(item-item) + (1-α) · norm(TF-IDF)`, per-user min-max, **α = 0.6 chosen on the inner validation split**: HitRate@10 **0.0690** (937 hits, 95% CI [0.0649, 0.0734]), Coverage@10 **11.912%**, Novelty@10 14.78. Against item-item: **+175/−112, Δ = +0.0046 [+0.0022, +0.0071], p = 0.00024**. The whole α curve on validation (11,015 users, seed 43): 0.0378 · 0.0408 · 0.0441 · 0.0468 · 0.0539 · 0.0582 · **0.0617** · 0.0616 · 0.0610 · 0.0587 · 0.0578 for α = 0.0 … 1.0 — a broad plateau from 0.6 to 0.8, not a peak. **Against RRF, which has no parameters at all: 162/158, Δ = +0.0003, p = 0.867 — not distinguishable** | Same run, same candidate lists. α was tuned on `inner_bench(seed=43)`, the harness L51 used, and never on the holdout; the curve is reported because the argmax of a plateau is a summary and not a result. **M19 asked this question in advance and this is the answer it gets:** a tuned mixing weight cannot be told apart from a constant, so the honest description of fusion here is "combine the two rankings", not "combine them at 0.6" | 2026-08-09 |
+| L78 | **Reciprocal rank fusion matches the tuned fusion on accuracy and beats every rule on reach** | `Σ 1/(60 + rank)`, no tuning: HitRate@10 **0.0687** (933 hits), Coverage@10 **12.843%** — the widest of any rule and **+57% relative** over item-item — Novelty@10 **15.14**. Against item-item: **+312/−253, Δ = +0.0043 [+0.0009, +0.0078], p = 0.015**. Only **43.2%** of its slots are slots item-item would have filled, against 96.4% for the cascade | Same run, k = 60 left at the TREC default on purpose: RRF is in this comparison as the parameter-free control, so tuning it would remove the reason it is here | 2026-08-09 |
+| L79 | **The two rules that win the metric are the two that break the demo, and the mechanism is not metric leakage** | Three-anchor gallery, hand-counted the L47/L59 way — a slot counts as bad when it is the anchor itself under another edition, title or translation, a companion book about the anchor, or a duplicate of another slot: **cascade 0 of 30, fusion 11 of 30, RRF 13 of 30**. RRF answers *The Lovely Bones* with *The Lovely Bones* (rank 2), *Desde Mi Cielo* (7) and *In meinem Himmel* (9) — the same book three times. Measured over all users, share of slots whose loose title the reader already owns: cascade **0.52% of slots / 3.9% of users**, fusion **4.30% / 28.8%**, RRF **5.57% / 33.9%**. **But the metric is not being gamed:** of fusion's 175 new hits only **7** are a work whose loose title the reader already owned, and of RRF's 312 only **11**. What the fusion rules actually do is **redistribute**: by held-out support, fusion is +33/−0 at zero, +30/−4 at 1–4, +64/−33 at 5–49 and **+48/−75 at 50+**; RRF is **+137/−178** in that last stratum | Gallery from the same run (`--gallery`); the duplicate share uses a loose title key (drop everything from the first `:` or `(`, then non-alphanumerics) and is a **lower bound**, because it cannot see translations — *El Codigo Da Vinci* shares no characters with *The Da Vinci Code*, which is L47's standing ceiling. Pairwise tests via `--pairs-from`. **This is L58's finding in a new place**: the offline metric and the product surface disagree, and here they disagree about the same rule at the same time | 2026-08-09 |
+
+**Read out loud, because this is the paragraph that goes on the slide.** The hybrid works,
+and it does not work the way we have been saying it does. The version this ledger has
+recommended since M10 — collaborative first, content filling what it cannot reach — is
+**real, statistically distinguishable and tiny**: nine readers out of 13,580, every one of
+them in the stratum where the collaborative model has nothing, and not one hit lost anywhere.
+That is the coverage argument, measured, and it is worth about half a percent of item-item's
+hits. The rules that win more — score fusion at +7.1% relative, RRF at +6.7% — do not get
+there by reaching further into the catalogue. **They get there by taking accuracy from
+well-evidenced readers and giving it to thin ones**, and by filling a third of readers' lists
+with another edition of a book they already have. Neither of those is visible in HitRate.
+
+**So what we would actually ship, now measured rather than bounded:** item-item as the
+scoring core with the content layer as a **backfill only** (L76). It is the one rule that
+adds without subtracting, it leaves the demo's answers bit-identical to the item-item gallery
+L59 already vouched for, and its cost is one extra model at serving time. **Score fusion is
+not recommended, and the reason is not its HitRate** — it is that 28.8% of readers would see
+their own book recommended back to them, which no offline metric in this project penalises
+and every reader would notice. If the edition/translation clustering L47 describes were
+fixed, fusion becomes the candidate to re-measure first; the ordering of that work is now
+evidence-backed rather than a hunch.
 
 ## Open items this ledger will need
 
@@ -856,10 +938,15 @@ talk track next to the interval, not instead of it.
   clustering, and only the text-based models suffer — 7 of 30 gallery slots for TF-IDF and
   6 of 30 for embeddings, on the work basis. Either LLM metadata enrichment or an external
   work identifier; both also address the lookup failure in L38.
-- The hybrid itself measured, rather than argued from the L50 ceiling: item-item scoring
-  core with the content layer serving what it cannot reach. **L58 raises the stakes on
-  this**: the content layer is closer to the collaborative one than the ISBN-level table
-  ever suggested.
+- ~~The hybrid itself measured, rather than argued from the L50 ceiling~~ — **done, M19
+  (L76–L79, 2026-08-09).** Three rules, one recommended (the backfill cascade), and the
+  prediction written before the run marked falsified-as-stated and held-in-its-reasoning.
+  **What it opened in turn**, both narrower than the item it closes: (a) the fusion rules'
+  duplicate problem is the L47 edition/translation ceiling arriving in a new place, so
+  fixing that clustering is now the *first* thing to re-measure fusion against rather than a
+  general improvement; (b) a cascade with a support floor between 5 and 20 is where the
+  trade turns negative, and the crossing point is unmeasured — L76 has floors 0, 5 and 20
+  and nothing between.
 - Item-item normalized by profile length, to see whether it removes the long-profile
   degradation in L28. **Still open, and L73 sharpens it rather than closing it**: at work
   level the degradation is 0.0716 at 10–24 items against 0.0370 at 75+, and ALS over the same
@@ -878,6 +965,13 @@ talk track next to the interval, not instead of it.
   and Coverage and Novelty have no intervals at all. Coverage is not a per-user proportion,
   so the same machinery does not apply to it — a bootstrap over users would, and it is
   unmeasured.
+- **The holdout draw itself is unmeasured, and it is now the largest unquantified
+  uncertainty in the project.** L74 measures sampling across users and explicitly does not
+  cover which book seed 42 withdrew from each reader; L73 prices why that matters (a factor
+  of seven in HitRate between support strata). Re-running the comparison on several seeds
+  costs about eight minutes a seed and nothing else moves, because eligibility is
+  seed-invariant (see the note under L74). Until it is run, every number here is conditional
+  on one draw.
 - **The subtitle class of duplicate works** (L64's note): 9,523 further works across 30,486
   clusters would merge if everything after a colon were dropped. Needs an M11.3-style
   sampled audit before anyone touches it, because the rule cannot tell *The Hobbit: or

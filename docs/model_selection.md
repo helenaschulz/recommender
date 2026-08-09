@@ -283,14 +283,33 @@ item-item and TF-IDF touch between them, only 6,794 — 13% — are reached by b
 sharpens this further: the ISBN-keyed table had been *under-rating* the content layer, so
 the gap between the two model classes is smaller than the first run suggested.
 
-**Both numbers behind that recommendation are *bounds*, and the hybrid itself has not been
-run.** L50 is a ceiling on what a hybrid could reach and L60 is an overlap; neither is a
-HitRate. The recommendation is made on the strongest evidence available and it is not the
-same thing as a measured row, which is stated here rather than left for a reviewer to notice.
-Milestone M19 measures three combination rules — cascade, score fusion and reciprocal rank
-fusion — and the prediction is written down **before** the run, because a hybrid is the kind
-of result everyone expects to win. *(This sentence pointed at "§9 item 6" until M18.5's
-sweep; §9 has five items and never had a sixth.)* What L73 already says about the shape of
+**Both numbers behind that recommendation were *bounds* until 09.08.2026, and the hybrid
+has now been run.** L50 is a ceiling on what a hybrid could reach and L60 is an overlap;
+neither is a HitRate. Milestone M19 measured three combination rules — cascade, score fusion
+and reciprocal rank fusion — with the prediction written down **before** the run, because a
+hybrid is the kind of result everyone expects to win.
+
+**The measured answer, and it is smaller and more interesting than the bound.** The rule this
+document has been describing — collaborative first, content filling what it cannot reach —
+moves HitRate@10 from **0.0644 to 0.0650** and Coverage@10 from **8.190% to 8.529%** (L76).
+Nine readers out of 13,580, every one of them where item-item had nothing, and **no reader
+loses a hit**. Paired McNemar p = 0.0039, so it is real; it is also about half a percent of
+item-item's hits. Two other rules score higher — score fusion 0.0690, RRF 0.0687 — and
+**neither is recommended**: L79 measures that they buy their accuracy by taking it from
+well-evidenced readers (fusion is +48/−75 in the best-supported stratum) and that they fill
+**28.8%** and **33.9%** of readers' lists with another edition of a book those readers
+already own. On the three demo anchors that is 11 and 13 bad slots out of 30, against **0
+for the cascade**. And the tuning that produced fusion's α = 0.6 cannot be distinguished
+from parameter-free RRF at all (162/158, p = 0.867), so it bought nothing.
+
+**The prediction was falsified as stated and held in its reasoning**, which is worth saying
+in those words: it expected coverage to move a lot and accuracy barely, and no rule did both.
+What it got right is the part that matters for the architecture — the extra *reachable*
+ceiling is mostly unrankable, and the hybrid's real accuracy gains come from somewhere the
+prediction never considered. *(M18.5's sweep read this pointer as dangling and recorded
+that "§9 never had a sixth item". That was wrong: item 6 was added on 09.08. and lost to a
+concurrent edit of this file. It is restored, and this note stays as the record of a
+correction that itself needed correcting.)* What L73 already says about the shape of
 that prediction: the works only a content layer can reach are the works with no interaction
 evidence, and there TF-IDF scores 0.0304 against every collaborative model's 0.0000 — a real
 number, and a small one.
@@ -400,7 +419,18 @@ not chosen by accident.
    answer different questions and the project wants both: McNemar for "is this difference
    bigger than user-sampling noise" — done, L74 — and seeds for "does the conclusion survive
    a different draw" — not done.)*
-5. **Cross-lingual lookup is weak** (L38) — `"herr der ringe"` finds nothing. Title+author
+5. **The hybrid recommended in §7 has never been measured** (restored 09.08.2026 — this item
+   was added, lost to a concurrent edit, and then recorded by the sweep as never having
+   existed). It is argued from two *bounds*, the union ceiling (L50) and the near-disjoint
+   reach (L60), and no combination rule has been run end to end. Milestone M19 measures
+   three: cascade/backfill, score fusion tuned on the inner split, and RRF as the
+   parameter-free reference. **The prediction, on record before the run:** coverage moves a
+   lot, HitRate barely — because the works only a content layer can reach are the works with
+   no interaction evidence, where L73 measures TF-IDF at 0.0304 against every collaborative
+   model's 0.0000. A real number, and a small one. **And L74 sets the bar it has to clear:**
+   the intervals are ±0.002 to ±0.004, so a hybrid that moves HitRate by less than about
+   0.004 has not been shown to move it at all.
+6. **Cross-lingual lookup is weak** (L38) — `"herr der ringe"` finds nothing. Title+author
    is too thin for a multilingual encoder to bridge. This is the concrete, now-measured
    argument for an LLM metadata-enrichment layer.
 
@@ -629,7 +659,7 @@ L69 is the shipped app), with no network and no fitting at query time.
 **It runs on ALS, which loses §4.** That is the point rather than an oversight. §6 measured
 the divergence: HitRate@10 scores how well a model ranks a held-out book in a *user's*
 history, and the app asks a different question — given this one book, what is like it. ALS
-is third of six on the first and best in the project on the second (L34, L55). Building the
+is second of six on the first and best in the project on the second (L34, L55). Building the
 demo on the model that wins the table would have meant building it on the model with worse
 neighbourhoods, so the sidebar shows the table where ALS loses, next to the results it
 produces. A reviewer can then ask the question, and there is an answer.

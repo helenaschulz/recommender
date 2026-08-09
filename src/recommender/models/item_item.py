@@ -160,12 +160,21 @@ class ItemItemRecommender(Recommender):
         return self
 
     def recommend(self, user_ids: np.ndarray, k: int = 10) -> np.ndarray:
+        return self.recommend_scored(user_ids, k=k)[0]
+
+    def recommend_scored(self, user_ids: np.ndarray, k: int = 10) -> tuple[np.ndarray, np.ndarray]:
+        """Top-k works per user with their scores — the summed shrunk similarities.
+
+        :meth:`recommend` is this method's first return value and nothing else, so the
+        ranking the hybrid combines is bit-for-bit the ranking the comparison table scored.
+        """
         train = self._require_fit()
         rows = [train.user_index.get(int(u)) for u in user_ids]
         known = [r for r in rows if r is not None]
         out = np.full((len(user_ids), k), None, dtype=object)
+        out_scores = np.full((len(user_ids), k), -np.inf, dtype=np.float64)
         if not known:
-            return out
+            return out, out_scores
 
         profiles = train.matrix[known]
         scores = (profiles @ self.similarity).tocsr()
@@ -188,7 +197,8 @@ class ItemItemRecommender(Recommender):
             best = np.argpartition(-values, kth=take - 1)[:take]
             best = best[np.argsort(-values[best], kind="stable")]
             out[row_index, :take] = train.item_ids[candidates[best]]
-        return out
+            out_scores[row_index, :take] = values[best]
+        return out, out_scores
 
     def similar_items(self, isbn: str, k: int = 10) -> list[tuple[str, float]]:
         train = self._require_fit()

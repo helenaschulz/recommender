@@ -22,7 +22,7 @@ front of a reviewer:
 **Why ALS drives it, when ALS loses the comparison table.** The app is an item-to-item
 surface, and item-to-item is exactly where ALS wins: with a support floor of 20 its
 factors give the best neighbourhoods of any model in the project (ledger L34), while its
-HitRate@10 is third of six (L55). That the metric and the product surface disagree is not
+HitRate@10 is second of six (L55). That the metric and the product surface disagree is not
 an embarrassment to hide behind a better-looking number — it is the finding, and the table
 where ALS loses gets shown next to the demo deliberately.
 

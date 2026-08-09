@@ -9,7 +9,7 @@ a model, never reads ``data/`` and never touches the network.
 
 **One engine, for now.** The similar-items engine is ALS item factors over the work-keyed
 matrix, with the support floors from ledger L34 (candidates) and L65 (anchors). ALS places
-*third of six* on HitRate@10 in the published table (L55) and has the best item-to-item
+*second of six* on HitRate@10 in the published table (L55) and has the best item-to-item
 neighbourhoods in the project. That the offline metric and the product surface disagree is
 the finding, not an inconsistency — so the table where ALS loses is in the sidebar rather
 than hidden.
@@ -262,11 +262,23 @@ def sidebar(engine: DemoEngine) -> None:
             "names the readers behind it, so you can see how much it rests on."
         )
         st.markdown("### The engine")
+        # "second", not "third" (review,09.08.): the sentence said third and the table
+        # underneath it said second, on the same screen. The ordinal is a leftover from M13,
+        # where it was read off the ISBN-level ledger table — that one carries the work-level
+        # item-item row as a pointer *next to* the ISBN-level one, so two item-item rows sat
+        # above ALS (0.0644 and 0.0546 against 0.0451). Under the published work-level table
+        # (L52-L57) there is one item-item row and ALS is second. No measurement moves; the
+        # ordinal was never re-read after the re-base. Same correction in the two docstrings,
+        # RESULTS.md and model_selection.md.
+        #
+        # The closing sentence's "asks the second" becomes "asks the latter" with it: the
+        # pinned copy could carry two senses of "second" once the ordinal is right, and the
+        # one that matters is which of the two questions the demo asks.
         st.markdown(
-            "This demo runs on matrix factorization. It comes third on the accuracy table "
+            "This demo runs on matrix factorization. It comes second on the accuracy table "
             "below and produces the best \"books like this one\" lists of the six approaches "
             "we tried. Those are two different questions, and a demo like this one asks the "
-            "second."
+            "latter."
         )
         # The table keeps its published form and numbers (L52-L57); only the labels change,
         # from house abbreviations to written-out names. It stays expanded, because showing

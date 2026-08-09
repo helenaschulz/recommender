@@ -20,6 +20,10 @@ the null "the two are equally likely to be the one that hits", `b` is Binomial(b
 and the two-sided exact binomial p on that is the whole test. Concordant users carry no
 information about which model is better and are correctly ignored.
 
+**The two tests live in :mod:`recommender.eval`** (:func:`~recommender.eval.wilson_interval`
+and :func:`~recommender.eval.mcnemar`) rather than in this script, because M19's hybrid rows
+have to be tested the same way and a second copy of a statistical test is a second answer.
+
 **Two intervals, and they answer different questions.** The **Wilson** 95% interval on each
 HitRate says how precisely that single number is pinned by 13,580 users — it is what belongs
 next to a cell in the table. The **paired difference** interval, `(b - c) / n` with standard
@@ -42,17 +46,15 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from scipy.stats import binomtest
 
 from recommender.benchmark import build_bench
-from recommender.eval import evaluate, hit_vector
+from recommender.eval import evaluate, hit_vector, mcnemar, wilson_interval
 from recommender.models import ALL_MODELS, build_model, fit_model
 
 CACHE = Path("artifacts/significance")
@@ -80,47 +82,6 @@ PUBLISHED: dict[str, dict[str, tuple[float, float, float]]] = {
         "embeddings": (0.0109, 23.911, 18.42),
     },
 }
-
-
-def wilson_interval(hits: int, n: int, z: float = 1.959963984540054) -> tuple[float, float]:
-    """95% Wilson score interval for a binomial proportion.
-
-    Wilson rather than Wald because these proportions are small (0.014 to 0.064) and Wald
-    is badly behaved near zero — it is symmetric by construction and can reach below it.
-    """
-    if n == 0:
-        return (float("nan"), float("nan"))
-    p = hits / n
-    denom = 1.0 + z * z / n
-    centre = (p + z * z / (2 * n)) / denom
-    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
-    return (centre - half, centre + half)
-
-
-def mcnemar(a: np.ndarray, b: np.ndarray) -> dict[str, float]:
-    """Paired exact McNemar test between two per-user hit vectors.
-
-    Returns the discordant counts, the two-sided exact binomial p, the paired difference in
-    HitRate and a 95% interval on that difference. The interval uses the standard paired
-    proportion error `sqrt(b + c) / n`, which is exactly the term the unpaired
-    `sqrt(p1(1-p1)/n + p2(1-p2)/n)` overstates when the two models hit the same users.
-    """
-    n = len(a)
-    only_a = int(np.sum(a & ~b))
-    only_b = int(np.sum(~a & b))
-    discordant = only_a + only_b
-    p_value = float(binomtest(only_a, discordant, 0.5).pvalue) if discordant else float("nan")
-    diff = (only_a - only_b) / n
-    half = 1.959963984540054 * math.sqrt(discordant) / n if discordant else float("nan")
-    return {
-        "a_only": only_a,
-        "b_only": only_b,
-        "discordant": discordant,
-        "p": p_value,
-        "diff": diff,
-        "diff_lo": diff - half,
-        "diff_hi": diff + half,
-    }
 
 
 def check_row(name: str, result, published: dict[str, tuple[float, float, float]]) -> list[str]:

@@ -31,12 +31,14 @@ the reference every model is read against.
 
 from __future__ import annotations
 
+import math
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
+from scipy.stats import binomtest
 
 from recommender.data import CATALOG_SIZE, Interactions
 from recommender.models.base import Recommender
@@ -54,6 +56,58 @@ def hit_vector(recommended: np.ndarray, holdout: np.ndarray) -> np.ndarray:
     if len(holdout) == 0:
         return np.zeros(0, dtype=bool)
     return (recommended == np.asarray(holdout).reshape(-1, 1)).any(axis=1)
+
+
+#: 95% two-sided normal quantile. Named, because a bare 1.96 in three places is three
+#: places to get it wrong.
+Z95 = 1.959963984540054
+
+
+def wilson_interval(hits: int, n: int, z: float = Z95) -> tuple[float, float]:
+    """95% Wilson score interval for a binomial proportion (ledger L74).
+
+    Wilson rather than Wald because these proportions are small — HitRate runs 0.014 to
+    0.069 here — and Wald is badly behaved near zero: it is symmetric by construction and
+    can reach below it.
+    """
+    if n == 0:
+        return (float("nan"), float("nan"))
+    p = hits / n
+    denom = 1.0 + z * z / n
+    centre = (p + z * z / (2 * n)) / denom
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denom
+    return (centre - half, centre + half)
+
+
+def mcnemar(a: np.ndarray, b: np.ndarray) -> dict[str, float]:
+    """Paired exact McNemar test between two per-user hit vectors (ledger L74).
+
+    Every model here is scored on the *same* users with the *same* held-out book, so the
+    unpaired standard error is the wrong instrument: it discards the pairing, and on this
+    data the pairing is strong — the users a model can hit at all are largely the users
+    whose held-out work carries enough evidence to be reachable (L73). McNemar looks only
+    at the users where the two models disagree: ``b`` users that A hit and B missed, ``c``
+    the other way round. Under the null that either is equally likely, ``b`` is
+    Binomial(b + c, 0.5), and the two-sided exact binomial p on that is the whole test.
+
+    The interval on the difference uses the paired error ``sqrt(b + c) / n``, which is
+    exactly the term the unpaired formula overstates for correlated models.
+    """
+    n = len(a)
+    only_a = int(np.sum(a & ~b))
+    only_b = int(np.sum(~a & b))
+    discordant = only_a + only_b
+    diff = (only_a - only_b) / n if n else float("nan")
+    half = Z95 * math.sqrt(discordant) / n if discordant and n else float("nan")
+    return {
+        "a_only": only_a,
+        "b_only": only_b,
+        "discordant": discordant,
+        "p": float(binomtest(only_a, discordant, 0.5).pvalue) if discordant else float("nan"),
+        "diff": diff,
+        "diff_lo": diff - half,
+        "diff_hi": diff + half,
+    }
 
 
 def hit_rate_at_k(recommended: np.ndarray, holdout: np.ndarray) -> float:

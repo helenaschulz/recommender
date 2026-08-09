@@ -116,8 +116,19 @@ class TfidfRecommender(Recommender):
         return sp.csr_matrix(self.vectors[rows].mean(axis=0))
 
     def recommend(self, user_ids: np.ndarray, k: int = 10) -> np.ndarray:
+        return self.recommend_scored(user_ids, k=k)[0]
+
+    def recommend_scored(self, user_ids: np.ndarray, k: int = 10) -> tuple[np.ndarray, np.ndarray]:
+        """Top-k works per user with their scores — the mean cosine to the user's profile.
+
+        :meth:`recommend` is this method's first return value, so the hybrid and the
+        comparison table rank on identical output. Note the scale: a mean cosine sits in
+        [0, 1] and does not grow with profile length, which is exactly what makes it
+        incomparable with item-item's summed similarities without normalization.
+        """
         train = self._require_fit()
         out = np.full((len(user_ids), k), None, dtype=object)
+        out_scores = np.full((len(user_ids), k), -np.inf, dtype=np.float64)
 
         profiles, targets, blocked = [], [], []
         for row, user_id in enumerate(user_ids):
@@ -141,7 +152,8 @@ class TfidfRecommender(Recommender):
                 chosen = picked[local]
                 usable = chosen >= 0
                 out[row, : usable.sum()] = self.item_ids[chosen[usable]]
-        return out
+                out_scores[row, : usable.sum()] = scores[local, chosen[usable]]
+        return out, out_scores
 
     def similar_items(self, isbn: str, k: int = 10) -> list[tuple[str, float]]:
         self._require_fit()

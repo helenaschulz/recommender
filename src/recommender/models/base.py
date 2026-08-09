@@ -58,6 +58,28 @@ class Recommender(ABC):
         honest empty answer beats a fabricated neighbourhood.
         """
 
+    def recommend_scored(self, user_ids: np.ndarray, k: int = 10) -> tuple[np.ndarray, np.ndarray]:
+        """The same top-k as :meth:`recommend`, with the scores that produced it.
+
+        Returns ``(ids, scores)``, both of shape ``(len(user_ids), k)``: ids as an object
+        array padded with ``None``, scores as float64 padded with ``-inf``. Optional —
+        models that cannot produce a comparable score raise, and the default here does.
+
+        **This exists for the hybrid (milestone M19) and for nothing else.** Combining two
+        rankers needs more than their top-10 lists: score fusion needs the scores, and every
+        rule needs a deeper candidate list than the ten slots that end up on screen. Where a
+        model implements it, :meth:`recommend` is a thin slice of it rather than a second
+        ranking path — one code path, so a hybrid can never be fed a ranking that differs
+        from the one the comparison table measured.
+
+        **The scores are not comparable across models and this method does not pretend
+        otherwise.** Item-item returns a *sum* of shrunk cosines over the user's profile,
+        TF-IDF a *mean* cosine; the first grows with profile length and the second does not.
+        Normalizing them against each other is the caller's problem, and the caller has to
+        say what it did (see :mod:`recommender.models.hybrid`).
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not expose scores; see Recommender.recommend_scored")
+
     def _require_fit(self) -> Interactions:
         if self.train is None:
             raise RuntimeError(f"{type(self).__name__}.fit() must be called before use")
