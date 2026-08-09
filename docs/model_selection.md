@@ -421,7 +421,10 @@ not chosen by accident.
    users. Seed 42 also decides *which* of a user's ≥8-rated books is held out, and on a
    catalogue this long-tailed it matters a great deal whether that book was a bestseller or a
    one-reader title. That variance is invisible to both tests. Re-running the split under
-   several seeds is the way to measure it, it is cheap, and it is not done.
+   several seeds is the way to measure it, it is cheap, and **it is now done — M21, ledger
+   L86.** Five draws: the ordering holds on all five, and the caveat that survives is narrower
+   and sharper than the worry was. ALS against item-item is separable on four draws of five,
+   and the p = 2.7e-06 quoted above is seed 42's.
 
    *(Correction, 2026-08-09, and it is the reason the paragraph above exists. This item was
    first rewritten to dismiss the multi-seed idea, on the grounds that "re-seeding changes
@@ -433,7 +436,8 @@ not chosen by accident.
    measure a second source of variance rather than a spurious one. The two measurements
    answer different questions and the project wants both: McNemar for "is this difference
    bigger than user-sampling noise" — done, L74 — and seeds for "does the conclusion survive
-   a different draw" — not done.)*
+   a different draw" — **done 10.08.2026, L86: the conclusion survives, the ordering holds on
+   five draws, and three near-ties change verdict between them**.)*
 5. **The hybrid recommended in §7 has never been measured** (restored 09.08.2026 — this item
    was added, lost to a concurrent edit, and then recorded by the sweep as never having
    existed). It is argued from two *bounds*, the union ceiling (L50) and the near-disjoint

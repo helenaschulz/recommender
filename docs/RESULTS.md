@@ -860,7 +860,11 @@ L74's interval and its paired test hold the drawn holdout fixed and quantify sam
 argument that this second draw is not a detail: HitRate differs by a factor of seven between
 the lowest and the highest support stratum, so which stratum a reader's drawn book lands in
 matters more than most model differences in the table. Measuring it means re-running the
-whole comparison on several seeds — cheap at eight minutes a seed, and **not done**.
+whole comparison on several seeds — **done, M21 (L86)**: five draws, and the ordering holds on
+all of them, but ALS against item-item — the narrowest pair this table calls separable — is
+separable on only **four of the five**, and the p = 2.7e-06 below is seed 42's draw. Read that
+cell with L86 beside it. *(The estimate of eight minutes a seed was wrong by a factor of three:
+it is 22, because the three M19 hybrid rules cost 14 of them.)*
 
 *One property that makes those seeds comparable, recorded because it was briefly got wrong
 in `model_selection.md` §9 and corrected on 09.08.* **Eligibility does not depend on the
@@ -1086,13 +1090,15 @@ seed 42 alone.*
   and Coverage and Novelty have no intervals at all. Coverage is not a per-user proportion,
   so the same machinery does not apply to it — a bootstrap over users would, and it is
   unmeasured.
-- **The holdout draw itself is unmeasured, and it is now the largest unquantified
-  uncertainty in the project.** L74 measures sampling across users and explicitly does not
-  cover which book seed 42 withdrew from each reader; L73 prices why that matters (a factor
-  of seven in HitRate between support strata). Re-running the comparison on several seeds
-  costs about eight minutes a seed and nothing else moves, because eligibility is
-  seed-invariant (see the note under L74). Until it is run, every number here is conditional
-  on one draw.
+- ~~**The holdout draw itself is unmeasured, and it is now the largest unquantified
+  uncertainty in the project.**~~ — **measured, M21 (L86).** Five draws (42, 44, 45, 46, 47)
+  over the same 13,580 readers. **The ordering holds on every one of them**; what moves is the
+  significance verdict on three near-ties, ALS against item-item among them. Every number here
+  is still conditional on one draw — that has not changed — but the *consequence* of that is
+  now bounded rather than open: sd 0.0003 to 0.0017 per row, and no rank ever moves. **What
+  remains open from this item** is the tuning channel L86 names and does not close:
+  hyperparameters were selected on seed 42's validation split and inherited by the other four,
+  which is 5x the sweep cost to fix.
 - **The subtitle class of duplicate works** (L64's note): 9,523 further works across 30,486
   clusters would merge if everything after a colon were dropped. Needs an M11.3-style
   sampled audit before anyone touches it, because the rule cannot tell *The Hobbit: or
