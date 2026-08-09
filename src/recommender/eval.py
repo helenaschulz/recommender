@@ -8,10 +8,12 @@
   them as three separate columns would be three views of the same measurement dressed
   up as corroboration.
 - **Catalog-Coverage@K** — distinct catalogue books appearing in *any* user's top-K,
-  divided by the full catalogue of 271,360. This is how the "collaborative filtering
-  can only reach 5.3% of the catalogue" argument (ledger L12) gets measured instead of
-  asserted. Recommended ISBNs that are not in ``Books.csv`` do not count towards the
-  numerator: a book we cannot name is a book we cannot show.
+  divided by the size of the catalogue it was given: **271,360 ISBNs** on the ISBN basis,
+  **235,824 works** on the work basis, and the two are never mixed in one table (the
+  mistake ledger L46 records). Since M12 the published rows are work-level. This is how the
+  "collaborative filtering can only reach 5.3% of the catalogue" argument (ledger L12) gets
+  measured instead of asserted. Recommended ids that are not in ``Books.csv`` do not count
+  towards the numerator: a book we cannot name is a book we cannot show.
 - **Novelty@K** — mean self-information of recommended items,
   ``-log2((train_interactions + 1) / (total_train_interactions + catalog_size))``.
   Higher means deeper in the tail. The +1 smoothing is deliberate: content models can

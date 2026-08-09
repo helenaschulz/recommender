@@ -22,7 +22,7 @@ timestamps would be split temporally instead.
 | Implicit zeros in `Ratings.csv` | 716,109 of 1,149,780 (62.3%) |
 | Explicit ratings | 433,671 (37.7%), mean 7.6, strongly left-skewed (mode 8) |
 | Matrix density (all interactions) | 0.0032% |
-| Books with exactly 1 rating | 57.9% (explicit-only: 69.7%) |
+| Books with exactly 1 rating | 57.9% (explicit-only: 69.7%) — both in ledger L7 |
 | Books with fewer than 5 ratings | 87.1% |
 | Users with exactly 1 rating | 56.2% |
 | Top 1% of books | 25.1% of all interactions |
@@ -30,7 +30,7 @@ timestamps would be split temporally instead.
 | Users in `Users.csv` without a single rating | 173,575 (62%) |
 | `Age` missing | 39.7%; outliers from 0 to 244 (0.74% implausible) |
 | `Year-Of-Publication` | 4,618 zeros, 23 later than 2006, 3 non-numeric (broken rows) |
-| Edition duplicates (same title+author, several ISBNs) | 17,554 works, 40,675 ISBNs |
+| Edition duplicates (same title+author, several ISBNs) | 17,554 works, 40,675 ISBNs — **a lower bound, superseded: L40 measures 24,392 works over 59,928 ISBNs (22.1%)** |
 | After the typical filter (explicit, user ≥5, book ≥5) | 152,280 ratings, 13,305 users, 14,513 books, density 0.079% |
 
 Three consequences follow:

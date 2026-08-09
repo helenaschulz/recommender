@@ -27,7 +27,7 @@ line against [`dataset_findings.md`](dataset_findings.md) and printed **27/27 ma
 | L4 | **Most of the data carries no grade** | 716,109 of 1,149,780 = **62.3%** implicit | Count of `Book-Rating == 0`; in Book-Crossing a 0 marks an interaction, not a score | §2 | 2026-08-03 |
 | L5 | Explicit ratings are few and left-skewed | 433,671 (37.7%), mean 7.60, mode 8 | `Book-Rating > 0`; mean/mode over that subset | §2 | 2026-08-03 |
 | L6 | The interaction matrix is extremely sparse | **0.0032%** density — 1 filled cell in ~31,184 | `n_ratings / (distinct users × distinct ISBNs in Ratings.csv)` | §3 | 2026-08-03 |
-| L7 | Most books are rated exactly once | **57.9%** (87.1% have fewer than 5) | Share of `groupby("ISBN").size()` equal to 1 (resp. < 5) | §3 | 2026-08-03 |
+| L7 | Most books are rated exactly once | **57.9%** (87.1% have fewer than 5); on the **explicit** subset **69.7%** (92.2% under 5) | Share of `groupby("ISBN").size()` equal to 1 (resp. < 5). The explicit-only pair repeats the same computation on `Book-Rating > 0` and is the honest number to quote whenever the sparsity argument is made about *graded* data — it was quoted in `dataset_findings.md` before it had a line here, and is recomputed directly from `Ratings.csv` (57.8598 / 87.1490 / **69.6988** / 92.1843) | §3 | 2026-08-09 |
 | L8 | Most users rate exactly once | 56.2% | Share of `groupby("User-ID").size()` equal to 1 | §3 | 2026-08-03 |
 | L9 | **Interactions concentrate in the head** | top 1% of books (3,406 titles) = **25.1%** of all interactions | Sum of the 1% highest per-book counts / total ratings | §3 | 2026-08-03 |
 | L10 | The standard filter funnel | 1,149,780 → 433,671 → **152,280** ratings (13.2% survive) | Explicit-only, then ≥5 ratings per user **and** per book, both thresholds evaluated on the explicit set in a single pass | §4 | 2026-08-03 |
@@ -66,19 +66,44 @@ the whole table moved is measured in L58.
 | ALS / weighted MF | 0.0545 | 0.897% | 12.29 | 3.5× accuracy, 33× coverage | L55 |
 | item-item, explicit-only | 0.0486 | 10.036% | 15.97 | 3.1× accuracy, 370× coverage | L54 |
 | content TF-IDF | 0.0405 | 16.806% | 17.07 | 2.6× accuracy, 619× coverage | L56 |
-| content embeddings | 0.0141 | **26.143%** | **18.34** | **0.91× accuracy**, 963× coverage | L57 |
+| content embeddings | 0.0141 | **26.143%** | **18.34** | **not measurably different from the baseline** (0.91×, z ≈ 1.0), 963× coverage | L57 |
 | *structural ceiling* | *0.8666* | — | — | *no CF model can exceed this* | L50 |
 
 Coverage ratios are taken against the baseline's **64 distinct works**, the exact count;
 every percentage in the column is over the same 235,824-work denominator.
 
-**The table has a shape, and the shape is the finding.** Accuracy and coverage run in
-opposite directions almost perfectly: the ranking by HitRate is exactly the reverse of
-the ranking by Coverage, with ALS the only exception. No single model is best. Item-item
-wins accuracy by a clear margin; embeddings reach three times the catalogue at a fifth of
-the accuracy; and the content models are the only ones that can touch a book nobody has
-read. **That shape survived the re-base unchanged** — same ordering, same tension, a
-different item universe — which is the reassuring half of M12.
+**The table has a shape, and the shape is the finding.** Among the four real models,
+accuracy and coverage run in opposite directions: ordered by HitRate they are item-item >
+ALS > explicit-only > TF-IDF; ordered by Coverage that reverses exactly, TF-IDF >
+explicit-only > item-item > ALS. **The baseline is outside that trade-off rather than at
+one end of it** — it is last on accuracy among the real models *and* last on coverage, so
+it buys nothing in either direction and only marks the zero point. Embeddings sit at the
+coverage extreme at an accuracy the baseline matches (see the sampling-error note below).
+No single model is best. Item-item wins accuracy by a clear margin; embeddings reach three
+times the catalogue at a fifth of the accuracy; and the content models are the only ones
+that can touch a book nobody has read. **That shape survived the re-base unchanged** —
+same ordering, same tension, a different item universe — which is the reassuring half of
+M12.
+
+*(Corrected 2026-08-09. This paragraph previously claimed the HitRate ranking was "exactly
+the reverse" of the Coverage ranking "with ALS the only exception". It is not: the
+popularity baseline is fifth on accuracy and sixth on coverage, so it is displaced by four
+places, and item-item by three. The trade-off is real and holds among the four real models;
+the baseline was never part of it. The table above always said so — the sentence did not.)*
+
+**How large a difference in this table is real?** Not measured, *derived*, and labelled as
+such: with 13,580 users and leave-one-out, HitRate is a binomial proportion, so its standard
+error is `sqrt(p(1-p)/13580)` — **±0.0010 to ±0.0021** across these rows. A difference of
+0.0099 (item-item over ALS) is roughly 3.5 standard errors even on the conservative unpaired
+assumption and is safe to call. **The difference between the popularity baseline (0.0155)
+and content embeddings (0.0141) is 19 users out of 13,580, z ≈ 1.0, and is not
+distinguishable from noise.** That row previously read "0.91× accuracy" and L57 read "still
+below the baseline"; both were reworded on 2026-08-09 to say what the sample supports, which
+is that the two are not measurably different. The ISBN-level analogue was genuinely
+different — 0.0109 against 0.0145 is z ≈ 2.7 — so the re-base moved embeddings *up* into the
+noise band rather than the wording having always been wrong. Every other gap in the table
+exceeds three standard errors. The proper test is
+paired (McNemar over per-user hit vectors), it is cheap, and it is open — see the open items.
 
 **What we would actually ship, and why:** item-item as the scoring core, with the content
 layer serving the catalogue it structurally cannot reach (L50: the union of both raises
@@ -124,7 +149,7 @@ paragraph below is still the argument, only re-based.
 |---|---|---|---|---|---|---|
 | L22 | **popularity** (baseline) | **0.0145** | **0.019%** | 10.81 | rank by train interaction count, exclude own train items; `candidate_pool=2000` | 2026-08-04 |
 | L24 | **item-item CF** (shrunk cosine) | **0.0546** | **9.064%** | 14.91 | binarized all-interaction matrix, shrinkage λ=10, 50 neighbours/item, min_support=1, score = Σ similarities over the user's train items | 2026-08-04 |
-| L44 | **item-item CF, work level** (M11) | **0.0644** | 8.190%* | 14.17 | identical model and parameters, fitted on the **work-keyed** matrix: 235,824 items, 13,580 eligible users. *\*Coverage is over 235,824 works, not 271,360 ISBNs — this row is **not** cell-comparable with L24* | 2026-08-08 |
+| →L44 | **item-item CF, work level** (M11) | **0.0644** | 8.190%* | 14.17 | identical model and parameters, fitted on the **work-keyed** matrix: 235,824 items, 13,580 eligible users. *\*Coverage is over 235,824 works, not 271,360 ISBNs — this row is **not** cell-comparable with L24.* **Not a line of its own: this is L44 restated in this table**, so the ISBN-level record carries its own successor row. It was mistakenly given the ID `L44` a second time; corrected 2026-08-09, and the ID belongs to the clustering line below. Superseded as the published row by **L53** | 2026-08-08 |
 | L26 | item-item, **explicit-only ablation** | 0.0379 | 10.739% | 16.59 | identical model and parameters, fitted on the 420,090 graded interactions alone | 2026-08-04 |
 | L33 | **ALS / weighted MF** | 0.0451 | 0.835% | 12.63 | `implicit` ALS, 128 factors, α=1 (confidence `1 + α·rating`), regularization 0.05, 20 iterations, seed 42 | 2026-08-04 |
 | L35 | **content embeddings** (multilingual) | 0.0109 | **23.911%** | **18.42** | `paraphrase-multilingual-MiniLM-L12-v2`, 384 dims, all 271,360 books embedded from title+author, profile vectors centered, score = mean cosine | 2026-08-04 |
@@ -389,8 +414,8 @@ only. Source for every line below: `python scripts/run_model.py --all --gallery
 | L53 | **item-item CF** (shrunk cosine), work level — *the primary row* | **0.0644** · **8.190%** · 14.17 | binarized all-interaction matrix over works, λ=10, 50 neighbours/item, min_support=1, score = Σ similarities over the user's train works. Fit 22s, evaluation 2s. **Reproduces L44 to the digit** on an independently re-tuned parameter set (L51), which is the check that the re-base is deterministic. 7.43% of the L50 ceiling | 2026-08-08 |
 | L54 | item-item, **explicit-only ablation**, work level | 0.0486 · 10.036% · 15.97 | identical model and parameters, fitted on the graded interactions alone over the same work index space. Discarding the ungraded rows now costs **24%** of the hit rate, against 31% at ISBN level (L26) — the same direction, a smaller penalty, because merging editions recovers part of what the explicit-only matrix was losing to fragmentation | 2026-08-08 |
 | L55 | **ALS / weighted MF**, work level | 0.0545 · 0.897% · 12.29 | `implicit` ALS, 128 factors, α=1, regularization 0.05, 20 iterations, seed 42, similarity support floor 20 (L34). Fit 90s, evaluation 36s. Still loses to item-item on all three metrics and is still the most popularity-concentrated real model in the table — the L33 verdict is unchanged by the re-base | 2026-08-08 |
-| L56 | **content TF-IDF** (coverage layer), work level | 0.0405 · **16.806%** · 17.07 | char_wb 3–5-grams over the canonical title+author of each work, min_df=3, **235,824 works vectorized, 215,377 features**. Fit 10s, evaluation 266s. This is the row the M12.6 plausibility gate stopped on: +77.6% against L30. Taken apart in **L58** | 2026-08-08 |
-| L57 | **content embeddings** (multilingual), work level | 0.0141 · **26.143%** · **18.34** | `paraphrase-multilingual-MiniLM-L12-v2`, 384 dims, all 235,824 works encoded from canonical title+author, profile vectors centered, score = mean cosine. Vectors cached separately from the ISBN-level set under `artifacts/embeddings/` — the cache key is a fingerprint of the text encoded, so the two sets coexist instead of overwriting each other. Still the coverage extreme and still below the baseline on accuracy, now by 9% rather than 25% | 2026-08-08 |
+| L56 | **content TF-IDF** (coverage layer), work level | 0.0405 · **16.806%** · 17.07 | char_wb 3–5-grams over the canonical title+author of each work, min_df=3, **235,824 works vectorized, 215,377 features**. Fit 10s, evaluation 266s. This is the row the M12.6 plausibility gate stopped on: **+77.4%** against L30. Taken apart in **L58** | 2026-08-08 |
+| L57 | **content embeddings** (multilingual), work level | 0.0141 · **26.143%** · **18.34** | `paraphrase-multilingual-MiniLM-L12-v2`, 384 dims, all 235,824 works encoded from canonical title+author, profile vectors centered, score = mean cosine. Vectors cached separately from the ISBN-level set under `artifacts/embeddings/` — the cache key is a fingerprint of the text encoded, so the two sets coexist instead of overwriting each other. Still the coverage extreme. **On accuracy it is no longer distinguishable from the baseline**: 0.0141 against 0.0155 is 19 users of 13,580, z ≈ 1.0 (reworded 2026-08-09 — the row previously read "still below the baseline on accuracy, now by 9% rather than 25%", which claimed a difference the sample cannot support). At ISBN level (L35) the same comparison was 0.0109 against 0.0145, z ≈ 2.7, and *did* clear the bar; the re-base moved embeddings up into the noise band, it did not move the baseline | 2026-08-08 |
 
 **L53 read out loud.** Item-item beats the baseline **4.2× on accuracy and 302× on
 coverage** at once, and captures 7.43% of the achievable ceiling against the baseline's
@@ -433,7 +458,14 @@ is measuring the same thing the table does — and splits each lift in two:
 |---|---|---|---|---|
 | L58 | **The +77.4% on TF-IDF is two effects, and the metric is the *smaller* one** | TF-IDF **0.0228 → 0.0250 (work credit) → 0.0405 (work basis)** = evaluation fairness **+9.4%**, merged signal **+62.3%**. Across all six models the fairness component is **+5.4% to +11.4%**; the merged-signal component runs **+0.5% to +62.3%** | Both bases re-run per model; the fairness column re-scores the stored ISBN-level top-10s under work credit. A fourth column repeats the fairness measurement with any slot the reader **already owns** blanked out (`serving.blank_owned_works`), because work credit could otherwise award a hit for recommending a third edition of a book the reader demonstrably has — something the work-level table can never do, since an owned work is blocked from the candidate list. That correction is negligible everywhere: TF-IDF 0.0250 → 0.0245, item-item 0.0588 → 0.0586 | 2026-08-08 |
 
-| model | ISBN basis | + work credit | …owned blocked | work basis | evaluation fairness | merged signal | total | ISBN dup slots (L45) |
+All percentages in the table below are computed from the **unrounded** HitRates, so they will
+not reproduce exactly from the four-decimal cells beside them (0.0405 / 0.0228 reads as
++77.6%; the run's own value is +77.4%, and that is the figure L56 and this section quote).
+The last column is `duplicate_slot_rate` on the ISBN basis: **L45 tabulates four of these
+six** from `analyze_dedup.py`; popularity and explicit-only were never in that four-model run
+and come from `decompose_work_level_lift.py`, which computes all six.
+
+| model | ISBN basis | + work credit | …owned blocked | work basis | evaluation fairness | merged signal | total | ISBN dup slots |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | popularity | 0.0145 | 0.0155 | 0.0155 | 0.0155 | +6.6% | +0.5% | +7.1% | 0.3% |
 | item-item CF | 0.0546 | 0.0588 | 0.0586 | 0.0644 | +7.5% | +9.5% | +17.8% | 1.2% |
@@ -565,7 +597,6 @@ matrix, so none of them is a model result and none may be quoted as one.
 | L66 | **It is not returning bestsellers, and the contrast is what makes that a measurement** | over 300 random askable anchors × 10 slots: **2,149 distinct works**, the single most-recurring title appears in **2.7%** of lists, the 100 commonest works take **12.9%** of slots, and **72.8%** of recommended works appear in exactly one list. Pure popularity on the same anchors and the same candidate pool: **11 distinct works, every one in 100% of lists** | `python scripts/analyze_recurrence.py`, seed 42. Popularity computed as a sort of the same pool by `item_support` rather than by fitting `models/popularity.py`, because the app is fitted on the full matrix and the baseline on `split.train` — re-using the fitted baseline would mix two universes. **What it does not claim:** 64.1% of the demo's slots are in the global top 1% of works, but the candidate pool *is* already the top 3.2% of the catalogue, so that figure is a soft bar and is reported with its caveat rather than as a headline | 2026-08-08 |
 | L67 | **The item-to-item surface is reproducible but not robust: a 0.5% change in the item universe replaces a third of every neighbourhood** | ALS item factors **bit-identical** across two fits on the same matrix (seed 42). Across the L64 re-key — 0.5% of works — the eleven anchors keep a mean of **6.8 of 10** neighbours: *Dune* and *Harry Potter* 9/10, but *To Kill a Mockingbird* **4/10**, *The Lovely Bones* 5/10, *Girl with a Pearl Earring* 5/10, *Bridget Jones's Diary* 5/10 | `python scripts/analyze_surface_stability.py`, comparison by title because the ids differ between the keys by construction. **Found by accident** — two anchors' answers changed visibly after a fix that touches 0.5% of the data, and the first suspicion (a non-deterministic optimizer) was checked first and ruled out. Reproducible and robust are different claims and only the first had ever been checked | 2026-08-08 |
 | L68 | **Ten slots were a UI choice; only one of three candidate rules is a truncation at all** | relative score `score_i ≥ 0.55 · score_1` removes **1.4%** of slots over 300 random anchors and 14 of the eleven anchors' 110. The largest-gap (elbow) rule removes **76.4%**, median list **2**, 87% of lists cut below 5. A co-reader-share rule cannot truncate: mean Spearman between score rank and evidence rank inside a top-10 is **0.39**, and in **18.3%** of lists some slot carries ≥2× the evidence of everything above it | `python scripts/analyze_truncation.py`, seed 42. Relative rather than absolute because of L63 — an absolute cutoff would gut a well-supported list and leave a thin one whole. **Wired in at τ = 0.55 and then reverted on review on seeing it run**: it ended *Harry Potter* after the four sequels and *Bridget Jones's Diary* after four, and a list of four reads as a broken app in front of an audience. `SCORE_TRUNCATION_TAU` is 0.0; the rule stays reachable per call. It would not have rescued *Guns, Germs, and Steel* either — every slot within 76% of its top score, every slot thin — because that anchor is the **floor's** problem, and conflating the two would be wrong | 2026-08-08 |
-
 | L69 | **The M15 surface rebuild costs nothing at runtime and moves no number** | cold start **10.6 s** (against L61's 9.4 s; 9.5 s of it is the sentence encoder, which M15 does not touch), warm query **20 ms** (L61: 21 ms), assets **890 MB** unchanged. The "thin evidence" tag fires on **5.6%** of slots over the anchor sample and **27.3%** over the eleven demo anchors, both under the 30% ceiling above which the tag would be decoration. The evidence divider renders on **5 of the 11** anchors | `python scripts/measure_app_latency.py` and `scripts/analyze_anchor_support.py` §1b. The demo anchors are all well-supported and are therefore the tag's *worst* case, which is why their rate is five times the random sample's — the tag is a share of the anchor's readers, so it can fire more readily the more readers the anchor has. Nothing in M15 touches ranking, scoring, floors or truncation, and `pytest` pins that: no expected value in the M13/M14 suites changed | 2026-08-08 |
 
 **Re-measurement note, and it is L67 happening to this ledger's own numbers.** L63 and L65
@@ -679,6 +710,69 @@ defect for display only — it changes no id, key, count or score. It is **not**
 repair: the work key is built from the corrupted string (`the little prince|saintexupãry`),
 so fixing it at load time would move the merge and therefore published numbers.
 
+## What the system costs to serve (Part 3)
+
+Part 3 argues an architecture, and an architecture argued without sizes is a box diagram.
+These two lines are the sizing evidence, measured against the **shipped** assets rather
+than estimated at a whiteboard. Source: `python scripts/measure_serving_footprint.py`,
+which reads only and fits nothing, and which prints the measured and the derived rows in
+separate blocks because they are different kinds of claim. **Nothing here changes a model
+result** — no model is fitted, scored or re-ranked to produce any of it.
+
+The timings quoted below are not new measurements: they are the fit and evaluation times
+already recorded in L53–L57 and L61/L69, gathered into one place so that "what does a
+retrain cost" has an answer that traces line by line.
+
+| ID | Claim | Number | How measured | Measured |
+|---|---|---|---|---|
+| L71 | **The demo ships 890 MB and the recommender is 17.5% of it — the rest is the search box and a padded id column** | assets **890.0 MB**: free-text lookup (encoder vectors 234,626 × 384 float32, plus ids and support) **372.2 MB / 41.8%**, the item id column **328.3 MB / 36.9%**, the ALS factor matrix that actually answers the query **155.6 MB / 17.5%**, the reader matrix **3.0 MB**, catalogue parquet **28.4 MB**. The id column is stored as fixed-width `<U270`, i.e. 1,080 bytes per id whatever the id's length; the same ids as int32 codes plus a utf-8 dictionary are **11.4 MB, 96.5% smaller** | Byte sizes of every file in `artifacts/app/` as the demo loads them, plus shapes and dtypes; the dictionary figure sums the utf-8 length of all 304,001 ids. **This is a finding about the demo's asset builder, not about the method** — it is a serving-layer packing choice and no published number depends on it. It is the concrete answer to "what is the model artefact": 155.6 MB of float32, and it would be 155.6 MB on any platform | 2026-08-09 |
+| L72 | **A precomputed answer table for the whole product is 1.5 MB — 586× smaller than what the demo ships** | **2,532 askable anchors** (support ≥ 50, the L65 floor) × top-10 = **25,320 rows / 0.3 MB** per engine, **126,600 rows / 1.5 MB** for the five-engine shortlist, at 12 bytes a row (int32 anchor, int32 item, float32 score). For contrast: item-item at 50 neighbours per item is 15,200,050 entries / **121.6 MB**, and the dense similarity matrix nobody ever builds is 92,416,608,001 cells / **370 GB** | Derived arithmetic on measured inputs (`n_items` = 304,001 and the anchor support vector from the shipped `meta.json` and `item_support.npy`; 50 neighbours from L53, 128 factors from L55). **This is the number that decides the serving design**: at 1.5 MB the answer table fits in any cache, a key-value store is sufficient and neither a vector database nor a live model server is required for the shipped use case. They become required exactly when the anchor floor comes down or personalization arrives, and that is the trade to state on the slide rather than the technology | 2026-08-09 |
+
+**L71 and L72 read out loud, and it is one argument.** The demo is 890 MB because it carries
+a sentence encoder's output so a human can type a title, and because ids were written out as
+padded Unicode. **The recommender is 155.6 MB, and the answers it produces are 1.5 MB.**
+Those three numbers in that order are the whole productionization story: the expensive part
+is the lookup, not the model; the model is small; and the served artefact is smaller still,
+because for this use case (anonymous reader, one book in, ten books out) every answer can be
+computed in advance. That is why the architecture is a batch job writing a small table, and
+not a model server — and it is a measurement, not a preference.
+
+**The floor is what moves these numbers, and the honest caveat comes with it.** 2,532
+anchors is **1.1% of the 234,626 works**: the system can answer for the books people
+actually read and refuses the rest (L65 prices the refusal — at floor 50 the askable works
+cover 26.6% of all interactions). Drop the floor to 20 and it is 7,541 anchors, the table is
+still under 5 MB, and thin slots go from 18.2% to 49.8%. **The serving cost is not what
+constrains the product; the evidence is.**
+
+**What a retrain costs, gathered rather than newly measured.** Every cell below is already
+in a line above; they are collected here because "how often would you retrain" is a Part 3
+question and the answer should be an addition, not a shrug. Single node, Apple Silicon,
+1.13M train interactions over 304k items.
+
+| Step | Time | Line |
+|---|---:|---|
+| popularity fit | instant | L22 |
+| item-item fit (50 neighbours, λ=10) | 22 s | L53 |
+| ALS fit (128 factors, 20 iterations) | 90 s | L55 |
+| TF-IDF fit (235,824 works vectorized) | 10 s | L56 |
+| embedding encode of the whole catalogue | 151 s | L35 / L57 |
+| **all six models, fit + evaluate + gallery** | **~8 min** | primary table header |
+| build the demo's serving assets | 223 s | L61 |
+
+**Read out loud: a full retrain of everything is eight minutes on a laptop.** That is the
+number that decides the retraining cadence, and it decides it in an unusual direction —
+compute is not the constraint, so the cadence should be set by how fast the *catalogue and
+the interactions* change, not by what the training costs. **This dataset cannot tell us how
+fast that is (L18: there are no timestamps)**, which makes it a discovery question for the
+client rather than a parameter to assert on a slide. Daily is defensible and cheap;
+justifying it from this data is not possible, and saying so is the stronger answer.
+
+*Note on 2,532 against L65's 2,508.* L65 measured the anchor count before the M14.4 work key
+reached the serving path; this line counts the shipped assets. The 24-anchor difference is
+the same 0.5% re-key that **L67** measures, arriving in a third place. The shipped number is
+the one quoted here, for the reason the re-measurement note above gives: a line that does not
+reproduce from what the app actually serves is worth nothing.
+
 ## Open items this ledger will need
 
 - ~~Edition clustering in the data-prep layer (L31, L39)~~ — **done, M11 (L40–L47).**
@@ -698,8 +792,21 @@ so fixing it at load time would move the merge and therefore published numbers.
   ever suggested.
 - Item-item normalized by profile length, to see whether it removes the long-profile
   degradation in L28. Not re-measured at work level.
-- **The strata in L27 and L28 have not been recomputed on the work basis.** They are
-  ISBN-level findings quoted as such; the aggregate rows they explain have moved.
+- **The strata in L27 and L28 have not been recomputed on the work basis** *as ledger
+  lines*. They are ISBN-level findings quoted as such; the aggregate rows they explain have
+  moved. **Correction, 2026-08-09: `notebooks/02_models.ipynb` §2.1 has in fact already
+  computed the work-level L27 strata** (unreachable 1,812 · 1–4 2,410 · 5–49 4,591 · 50+
+  4,767, aggregate 0.0443) and those numbers are in an executed notebook with no line here.
+  So this is not "unmeasured", it is **measured and unrecorded**, which is the worse of the
+  two states: the notebook and this ledger currently disagree about what exists. Either it
+  becomes a line or the notebook cell goes.
+- **No uncertainty is quantified anywhere in this ledger.** Every HitRate is a point
+  estimate over 13,580 users with no interval, and one published comparison does not survive
+  the omission: popularity 0.0155 against embeddings 0.0141 is 19 users, well inside
+  sampling noise (derivation under the primary table, 2026-08-09). Every other gap in the
+  table clears three standard errors, so the ranking is safe and one cell is not. The fix is
+  a paired McNemar test over the stored per-user hit vectors — minutes of compute, and it
+  was already flagged as a [HELENA] decision in the 04.08 overnight report and never taken.
 - **The subtitle class of duplicate works** (L64's note): 9,523 further works across 30,486
   clusters would merge if everything after a colon were dropped. Needs an M11.3-style
   sampled audit before anyone touches it, because the rule cannot tell *The Hobbit: or

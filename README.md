@@ -97,7 +97,7 @@ Paste a book, get ten similar books, each with one grounded reason. Build the as
 python scripts/build_app_assets.py
 ```
 
-Then start it — cold start under 10 seconds, no network, no fitting:
+Then start it — cold start about 10 seconds, no network, no fitting:
 
 ```bash
 streamlit run app/main.py
@@ -132,7 +132,8 @@ sentence embeddings — are fitted on one pinned leave-one-out split and measure
 HitRate@10, Coverage@10 and Novelty@10; the table and every negative result behind it are
 in [`docs/RESULTS.md`](docs/RESULTS.md), and the reasoning behind the choice is written up
 in [`docs/model_selection.md`](docs/model_selection.md). **The interface is built** — see
-[The demo](#the-demo) above; it starts in under 10 seconds and answers in ~20 ms (L61).
+[The demo](#the-demo) above; it starts in 10.6 s and answers in 20 ms (L69, which
+re-measured L61 after the M15 surface rebuild).
 The productionization write-up follows.
 
 The published table is keyed by **work** rather than by ISBN — merging editions before
