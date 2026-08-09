@@ -461,9 +461,15 @@ class DemoEngine:
         # The reason sentence names the anchor, and the canonical title keeps its edition
         # parenthetical -- "Harry Potter and the Sorcerer's Stone (Harry Potter (Paperback))"
         # reads badly ten times in a row. Display drops it; the work id is unchanged.
-        anchor_title = split_series(self.describe(isbn).title)[0]
+        # **Both sides of every comparison below come from `describe`**, which is what makes
+        # them comparable: it resolves the dataset's HTML entities, and reading the anchor
+        # straight off `assets.books` instead would compare an unescaped candidate author
+        # against a raw `Anne Rice &amp; co` — the M14.3 bug class returning by a different
+        # door. Unreachable today, because every work with an entity in its author string
+        # sits below both floors, but a floor is a decision and decisions move.
+        anchor_meta = self.describe(isbn)
+        anchor_title = split_series(anchor_meta.title)[0]
         anchor_readers = self._readers_of(anchor)
-        anchor_book = self.assets.books.loc[isbn] if isbn in self.assets.books.index else None
 
         seen = {isbn}
         out: list[Suggestion] = []
@@ -482,10 +488,8 @@ class DemoEngine:
                 score=float(scores[row]),
                 co_readers=int(np.intersect1d(anchor_readers, self._readers_of(row), assume_unique=True).size),
                 anchor_readers=int(anchor_readers.size),
-                same_author=anchor_book is not None and same_author(book.author, str(anchor_book["Book-Author"])),
-                shared_series=book.series
-                if anchor_book is not None and book.series and book.series == str(anchor_book["series"])
-                else "",
+                same_author=same_author(book.author, anchor_meta.author),
+                shared_series=book.series if book.series and book.series == anchor_meta.series else "",
             )
             out.append(
                 Suggestion(

@@ -7,14 +7,27 @@ Deliberately thin. Every rule that could be *wrong* lives in :mod:`recommender.d
 layout and copy. Run ``python scripts/build_app_assets.py`` once first — the app never fits
 a model, never reads ``data/`` and never touches the network.
 
-**One engine, on purpose.** The similar-items engine is ALS item factors over the
-work-keyed matrix, with the support floors from ledger L34 (candidates) and L65 (anchors).
-ALS places *third of six* on HitRate@10 in the published table (L55) and has the best
-item-to-item neighbourhoods in the project. That the offline metric and the product surface
-disagree is the finding, not an inconsistency — so the table where ALS loses is in the
-sidebar rather than hidden. A switcher across the other four models was scoped and dropped:
-each would need its own similarity artefact, which buys a dropdown and costs the cold start
-this app is built around.
+**One engine, for now.** The similar-items engine is ALS item factors over the work-keyed
+matrix, with the support floors from ledger L34 (candidates) and L65 (anchors). ALS places
+*third of six* on HitRate@10 in the published table (L55) and has the best item-to-item
+neighbourhoods in the project. That the offline metric and the product surface disagree is
+the finding, not an inconsistency — so the table where ALS loses is in the sidebar rather
+than hidden.
+
+**Why there is no engine switcher yet, corrected.** M13.2 dropped one on the grounds that
+each engine would need its own similarity artefact and would cost the cold start this app
+is built around. **M16 measured that false and this docstring carried the dead reason for
+two milestones.** With the anchor floor at 50 only ~2,500 works are reachable as anchors at
+all, so the artefact is not a second 156 MB factor matrix but a precomputed top-N table —
+about 125,000 rows across five engines, a few MB of parquet. Cold start goes *down*: a
+table lookup replaces a 156 MB memory map. It is also the Part 3 Gold-table serving
+pattern, built instead of drawn on a slide.
+
+What actually holds the switcher back is a **schedule gate, not a cost**: M16 runs only
+after the surface work is green and a first full write-up draft exists, because it changes a
+demo that has already been rehearsed. That is a different sentence from the one this file
+used to make, and the difference matters — the first is a priority, the second was a
+measurement, and the measurement went the other way.
 
 **Ledger codes appear in this file and never on the screen** (M15, pinned decision 1). They
 are precise to us and are internal jargon to a client, and jargon in a demo reads as
@@ -93,6 +106,12 @@ STYLE = """
     {margin-top: -0.85rem;}
 
   .legend {font-size: 12px; color: #6b6862; margin: 0.2rem 0 0.9rem 0;}
+
+  /* The sidebar's first heading is the only place the app is named, so it is set as a name
+     rather than as one more section label — larger than the "How it works" headings under
+     it, which keep their size. Reached through a keyed container: Streamlit wraps every
+     markdown block separately, so `h3:first-of-type` matches all four of them. */
+  .st-key-app-name h3 {font-size: 1.65rem; margin-bottom: 0.15rem;}
 
   /* One row of the result list. No card, no fill, no border — a hairline and the type
      hierarchy carry it. */
@@ -185,7 +204,8 @@ def sidebar(engine: DemoEngine) -> None:
         # "Book Recommender" rather than the pinned copy's "What this is" (the project owner,
         # 09.08.2026): the sidebar's first line is the only place the thing gets named, and
         # a section label is not a name.
-        st.markdown("### Book Recommender")
+        with st.container(key="app-name"):
+            st.markdown("### Book Recommender")
         # M15.6's provenance line, moved here from under the page title (review,09.08.).
         # Its rule is unchanged and is the reason it is a function rather than a string:
         # exactly one place in the app states the corpus size, and it is counted off the

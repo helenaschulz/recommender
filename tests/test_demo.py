@@ -259,6 +259,26 @@ class TestSameAuthor:
         match for another empty author — it is two books with no author on record."""
         assert not same_author(left, right)
 
+    def test_an_html_entity_does_not_hide_the_same_person(self) -> None:
+        """The 2004 crawl stored titles and authors as HTML, so the catalogue holds strings
+        like ``Anne Rice &amp; co``. `describe` unescapes them; reading the *anchor* straight
+        off the metadata table instead would compare an unescaped candidate against a raw
+        anchor and silently lose the tag. That is M14.3's bug by a different door."""
+        books = BOOKS.copy()
+        books.loc[HOBBIT, "Book-Author"] = "Tolkien &amp; Sons"
+        books.loc[RING, "Book-Author"] = "Tolkien & Sons"
+        engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50), books=books))
+        by_id = {s.isbn: s for s in engine.similar(HOBBIT, k=4, tau=0)}
+        assert by_id[RING].evidence.same_author is True
+
+    def test_an_html_entity_does_not_hide_a_shared_series(self) -> None:
+        books = BOOKS.copy()
+        books.loc[HOBBIT, "series"] = "Tales &amp; Legends"
+        books.loc[RING, "series"] = "Tales & Legends"
+        engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50), books=books))
+        by_id = {s.isbn: s for s in engine.similar(HOBBIT, k=4, tau=0)}
+        assert by_id[RING].evidence.shared_series == "Tales & Legends"
+
     def test_the_engine_tags_a_mixed_case_edition(self) -> None:
         """The end-to-end regression: a work whose most-interacted edition shouts its
         author must still be tagged as the anchor's author."""
