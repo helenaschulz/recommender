@@ -27,6 +27,7 @@ from recommender.demo import (
     Evidence,
     load_assets,
     reason_sentence,
+    repair_encoding,
     same_author,
 )
 
@@ -247,6 +248,61 @@ class TestAnchorFloor:
             encoder=lambda texts: np.array([[1.0, 0.0]], dtype=np.float32),
         )
         assert HOBBIT not in [b.isbn for b in engine.find("hobbit", k=5)]
+
+
+class TestRepairEncoding:
+    """The double-encoding repair. Every string below is verbatim from ``Books.csv``."""
+
+    @pytest.mark.parametrize(
+        ("broken", "fixed"),
+        [
+            ("Antoine de Saint-ExupÃ©ry", "Antoine de Saint-Exupéry"),  # The Little Prince
+            ("John Le CarrÃ©", "John Le Carré"),  # Smiley's people
+            ("Arturo PÃ©rez-Reverte", "Arturo Pérez-Reverte"),  # The Fencing Master
+            ("Harry Potter y el cÃ¡liz de fuego", "Harry Potter y el cáliz de fuego"),
+            ("101 ReykjavÃ­k: A Novel", "101 Reykjavík: A Novel"),
+        ],
+    )
+    def test_it_undoes_the_crawls_mistake(self, broken: str, fixed: str) -> None:
+        assert repair_encoding(broken) == fixed
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Antoine de Saint-Exupéry",  # already correct: the repair must not touch it
+            "Anne Rice",
+            "",
+            "Angels & Demons",
+            "Ich weiß nicht",  # a genuine latin-1-representable string that is not mojibake
+            "日本語",  # not latin-1-encodable at all
+        ],
+    )
+    def test_a_string_that_was_never_broken_survives_untouched(self, text: str) -> None:
+        assert repair_encoding(text) == text
+
+    def test_it_is_a_fixed_point(self) -> None:
+        """Measured over the shipped catalogue: one pass is enough and no repaired string
+        repairs again, which is why this is not a loop."""
+        once = repair_encoding("Antoine de Saint-ExupÃ©ry")
+        assert repair_encoding(once) == once
+
+    def test_the_engine_cleans_both_sides_of_the_author_comparison(self) -> None:
+        """The M14.3 lesson, one layer down: comparing a repaired string against a raw one
+        is the same bug by a different door. Both sides come from `describe`."""
+        books = BOOKS.copy()
+        books.loc[HOBBIT, "Book-Author"] = "Antoine de Saint-ExupÃ©ry"
+        books.loc[RING, "Book-Author"] = "Antoine de Saint-Exupéry"
+        engine = DemoEngine(_assets(support=(50, 50, 50, 50, 50), books=books))
+        assert engine.describe(HOBBIT).author == "Antoine de Saint-Exupéry"
+        by_id = {s.isbn: s for s in engine.similar(HOBBIT, k=4, tau=0)}
+        assert by_id[RING].evidence.same_author is True
+
+    def test_the_work_key_is_not_repaired(self) -> None:
+        """Deliberate: the key is built upstream from the raw column, so repairing it would
+        move the edition merge and with it published numbers. The demo's own id for *The
+        Little Prince* still carries the defect."""
+        engine = DemoEngine(_assets())
+        assert engine.describe(HOBBIT).isbn == HOBBIT
 
 
 class TestSameAuthor:

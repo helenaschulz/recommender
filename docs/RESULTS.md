@@ -698,17 +698,40 @@ deliberately diverge (`demo.reason_sentence`, M17.7). The bar is scaled to the t
 own list for the same reason: on a fixed 0–1 axis *The Little Prince* (0.33–0.40) would
 render as a row of stubs beside *Interview with the Vampire* (0.50–0.80).
 
-**Unasked-for finding, not fixed, the call.** 3.05% of catalogue rows (7,150) carry
-double-encoded text — *Antoine de Saint-Exupéry* is stored as `Saint-ExupÃ©ry`, and the
-corruption is **in the source CSV**, not in how it is read. It barely matters and then it
-matters exactly once: only **2 of the 2,508 works reachable as anchors** are affected, and
-one of them is *The Little Prince*, the anchor that prompted this milestone, so it is on
-screen in the demo. 3,234 of the flagged fields round-trip cleanly through
-`latin-1 → utf-8`; the rest do not and would be left alone. A repair belongs in
-`DemoEngine.describe`, beside the `html.unescape` that already fixes the same class of
-defect for display only — it changes no id, key, count or score. It is **not** a data-layer
-repair: the work key is built from the corrupted string (`the little prince|saintexupãry`),
-so fixing it at load time would move the merge and therefore published numbers.
+**Unasked-for finding, and it was taken: the double encoding is repaired for display.**
+The source CSV holds *Antoine de Saint-Exupéry* as `Saint-ExupÃ©ry` — UTF-8 bytes written as
+latin-1 characters, **a defect in the file, not in how this project reads it**. The repair is
+the inverse of the original mistake (`encode("latin-1").decode("utf-8")`) in
+`demo.repair_encoding`, called from `DemoEngine.describe` beside the `html.unescape` that
+already fixes the same class of defect one layer up.
+
+**Its own failure is the guard, so nothing is guessed.** A string that was never
+double-encoded produces bytes that are not valid UTF-8 — a genuine *é* is the single byte
+`0xE9` — so it raises and comes back untouched. Over all **469,252** title and author
+strings in the shipped catalogue: **3,234 change, and every one carries the `Ã`/`Â`
+signature — zero change without it.** One pass is a fixed point: no string needs a second
+and no repaired string repairs again, which is why it is not a loop.
+
+| where it lands | works | repaired |
+|---|--:|--:|
+| reachable as an **anchor** (floor 50) | 2,508 | **1** — *The Little Prince* |
+| reachable as a **candidate** (floor 20) | 7,541 | **12** — incl. *Le Petit Prince*, two Spanish *Harry Potter* volumes, `John Le CarrÃ©` |
+
+*(Corrected 2026-08-09: an earlier draft of this paragraph said 2 anchors. That count came
+from a regex for the `Ã`/`Â` signature, which also flags strings the repair correctly leaves
+alone; the number of works the repair actually changes is 1.)*
+
+**No tag can flip, checked rather than assumed.** The one thing downstream that reads this
+text is the `same_author` comparison, and it takes *both* sides from `describe`, so the two
+are always cleaned to the same standard — the M14.3 lesson one layer down. The risk left is a
+repaired string colliding with a *different* raw one: across all 7,541 candidates, **zero**
+repaired author strings merge two distinct raw strings. The eleven anchors re-run
+byte-identical, tags and reason sentences included.
+
+**Display only, and that is load-bearing.** The work key is built upstream from the raw
+column and still reads `the little prince|saintexupãry`. Repairing it there would move the
+edition merge and with it published numbers, so it is deliberately left corrupt and pinned by
+a test. Nothing here is a data-layer repair, and no ledger number moves.
 
 ## What the system costs to serve (Part 3)
 

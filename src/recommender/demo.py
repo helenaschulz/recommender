@@ -154,6 +154,40 @@ def assets_dir(root: Path | None = None) -> Path:
     return (root or project_root()) / ASSETS_SUBDIR
 
 
+def repair_encoding(text: str) -> str:
+    """Undo one round of UTF-8-read-as-latin-1, or return the string untouched.
+
+    The 2004 crawl stored some rows already double-encoded, so ``Books.csv`` literally
+    contains ``Antoine de Saint-ExupÃ©ry`` — the bytes of *é* rendered as two latin-1
+    characters. **The corruption is in the source file, not in how this project reads it**;
+    ``pd.read_csv`` is decoding correct UTF-8 whose content happens to be mojibake.
+
+    Rather than a table of substitutions, the inverse of the original mistake: encode back to
+    latin-1, decode as UTF-8. **Its own failure is the guard.** A string that was never
+    double-encoded either has no latin-1 encoding (rare here) or produces bytes that are not
+    valid UTF-8 — a genuine *é* is the single byte ``0xE9``, which is an invalid UTF-8
+    sequence on its own — so it raises and is returned unchanged. Nothing is guessed and
+    nothing is repaired that does not round-trip exactly.
+
+    Measured over all 469,252 title and author strings in the shipped catalogue (M17
+    follow-up): **3,234 change, and every one of them carries the ``Ã``/``Â`` signature** —
+    zero strings change without it, which is the false-positive check. One pass is also a
+    fixed point: no string needs a second, and no repaired string repairs again, so this is
+    idempotent and needs no loop.
+
+    **Display only, and that is load-bearing rather than a disclaimer.** The work key is
+    built from the *corrupted* string (``the little prince|saintexupãry``), so repairing at
+    load time would move the edition merge and with it published numbers. Repairing here
+    moves nothing: no id, key, count or score is derived from what :meth:`DemoEngine.describe`
+    returns. The one thing downstream that reads this text is the ``same_author`` comparison,
+    and it gets *both* sides from ``describe`` — see there.
+    """
+    try:
+        return text.encode("latin-1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return text
+
+
 def same_author(left: str, right: str) -> bool:
     """Do these two author strings name the same person, ignoring case and padding?
 
@@ -389,17 +423,30 @@ class DemoEngine:
     # -- metadata -----------------------------------------------------------------
 
     def describe(self, isbn: str) -> Book:
-        """Catalogue metadata for one work, with the dataset's HTML entities resolved.
+        """Catalogue metadata for one work, with the dataset's two text defects undone.
 
-        The 2004 crawl stored titles as they appeared in HTML, so ``Books.csv`` literally
-        contains ``Angels &amp; Demons`` and ``Marley &amp; Me``. The *work key* has always
-        unescaped them (``split_series`` does it), which is why the id reads
-        ``angels & demons|brown`` — but the displayed title did not, so the app has been
-        printing the entity on screen since M13. Unescaping here rather than in the app
-        means every consumer gets the clean string: the screen, the anchor report, and the
-        anchor name inside a reason sentence.
+        **HTML entities.** The 2004 crawl stored titles as they appeared in HTML, so
+        ``Books.csv`` literally contains ``Angels &amp; Demons`` and ``Marley &amp; Me``. The
+        *work key* has always unescaped them (``split_series`` does it), which is why the id
+        reads ``angels & demons|brown`` — but the displayed title did not, so the app printed
+        the entity on screen from M13 until M14.3.
 
-        Display only. No id, key, count or score is derived from this text.
+        **Double encoding**, the same defect one layer down and fixed the same way: the file
+        also holds ``Antoine de Saint-ExupÃ©ry``. See :func:`repair_encoding` for why the
+        repair cannot damage a string that was never broken. It is rare and it is on screen:
+        **1 of the 2,508 works that can be an anchor** — *The Little Prince* — and **12 of
+        the 7,541 that can appear as a candidate**, among them *Le Petit Prince*, two Spanish
+        *Harry Potter* volumes and *Smiley's people* by ``John Le CarrÃ©``.
+
+        Doing both here rather than in the app means every consumer gets the clean string:
+        the screen, the anchor report, and the anchor name inside a reason sentence.
+
+        **Display only. No id, key, count or score is derived from this text** — the work key
+        is built upstream from the raw column and still carries both defects, deliberately.
+        The one comparison that reads these strings is ``same_author`` in :meth:`similar`,
+        and it takes *both* sides from this method, so the two are always cleaned to the same
+        standard. That is the M14.3 lesson: a comparison between a cleaned string and a raw
+        one is a bug waiting for the right pair of editions.
         """
         row = self.assets.books.loc[isbn] if isbn in self.assets.books.index else None
         if row is None:
@@ -407,12 +454,16 @@ class DemoEngine:
                 isbn=isbn, title=f"[unknown ISBN {isbn}]", author="", year="", series="", readers=0
             )
         item = self._index.get(isbn)
+
+        def clean(value: object) -> str:
+            return repair_encoding(html.unescape(str(value)))
+
         return Book(
             isbn=isbn,
-            title=html.unescape(str(row["Book-Title"])),
-            author=html.unescape(str(row["Book-Author"])),
+            title=clean(row["Book-Title"]),
+            author=clean(row["Book-Author"]),
             year=str(row["Year-Of-Publication"]),
-            series=html.unescape(str(row["series"])),
+            series=clean(row["series"]),
             readers=int(self.assets.item_support[item]) if item is not None else 0,
         )
 
