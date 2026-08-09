@@ -11,7 +11,7 @@
   and all interactions of users who are not eligible. Sparse data is not a reason to
   throw signal away.
 
-**The anchor draw, pinned once (M20).** :func:`pick_anchors` adds a second draw to this
+**The anchor draw, pinned once.** :func:`pick_anchors` adds a second draw to this
 module, and it deliberately reuses the first one's mechanism. The item-to-item metric needs
 one *query* book per user — the book a visitor would paste in — and the honest choice is the
 book we would have held out instead: drawn uniformly, seeded, from the same population the

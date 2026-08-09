@@ -112,7 +112,7 @@ def repair_shifted_rows(books: pd.DataFrame) -> tuple[pd.DataFrame, int]:
 # are another edition of a book the user already holds (L31, L39). Clustering first is
 # worth 18% of item-item's hit rate (L44).
 #
-# **The key** (pinned by the project owner, 04.08.2026): the title with its trailing
+# **The key**: the title with its trailing
 # parenthetical stripped and normalized (HTML-unescaped, lower-cased, whitespace
 # collapsed), plus the author's last-name token, lower-cased. Title alone would merge
 # *Crime and Punishment* by Dostoevsky with *Crime and Punishment* by Ali Brownlie — a
