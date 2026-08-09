@@ -107,6 +107,54 @@ def combine_user(
     and the measurement can never drift into ranking two different ways. Inputs are already
     ranked best-first with ``None`` / ``-inf`` padding, exactly as
     :meth:`Recommender.recommend_scored` returns them.
+
+    :func:`combine_user_scored` is the same ranking with the rule's own score attached; this
+    is that function with the scores dropped, so there remains exactly one ranking path.
+    """
+    return [
+        i
+        for i, _ in combine_user_scored(
+            cf_ids,
+            cf_scores,
+            ct_ids,
+            ct_scores,
+            rule=rule,
+            k=k,
+            alpha=alpha,
+            rrf_k=rrf_k,
+            support=support,
+            support_floor=support_floor,
+        )
+    ]
+
+
+def combine_user_scored(
+    cf_ids: np.ndarray,
+    cf_scores: np.ndarray,
+    ct_ids: np.ndarray,
+    ct_scores: np.ndarray,
+    *,
+    rule: str,
+    k: int,
+    alpha: float = 0.5,
+    rrf_k: int = DEFAULT_RRF_K,
+    support: dict[str, int] | None = None,
+    support_floor: int = 0,
+) -> list[tuple[str, float]]:
+    """The same ranking, with the number the rule actually ranked by attached to each id.
+
+    The score is the **fused** value for :data:`FUSION` and :data:`RRF`, and the
+    **contributing model's own** score for :data:`CASCADE` — under a cascade nothing is fused,
+    so inventing a combined number would be a worse answer than the real one.
+
+    **Why this exists (M22).** :meth:`HybridRecommender.similar_items` documented exactly that
+    contract and did not implement it: it looked every id back up in the two base models and
+    returned *their* scores under all three rules. Under RRF that prints a list whose numbers
+    contradict its own order — the second neighbour can carry the larger number — which is the
+    M17 finding (a list sorted by a quantity that is nowhere on screen) reappearing one layer
+    down. **No published figure moves:** every measurement of these rules scores ids and order
+    only (`eval.neighbour_matrix`, `eval.hit_vector`), and the score reached the gallery's
+    display column and nothing else.
     """
     cf = [(i, s) for i, s in zip(cf_ids.tolist(), cf_scores.tolist(), strict=True) if i is not None]
     ct = [(i, s) for i, s in zip(ct_ids.tolist(), ct_scores.tolist(), strict=True) if i is not None]
@@ -115,6 +163,8 @@ def combine_user(
         # The collaborative list wins every slot it is entitled to; the content model is a
         # filler, not a voter. A slot is forfeited when the item is below the support floor,
         # which is the "thin evidence" half of the rule the ledger describes.
+        own = dict(cf)
+        own.update({i: s for i, s in ct if i not in own})
         kept = [i for i, _ in cf if support is None or support.get(i, 0) >= support_floor]
         out = kept[:k]
         if len(out) < k:
@@ -125,7 +175,7 @@ def combine_user(
                     seen.add(i)
                     if len(out) == k:
                         break
-        return out
+        return [(i, float(own.get(i, 0.0))) for i in out]
 
     if rule == RRF:
         fused: dict[str, float] = {}
@@ -149,7 +199,7 @@ def combine_user(
     order = {i: rank for rank, (i, _) in enumerate(cf)}
     tiebreak = {i: rank for rank, (i, _) in enumerate(ct)}
     ranked_ids = sorted(fused, key=lambda i: (-fused[i], order.get(i, 10**6), tiebreak.get(i, 10**6)))
-    return ranked_ids[:k]
+    return [(i, float(fused[i])) for i in ranked_ids[:k]]
 
 
 class HybridRecommender(Recommender):
@@ -236,17 +286,19 @@ class HybridRecommender(Recommender):
         The score returned is the fused one for :data:`FUSION` and :data:`RRF`, and the
         contributing model's own score for :data:`CASCADE` — under a cascade nothing is
         fused, so inventing a combined number would be a worse answer than the real one.
+        That contract lives in :func:`combine_user_scored`, which is also what ranks, so the
+        number shown and the number ranked by cannot drift apart again.
         """
         cf = self.collaborative.similar_items(isbn, k=self.candidates)
         ct = self.content.similar_items(isbn, k=self.candidates)
         if not cf and not ct:
             return []
 
-        cf_ids = np.array([i for i, _ in cf] + [None] * 0, dtype=object)
+        cf_ids = np.array([i for i, _ in cf], dtype=object)
         cf_scores = np.array([s for _, s in cf], dtype=np.float64)
         ct_ids = np.array([i for i, _ in ct], dtype=object)
         ct_scores = np.array([s for _, s in ct], dtype=np.float64)
-        picked = combine_user(
+        return combine_user_scored(
             cf_ids,
             cf_scores,
             ct_ids,
@@ -258,6 +310,3 @@ class HybridRecommender(Recommender):
             support=self.item_support() if self.rule == CASCADE and self.support_floor else None,
             support_floor=self.support_floor,
         )
-        known = dict(cf)
-        known.update({i: s for i, s in ct if i not in known})
-        return [(i, float(known.get(i, 0.0))) for i in picked]
