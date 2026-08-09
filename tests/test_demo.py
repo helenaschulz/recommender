@@ -20,6 +20,8 @@ import scipy.sparse as sp
 
 from recommender.demo import (
     ASSET_VERSION,
+    LOOKUP_TIE_MARGIN,
+    PICKER_MARGIN,
     DemoAssets,
     DemoEngine,
     Evidence,
@@ -93,15 +95,25 @@ class TestReasonSentence:
             Evidence(score=0.9, co_readers=4, anchor_readers=10, same_author=True, shared_series="Middle-earth"),
             "The Hobbit",
         )
-        assert got == "4 readers of *The Hobbit* also read this — same author, same series (Middle-earth)."
+        assert got == "4 readers of *The Hobbit* also read this — same author."
+
+    def test_a_shared_series_is_computed_but_never_claimed(self) -> None:
+        """M17.6: `series` holds the title's parenthetical, so it is *Penguin Classics* as
+        often as it is a series. The evidence still carries it; no sentence asserts it."""
+        evidence = Evidence(score=0.9, co_readers=4, anchor_readers=10, same_author=False, shared_series="Zebra")
+        assert "series" not in reason_sentence(evidence, "The Hobbit")
+        assert "Zebra" not in reason_sentence(evidence, "The Hobbit")
+        assert evidence.shared_series == "Zebra"
 
     def test_metadata_alone_still_makes_a_sentence(self) -> None:
         got = reason_sentence(Evidence(score=0.7, co_readers=0, anchor_readers=10, same_author=True), "Emma")
         assert got == "Same author."
 
     def test_the_similarity_is_never_shown_next_to_evidence(self) -> None:
-        """M14.6: the score is not comparable across anchors (L63), so it never sits beside
-        a number that is. It stays in the Evidence dataclass for anything that measures."""
+        """M14.6, and M17.7 scoped *where* it holds: this function renders the anchor
+        report, which prints eleven anchors side by side — the cross-anchor comparison a
+        cosine cannot support (L63). The screen shows one list at a time and does display
+        the score. The value stays in Evidence for anything that measures."""
         evidence = Evidence(score=0.4867, co_readers=3, anchor_readers=25, same_author=True)
         assert "0.49" not in reason_sentence(evidence, "Guns, Germs, and Steel")
         assert "similarity" not in reason_sentence(evidence, "Guns, Germs, and Steel")
@@ -300,7 +312,10 @@ class TestFind:
         assert self._engine([1.0, 0.0]).find("hobbit", k=1)[0].isbn == HOBBIT
 
     def test_the_picker_is_ordered_by_similarity(self) -> None:
-        found = self._engine([1.0, 0.0]).find("hobbit", k=3)
+        # An explicit wide margin, because the ordering rule and the relevance cutoff are
+        # two rules and this test is about the first one. Emma sits 0.134 below the best
+        # match and the default margin drops her; see TestPickerMargin.
+        found = self._engine([1.0, 0.0]).find("hobbit", k=3, margin=2.0)
         assert [b.isbn for b in found] == [HOBBIT, RING, EMMA]
 
     def test_an_empty_query_asks_nothing_of_the_encoder(self) -> None:
@@ -342,8 +357,46 @@ class TestFind:
         assert DemoEngine(popular, encoder=lambda t: np.array([tie], dtype=np.float32)).find("x", k=1)[0].isbn == RING
 
     def test_the_floor_does_not_empty_the_picker(self) -> None:
-        found = self._engine([-1.0, 0.0]).find("anything", k=5)
-        assert [b.isbn for b in found] == [DUNE, EMMA, RING, HOBBIT]
+        """Ubik is the only real match for this query and the floor removes it. What is left
+        is four bad matches, and `find` answers with them rather than with nothing — the
+        relevance cutoff then reduces four bad options to one."""
+        engine = self._engine([-1.0, 0.0])
+        assert [b.isbn for b in engine.find("anything", k=5, margin=2.0)] == [DUNE, EMMA, RING, HOBBIT]
+        assert [b.isbn for b in engine.find("anything", k=5)] == [DUNE]
+
+
+class TestPickerMargin:
+    """M17.4: the picker offers alternatives, not the five best of whatever was left."""
+
+    @staticmethod
+    def _engine(vector: list[float]) -> DemoEngine:
+        return DemoEngine(_assets(), encoder=lambda texts: np.array([vector], dtype=np.float32))
+
+    def test_a_candidate_past_the_margin_is_not_offered(self) -> None:
+        """Emma is 30 degrees off the query, 0.134 below the best match. On the real
+        catalogue this is *A Little Princess* under "little prince"."""
+        assert EMMA not in [b.isbn for b in self._engine([1.0, 0.0]).find("hobbit", k=5)]
+
+    def test_the_book_the_query_resolves_to_cannot_change(self) -> None:
+        """The invariant that makes this a display-side change: the cutoff sits outside the
+        tie group, so it can only ever remove alternatives, never the answer."""
+        for vector in ([1.0, 0.0], [-1.0, 0.0], [0.0, 1.0]):
+            engine = self._engine(vector)
+            assert engine.find("q", k=5)[0].isbn == engine.find("q", k=5, margin=2.0)[0].isbn
+
+    def test_the_cutoff_cannot_cut_into_the_tie_group(self) -> None:
+        """Structural, not empirical: a margin at or below the tie margin would let the two
+        rules interact, and M17.4 says escalate rather than tune both."""
+        assert PICKER_MARGIN > LOOKUP_TIE_MARGIN
+
+    def test_the_tie_group_survives_the_cutoff_whole(self) -> None:
+        """A query exactly between Hobbit and Fellowship. Both are inside the tie margin, so
+        both must still be there for the readership rule to choose between them. (Emma is
+        0.117 below the best match here and survives too — the margin is a cutoff on
+        irrelevance, not a promise that only one book comes back.)"""
+        tie = [float(np.cos(np.deg2rad(2))), float(np.sin(np.deg2rad(2)))]
+        found = DemoEngine(_assets(), encoder=lambda t: np.array([tie], dtype=np.float32)).find("x", k=5)
+        assert {HOBBIT, RING} <= {b.isbn for b in found}
 
 
 class TestAssetContract:

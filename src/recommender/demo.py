@@ -117,6 +117,38 @@ OVERSAMPLE = 10
 #: **nothing** any published number is measured on. The recommendation ranking never sees it.
 LOOKUP_TIE_MARGIN = 0.06
 
+#: How far below the best match a lookup candidate may sit and still be **offered** (M17.4).
+#: A different question from :data:`LOOKUP_TIE_MARGIN`, and the two must not be confused:
+#: the tie margin decides *which book the query resolves to*, this one decides *which
+#: alternatives are worth showing beside it*. Everything past it is dropped from the
+#: shortlist, so the picker is sometimes one row and sometimes five.
+#:
+#: The problem it solves is a credibility one, not a metric one. ``find`` returned five
+#: candidates whatever their score, so "little prince" offered *A Little Princess*, a John
+#: Saul and a Stephen King next to the right answer; a visibly absurd option makes the good
+#: one beside it look like a coincidence.
+#:
+#: **Derived, in `scripts/analyze_picker_margin.py`, rather than picked.** 300 answerable
+#: works are queried by their own titles, a returned candidate counts as on-target when its
+#: title contains the query's or vice versa, and rank 1 is excluded because it is on-target
+#: by construction. On-target alternatives sit a median 0.032 below the best match,
+#: off-target ones 0.212. The separation between the two classes peaks on a **plateau**, not
+#: a spike — 0.08 to 0.13 all buy within a point of each other — so the argmax was re-run on
+#: six independent samples: median 0.118, range 0.102 to 0.153. 0.12 is that median at the
+#: resolution the sample supports, and the third decimal is deliberately not claimed.
+#:
+#: **It cannot interact with the tie margin, by construction.** At twice 0.06 it never cuts
+#: into the tie group, so the group the readership rule re-orders is always whole and **the
+#: book a query resolves to cannot change** — only the alternatives listed under it. That is
+#: what keeps this a display-side change to a serving path, and it is asserted in the tests
+#: rather than left as a claim.
+#:
+#: What it does not fix: `"Guns Germs Steel"` keeps all five candidates, because all five are
+#: Danielle Steel novels within 0.06 of each other. That is L38's under-determined-query
+#: finding and no cutoff relative to the best match can see it — the best match is already
+#: wrong.
+PICKER_MARGIN = 0.12
+
 
 def assets_dir(root: Path | None = None) -> Path:
     return (root or project_root()) / ASSETS_SUBDIR
@@ -146,7 +178,19 @@ def same_author(left: str, right: str) -> bool:
 
 @dataclass(frozen=True)
 class Evidence:
-    """What the app knows about *why* a book was suggested. All of it is countable."""
+    """What the app knows about *why* a book was suggested. All of it is countable.
+
+    :attr:`shared_series` is **computed and not displayed** since M17.6. It is kept because
+    it is a fact about the row and the field it is derived from is real; what is not real is
+    the name. ``series`` holds the title's trailing parenthetical, which is a series 27% of
+    the time and a publisher imprint, a format or an edition number the rest — *Penguin
+    Classics* covers 378 works, *Dover Thrift Editions* 268, and *Dune* carries *Remembering
+    Tomorrow*. A tag reading "same series (Penguin Classics)" is a false claim printed as
+    fact, and the comparison also under-fires on the real thing, because one series appears
+    as ``Vampire Chronicles (Paperback)``, ``The Vampire Chronicles, Book 6`` and ``Vampire
+    Chronicles, No 5``. It comes back when a series is an entity rather than a substring;
+    that is on the roadmap and is a data-layer project, not a surface fix.
+    """
 
     score: float
     co_readers: int
@@ -157,14 +201,20 @@ class Evidence:
 
 @dataclass(frozen=True)
 class Suggestion:
-    """One row of the result list, ready for display."""
+    """One row of the result list, ready for display.
+
+    ``image_url`` was dropped in M17.7: the covers are the dataset's 2004 Amazon URLs, M15
+    cut them from the screen, and nothing has rendered the field since. The build script
+    still writes the column — removing it there would change the asset layout, and forcing a
+    rebuild days before a demo costs more than the megabyte it saves, especially since a
+    rebuild is precisely what moved the lookup between two screenshots in M17.9.
+    """
 
     isbn: str
     title: str
     author: str
     year: str
     series: str
-    image_url: str
     evidence: Evidence
     reason: str
 
@@ -178,30 +228,48 @@ class Book:
     author: str
     year: str
     series: str
-    image_url: str
     readers: int
 
 
 def reason_sentence(evidence: Evidence, anchor_title: str) -> str:
     """One sentence explaining a suggestion, from structured evidence only.
 
+    **This renders the anchor report, not the screen** (M17.7, the decision, so nobody has to
+    re-derive it). ``scripts/run_demo_anchors.py --reasons`` is its only caller; the app
+    builds its rows in ``app/main.py`` from the same :class:`Evidence`, structurally — bar,
+    score, counts, tags — and has never read this string. Two renderers of one row is a
+    liability, and the choice was to name which is which rather than to collapse them,
+    because they answer to different constraints and one of them would have to lie:
+
+    - **the screen shows one list at a time**, so the similarity there is the sort key and
+      is displayed (M17.1);
+    - **the report puts eleven anchors' lists in one document**, which is exactly the
+      cross-anchor comparison L63 says a cosine cannot support. The sentence therefore stays
+      a count-only claim, and the report carries the number in its own ``sim`` column, where
+      it reads as a column rather than as a sentence's conclusion.
+
+    So the divergence is deliberate, and this docstring is the place it is written down. If
+    the app ever renders prose, this is the function to reuse — and the similarity clause is
+    the thing to revisit first.
+
     The clauses are ordered by what a reader would actually find convincing: shared
     readership first, because "people who read that read this" is the claim the model is
-    really making; then the two metadata coincidences.
+    really making; then the metadata coincidence.
 
     **The raw similarity is printed only when there is nothing else to say** (M14.6). It
     used to be appended to every sentence, and the 14.1 sweep is the argument for removing
     it: a cosine of 0.49 against a 25-reader anchor and 0.49 against a 700-reader anchor
-    are the same number meaning different things, so putting it on screen invites precisely
-    the comparison it cannot support — between one anchor's list and another's, or between
-    two rows whose evidence differs by a factor of twenty. A count does not have that
-    problem: "169 readers of X also read this" means the same thing on every anchor.
+    are the same number meaning different things, so putting it in a *report* invites
+    precisely the comparison it cannot support. A count does not have that problem: "169
+    readers of X also read this" means the same thing on every anchor.
 
     Slightly wider than M14.6 as written, which asked for the number to go "where a count
     is available": it goes wherever *any* clause exists, including the metadata-only case
-    ("Same author"). Keeping it there would have kept the incomparable number on screen for
-    the same reason it was removed elsewhere. The value stays in :class:`Evidence`, so
-    nothing that measures anything loses access to it.
+    ("Same author"). The value stays in :class:`Evidence`, so nothing that measures anything
+    loses access to it.
+
+    The "same series" clause went with the tag in M17.6 — see :class:`Evidence` for why the
+    field does not mean what it is called.
 
     Deterministic and pure — same evidence, same sentence — which is what makes it
     testable without the app, the assets or the data.
@@ -212,8 +280,6 @@ def reason_sentence(evidence: Evidence, anchor_title: str) -> str:
         clauses.append(f"{readers} of *{anchor_title}* also read this")
     if evidence.same_author:
         clauses.append("same author")
-    if evidence.shared_series:
-        clauses.append(f"same series ({evidence.shared_series})")
 
     if not clauses:
         # No shared readers and no metadata overlap: the model is speaking from its own
@@ -338,7 +404,7 @@ class DemoEngine:
         row = self.assets.books.loc[isbn] if isbn in self.assets.books.index else None
         if row is None:
             return Book(
-                isbn=isbn, title=f"[unknown ISBN {isbn}]", author="", year="", series="", image_url="", readers=0
+                isbn=isbn, title=f"[unknown ISBN {isbn}]", author="", year="", series="", readers=0
             )
         item = self._index.get(isbn)
         return Book(
@@ -347,20 +413,19 @@ class DemoEngine:
             author=html.unescape(str(row["Book-Author"])),
             year=str(row["Year-Of-Publication"]),
             series=html.unescape(str(row["series"])),
-            image_url=str(row["Image-URL-M"]),
             readers=int(self.assets.item_support[item]) if item is not None else 0,
         )
 
     # -- the input path -----------------------------------------------------------
 
-    def find(self, query: str, k: int = 5) -> list[Book]:
+    def find(self, query: str, k: int = 5, *, margin: float | None = None) -> list[Book]:
         """Free text to catalogue entries, via the *uncentered* embedding vectors.
 
         Uncentered on purpose (ledger L37): a lookup query is a single point rather than
         an average, so the common direction that centering removes is part of what matches
         it to a title. Centering it pushed "harry potter stein" from rank 2 to rank 5.
 
-        Two rules sit on top of the raw cosine, and they do different jobs.
+        Three rules sit on top of the raw cosine, and they do different jobs.
 
         **The candidate set is restricted to works the engine can actually answer for** —
         the same support floor L34 pins on ALS similarity. A serving rule, not a tuning
@@ -369,13 +434,20 @@ class DemoEngine:
         lookup failure, because those were one- and two-reader books winning the argmax by
         chance — *Hoopla — Harry Stein* beating the actual Harry Potter.
 
-        **Then :data:`LOOKUP_TIE_MARGIN` disambiguates what is left.** Among works whose
-        titles match the query almost equally well, prefer the one most readers mean.
+        **Then :data:`PICKER_MARGIN` drops what is not worth offering.** Returning five
+        candidates whatever their score put *A Little Princess* and a Stephen King next to
+        *The Little Prince*, which costs the right answer its credibility. Fewer than *k*
+        results is therefore normal and not a failure — often exactly one.
 
-        What neither rule fixes is L38's real finding: "herr der ringe" and "hobit tolkien"
-        still return nothing relevant, because title+author is three to five words — too
-        thin for a multilingual encoder to bridge. That failure is the measured argument
-        for the enrichment layer and it survives both rules intact.
+        **Then :data:`LOOKUP_TIE_MARGIN` disambiguates what is left.** Among works whose
+        titles match the query almost equally well, prefer the one most readers mean. It
+        runs *inside* the picker margin — 0.06 against 0.12 — so the tie group is never cut
+        into and the book a query resolves to is exactly what it was before M17.4.
+
+        What none of the three fixes is L38's real finding: "herr der ringe" and "hobit
+        tolkien" still return nothing relevant, because title+author is three to five words
+        — too thin for a multilingual encoder to bridge. That failure is the measured
+        argument for the enrichment layer and it survives all three rules intact.
         """
         text = query.strip()
         if not text:
@@ -392,6 +464,12 @@ class DemoEngine:
         best = best[np.isfinite(scores[best])]
         if best.size == 0:
             return []
+
+        # The relevance cutoff, before anything else looks at the shortlist: a candidate
+        # further than PICKER_MARGIN below the best match is not an alternative reading of
+        # the query, it is the fifth-best of whatever was left.
+        keep = scores[best[0]] - (PICKER_MARGIN if margin is None else margin)
+        best = best[scores[best] >= keep]
 
         # The tie-break, applied to the shortlist only: candidates within the margin of the
         # best cosine are re-ordered by readership; the rest keep their text ranking.
@@ -498,7 +576,6 @@ class DemoEngine:
                     author=book.author,
                     year=book.year,
                     series=book.series,
-                    image_url=book.image_url,
                     evidence=evidence,
                     reason=reason_sentence(evidence, anchor_title),
                 )

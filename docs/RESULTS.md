@@ -629,6 +629,56 @@ work-level rows use **235,824**; the ISBN-level rows use **271,360**. Every run 
 denominator it used together with the ceilings measured on the same universe, so a cell can
 be traced to its basis without trusting this paragraph.
 
+## The demo's surface, read critically (milestone M17)
+
+M17 is display and serving only. **The ranking `demo.similar` returns is byte-identical
+before and after** — demonstrated, not asserted: the eleven-anchor report was regenerated
+and diffed against the run from before the branch, including every reason sentence. One line
+below is a new measurement, because M17.4 adds a constant and this project does not ship a
+constant without one.
+
+| ID | Claim | Number | How measured | Measured |
+|---|---|---|---|---|
+| L70 | **A lookup candidate more than 0.12 cosine below the best match is not an alternative reading of the query, and the cutoff cannot change what the query resolves to** | on-target alternatives sit a median **0.032** below the best match, off-target ones **0.212**. At 0.12 the cutoff keeps **79.5%** of on-target alternatives and **22.8%** of off-target ones — the widest separation the sample supports. The picker drops from 5 rows always to a median of **1** (56.7% one row, 16.3% five) | `python scripts/analyze_picker_margin.py`. 300 works above the anchor floor, each queried by **its own title**; a returned candidate is *on-target* when its title contains the query's or vice versa, and rank 1 is excluded because it is on-target by construction. The separation curve is a **plateau, not a spike** — 0.08 to 0.13 are within one point of each other — so the argmax was re-run on **six independent samples**: median **0.118**, range 0.102–0.153. 0.12 is that median at the resolution the sample supports; the third decimal is not claimed. It sits at **twice** `LOOKUP_TIE_MARGIN`, so it can never cut into the tie group and the resolved anchor is invariant, which is asserted in `tests/test_demo.py::TestPickerMargin` rather than left as a claim | 2026-08-09 |
+
+**What L70 does not fix, and it is L38 again.** `"Guns Germs Steel"` keeps all five
+candidates, because all five are Danielle Steel novels within 0.06 of each other. No cutoff
+measured *relative to the best match* can see that, because the best match is already the
+wrong book. `"little prince"` is the case it does fix: *A Little Princess*, a John Saul and
+a Stephen King stop being offered beside the right answer.
+
+**The lookup is reproducible against a fixed build (M17.9), so there is no line for it.**
+Two screenshots of `"little prince"` had returned different candidate sets, and the
+alternative to "the assets were rebuilt between them" was that `np.argpartition` selects
+arbitrarily among equal scores — which would mean a rehearsed demo is not rehearsed. Run
+against one unchanged build: five queries, three fresh interpreters, **byte-identical**
+results, encoder vectors bit-equal, and **no exact score ties** anywhere in any shortlist.
+The differing screenshots straddled the L64 re-key, and the two candidate sets differ in
+exactly the way **L67** predicts a 0.5% change in the item universe will make them differ.
+A green reproducibility check is a negative result and is recorded as one.
+
+**An amendment to the L63 read-out-loud paragraph above.** It says the raw similarity "no
+longer appears in the app". That is now true of the *reason sentences* and of the anchor
+report, and false of the screen: since M17.1 the app shows the similarity as a bar plus a
+number, because within one list the cosine **is** the sort key and the app only ever shows
+one list. L63's incomparability is a claim *across* anchors, and the report — which prints
+eleven anchors side by side — is exactly where it bites, which is why the two renderers
+deliberately diverge (`demo.reason_sentence`, M17.7). The bar is scaled to the top of its
+own list for the same reason: on a fixed 0–1 axis *The Little Prince* (0.33–0.40) would
+render as a row of stubs beside *Interview with the Vampire* (0.50–0.80).
+
+**Unasked-for finding, not fixed, the call.** 3.05% of catalogue rows (7,150) carry
+double-encoded text — *Antoine de Saint-Exupéry* is stored as `Saint-ExupÃ©ry`, and the
+corruption is **in the source CSV**, not in how it is read. It barely matters and then it
+matters exactly once: only **2 of the 2,508 works reachable as anchors** are affected, and
+one of them is *The Little Prince*, the anchor that prompted this milestone, so it is on
+screen in the demo. 3,234 of the flagged fields round-trip cleanly through
+`latin-1 → utf-8`; the rest do not and would be left alone. A repair belongs in
+`DemoEngine.describe`, beside the `html.unescape` that already fixes the same class of
+defect for display only — it changes no id, key, count or score. It is **not** a data-layer
+repair: the work key is built from the corrupted string (`the little prince|saintexupãry`),
+so fixing it at load time would move the merge and therefore published numbers.
+
 ## Open items this ledger will need
 
 - ~~Edition clustering in the data-prep layer (L31, L39)~~ — **done, M11 (L40–L47).**

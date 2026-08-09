@@ -1,8 +1,12 @@
-"""Display rules for the result list (M15): the thin-evidence tag, the bars, the divider.
+"""Display rules for the result list (M15, M17): the thin-evidence tag and the bars.
 
 Built from fixture evidence only — no assets, no data, no model. These are presentation
 rules, and the point of having them in the package rather than in the Streamlit layer is
 that their edge cases are worth pinning.
+
+The divider's tests were **deleted** with it in M17.3, not skipped: the rule drew a
+contiguous boundary from a criterion that is not monotone in the sort order, and every test
+here that pinned that behaviour was pinning a specification a fresh anchor falsified.
 """
 
 from __future__ import annotations
@@ -11,16 +15,15 @@ from recommender.demo import Evidence, Suggestion
 from recommender.display import (
     THIN_EVIDENCE_SHARE,
     bar_widths,
-    divider_after,
     evidence_share,
     is_thin,
 )
 
 
-def suggestion(co_readers: int, anchor_readers: int = 1000) -> Suggestion:
-    evidence = Evidence(score=0.5, co_readers=co_readers, anchor_readers=anchor_readers, same_author=False)
+def suggestion(co_readers: int, anchor_readers: int = 1000, score: float = 0.5) -> Suggestion:
+    evidence = Evidence(score=score, co_readers=co_readers, anchor_readers=anchor_readers, same_author=False)
     return Suggestion(
-        isbn="w", title="t", author="a", year="1999", series="", image_url="", evidence=evidence, reason=""
+        isbn="w", title="t", author="a", year="1999", series="", evidence=evidence, reason=""
     )
 
 
@@ -51,43 +54,27 @@ class TestThinEvidence:
 
 
 class TestBars:
-    def test_the_bar_is_relative_to_the_strongest_row_in_the_list(self) -> None:
-        assert bar_widths([suggestion(200), suggestion(100), suggestion(50)]) == [1.0, 0.5, 0.25]
+    def test_the_bar_is_the_similarity_relative_to_the_top_of_this_list(self) -> None:
+        rows = [suggestion(1, score=0.80), suggestion(1, score=0.40), suggestion(1, score=0.20)]
+        assert bar_widths(rows) == [1.0, 0.5, 0.25]
 
-    def test_a_list_with_no_shared_readers_has_no_bars(self) -> None:
-        assert bar_widths([suggestion(0), suggestion(0)]) == [0.0, 0.0]
+    def test_the_top_row_is_always_full(self) -> None:
+        """A fixed 0-1 axis would draw The Little Prince (0.33-0.40) as a row of stubs."""
+        for top in (0.40, 0.80):
+            assert bar_widths([suggestion(1, score=top), suggestion(1, score=top / 2)])[0] == 1.0
+
+    def test_the_bar_no_longer_follows_the_evidence(self) -> None:
+        """The row that started M17: rank 1 has *fewer* shared readers than rank 2, and the
+        bar must follow the sort key rather than contradict it."""
+        rows = [suggestion(16, 174, score=0.40), suggestion(17, 174, score=0.38)]
+        first, second = bar_widths(rows)
+        assert first > second
+
+    def test_a_list_with_no_similarity_has_no_bars(self) -> None:
+        assert bar_widths([suggestion(0, score=0.0), suggestion(0, score=0.0)]) == [0.0, 0.0]
+
+    def test_a_negative_score_does_not_draw_a_bar_backwards(self) -> None:
+        assert bar_widths([suggestion(1, score=0.5), suggestion(1, score=-0.2)]) == [1.0, 0.0]
 
     def test_an_empty_list_is_not_an_error(self) -> None:
         assert bar_widths([]) == []
-
-
-class TestDivider:
-    def test_it_goes_after_the_last_row_above_the_threshold(self) -> None:
-        rows = [suggestion(200), suggestion(100), suggestion(5), suggestion(4)]
-        assert divider_after(rows) == 1
-
-    def test_everything_below_the_line_is_thin_by_construction(self) -> None:
-        rows = [suggestion(200), suggestion(5), suggestion(100), suggestion(4)]
-        cut = divider_after(rows)
-        assert cut == 2
-        assert all(is_thin(row.evidence) for row in rows[cut + 1 :])
-
-    def test_no_divider_when_every_row_is_above_the_threshold(self) -> None:
-        assert divider_after([suggestion(200), suggestion(100)]) is None
-
-    def test_no_divider_when_the_first_row_is_already_below_it(self) -> None:
-        """The whole list is thin. The tags say so, and a line under nothing would imply a
-        quality break that is not there."""
-        assert divider_after([suggestion(5), suggestion(200), suggestion(4)]) is None
-
-    def test_no_divider_for_an_all_thin_list(self) -> None:
-        assert divider_after([suggestion(5), suggestion(4)]) is None
-
-    def test_no_divider_for_an_empty_list(self) -> None:
-        assert divider_after([]) is None
-
-    def test_it_never_moves_or_removes_a_row(self) -> None:
-        rows = [suggestion(200), suggestion(100), suggestion(5)]
-        before = [id(row) for row in rows]
-        divider_after(rows)
-        assert [id(row) for row in rows] == before

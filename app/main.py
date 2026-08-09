@@ -33,10 +33,25 @@ measurement, and the measurement went the other way.
 are precise to us and are internal jargon to a client, and jargon in a demo reads as
 unfinished rather than as rigorous. Comments are where they help.
 
-**The ranking on screen is exactly the ranking the ledger measures.** M15 changes how the
-list reads and never what is in it or in what order — no re-sort, no filter, no truncation.
-The one boundary this file draws, the evidence divider, is a horizontal rule between two
-rows that both stay exactly where the model put them.
+**The ranking on screen is exactly the ranking the ledger measures.** M15 and M17 change how
+the list reads and never what is in it or in what order — no re-sort, no filter, no
+truncation. M17 removed the last thing this file drew on top of the list, the evidence
+divider: it claimed a contiguous boundary from a criterion that is *not monotone in the sort
+order*, and that non-monotonicity is one of this project's own findings, so on some anchor
+the line had to be incoherent. A freshly typed anchor produced one immediately.
+
+**M17 put the similarity back on screen** as a bar plus a number. M14.6 had taken it off
+because a cosine is not comparable across anchors (L63), which left the list sorted by a
+quantity that was nowhere to be seen and one that *was* on screen — shared readers —
+visibly contradicting the order. L63 is a claim about comparing *two anchors*; the app shows
+one list at a time, and within it the cosine is exactly the sort key. The bar is scaled to
+the top of its own list for the same reason the caveat exists, and the caveat is a sentence
+in the talk track.
+
+**The one selection rule this file's engine gained is the picker's, and it is M17.4's.**
+``find`` now returns only candidates within ``demo.PICKER_MARGIN`` of the best match, so the
+"Did you mean" list is often a single row. It cannot change which book a query resolves to;
+see the constant's docstring for why that is structural rather than lucky.
 """
 
 from __future__ import annotations
@@ -49,7 +64,7 @@ import streamlit as st
 
 try:
     from recommender.demo import DemoEngine, load_assets
-    from recommender.display import THIN_EVIDENCE_SHARE, bar_widths, divider_after, evidence_share, is_thin
+    from recommender.display import THIN_EVIDENCE_SHARE, bar_widths, evidence_share, is_thin
     from recommender.gallery import DEMO_BUTTONS as ANCHORS  # M14.8 — one source, see its docstring
 except ModuleNotFoundError as error:  # pragma: no cover - the wrong-interpreter path
     # `streamlit run` uses whichever interpreter is first on PATH, which on this machine is
@@ -117,15 +132,15 @@ STYLE = """
   .row .ev {display: flex; align-items: center; gap: 10px; margin-top: 7px; flex-wrap: wrap;}
   .row .track {width: 88px; height: 4px; border-radius: 2px; background: #e7e3dc; flex: 0 0 88px;}
   .row .fill {display: block; height: 4px; border-radius: 2px; background: #8a9aa5;}
+  /* The sort key, so it is set a step above the evidence beside it rather than level with
+     it: same size, darker, fixed width so the decimal points line up down the list. */
+  .row .score {font-size: 13px; color: #1c1c1e; font-variant-numeric: tabular-nums;
+               width: 2.4em; flex: 0 0 2.4em;}
+  .row .sep {font-size: 13px; color: #c9c4bb;}
   .row .evtext {font-size: 13px; color: #6b6862; font-variant-numeric: tabular-nums;}
   .row .tag {font-size: 12px; color: #4a5b66; background: #eceef0; border-radius: 999px;
              padding: 1px 8px;}
   .row .tag.thin {color: #7a6a55; background: #f3eee4;}
-
-  /* The divider. Quiet on purpose: it is a label, not a verdict. */
-  .cut {display: flex; align-items: center; gap: 12px; margin: 22px 0 4px 0;
-        font-size: 12px; color: #9b968d;}
-  .cut::after {content: ""; flex: 1 1 auto; height: 0.5px; background: #e2ded7;}
 </style>
 """
 
@@ -152,14 +167,22 @@ def corpus_line(engine: DemoEngine) -> str:
 
 
 def render_row(rank: int, suggestion, width: float) -> str:
-    """One result row as a single block of markup, so the layout cannot drift between rows."""
+    """One result row as a single block of markup, so the layout cannot drift between rows.
+
+    The bar is the **similarity**, scaled to the top of this list, with the absolute value
+    beside it; the evidence follows as text. That order is M17.1 and it is the sort key
+    first: the number that decides the row's position leads, and the number that says how
+    much the position rests on comes second.
+
+    ``series`` is deliberately **not** here (M17.6). The field holds the title parenthetical
+    — *Penguin Classics*, *Dover Thrift Editions*, *2nd Edition* — and a "same series" tag
+    over a publisher imprint is a false claim printed as fact.
+    """
     evidence = suggestion.evidence
     share = evidence_share(evidence)
     tags = []
     if evidence.same_author:
         tags.append(("", "same author"))
-    if evidence.shared_series:
-        tags.append(("", f"same series ({evidence.shared_series})"))
     if is_thin(evidence):
         tags.append(("thin", "thin evidence"))
 
@@ -171,13 +194,20 @@ def render_row(rank: int, suggestion, width: float) -> str:
         # rather than printing "0 shared readers · 0.0%", which reads as a broken row.
         evtext = "no shared readers — from the model's geometry alone"
 
-    meta = " · ".join(part for part in (suggestion.author, suggestion.year) if part)
+    # `"0"` is a non-empty string, so the `if part` filter passed it straight through and
+    # the screen read "Antoine de Saint-Exupéry · 0" (M17.8). Year 0 is L3, the dataset's
+    # missing-year encoding, known since the EDA and arriving here unfiltered; it is 2 of
+    # the 10 slots on *The Little Prince*, because translations carry it far more often.
+    year = suggestion.year if suggestion.year not in ("0", "") else ""
+    meta = " · ".join(part for part in (suggestion.author, year) if part)
     pills = "".join(f'<span class="tag {kind}">{html.escape(text)}</span>' for kind, text in tags)
     return (
         f'<div class="row"><div class="rank">{rank}</div><div class="body">'
         f'<div class="title">{html.escape(suggestion.title)}</div>'
         f'<div class="meta">{html.escape(meta)}</div>'
         f'<div class="ev"><span class="track"><span class="fill" style="width:{width:.0%}"></span></span>'
+        f'<span class="score">{evidence.score:.2f}</span>'
+        f'<span class="sep">·</span>'
         f'<span class="evtext">{html.escape(evtext)}</span>{pills}</div>'
         f"</div></div>"
     )
@@ -213,11 +243,17 @@ def sidebar(engine: DemoEngine) -> None:
         # absence of any login field says the second.
         st.markdown(corpus_line(engine))
         st.markdown("### How it works")
+        # "1.1 million ratings" was written out here, four lines under the corpus line that
+        # counts the same fact at runtime and prints 1,143,125 (M17.10). Two statements of
+        # one number, one of them hard-coded, is how a demo ends up contradicting itself
+        # after a rebuild — the corpus line already survived exactly that when the work count
+        # moved on the L64 re-base. The hard-coded one goes; the sentence reads better
+        # without it anyway, since "those ratings" points at the line above.
         st.markdown(
-            "Reading patterns from 1.1 million ratings, compressed into a short profile per "
-            "book. Books whose profiles point in the same direction come back as similar. "
-            "Editions of the same title are merged before anything is computed, so the "
-            "results are books rather than reprints."
+            "Those reading patterns are compressed into a short profile per book. Books "
+            "whose profiles point in the same direction come back as similar. Editions of "
+            "the same title are merged before anything is computed, so the results are "
+            "books rather than reprints."
         )
         st.markdown("### Where it stops")
         st.markdown(
@@ -305,27 +341,35 @@ def main() -> None:
 
     started = time.perf_counter()
     pinned = st.session_state.pop("pinned_isbn", None)
-    matches = engine.find(query, k=5)
-    if not matches:
+    # A button pins its work id, so there is nothing to look up (M17.5). `find()` used to run
+    # here unconditionally and have its result discarded three lines later, which is the
+    # sentence-encoder call — the most expensive part of a query — and it made "Answered in
+    # N ms" mean one thing for a button and another for a typed title. One label, one
+    # quantity.
+    matches = [] if pinned else engine.find(query, k=5)
+    if not pinned and not matches:
         st.warning("Nothing found. Try a title and an author.")
         return
 
     chosen = pinned or matches[0].isbn
     # The picker is reserved rather than conditional, so the result does not jump down the
-    # screen the moment a second candidate exists.
+    # screen the moment a second candidate exists. `find` now returns only candidates within
+    # PICKER_MARGIN of the best match (M17.4), so "one match" is the common case and the
+    # picker mostly stays empty.
     picker = st.container()
-    if len(matches) > 1 and not pinned:
+    if len(matches) > 1:
         with picker:
             labels = {f"{m.title} — {m.author}": m.isbn for m in matches}
             chosen = labels[st.radio("Did you mean", list(labels))]
 
     book = engine.describe(chosen)
     st.subheader(book.title)
-    st.caption(
-        f"{book.author} · {book.year}"
-        + (f" · {book.series}" if book.series else "")
-        + f" · {book.readers:,} readers"
-    )
+    # No `series` (M17.6): the field is the title's parenthetical, so this line printed
+    # "Harry Potter (Paperback)" as though it were the series, and *Dune* carries
+    # "Remembering Tomorrow". A real series entity is a data-layer project, on the roadmap.
+    # The year is filtered for the same reason as in `render_row` — L3's missing-year zero.
+    anchor_parts = [book.author, book.year if book.year not in ("0", "") else "", f"{book.readers:,} readers"]
+    st.caption(" · ".join(part for part in anchor_parts if part))
 
     suggestions = engine.similar(chosen, k=10)
     elapsed = time.perf_counter() - started
@@ -338,19 +382,26 @@ def main() -> None:
         return
 
     st.markdown(f"#### Because you liked *{book.title}*")
+    # The legend says what the list is sorted by, and it is the first thing it says (M17.2).
+    # Before M17 the sort key was nowhere on screen and the only quantity that *was* on
+    # screen — shared readers — visibly contradicted the order, which reads as a bug rather
+    # than as the measured finding it is.
+    #
+    # "compared with the top of this list" is the bar's scaling rule, said once. It is not
+    # decoration: an absolute 0-1 axis would draw a whole legitimate list as stubs, because
+    # a cosine is not comparable across anchors. The number next to each bar is the absolute
+    # value, which within one list is exactly the sort key.
     st.markdown(
-        f'<div class="legend">Bars compare shared readers <em>within this list only</em>. '
-        f"“Thin evidence” marks a book fewer than {THIN_EVIDENCE_SHARE:.0%} of this book's "
-        f"readers also read.</div>",
+        f'<div class="legend">Sorted by similarity — the bar shows each book '
+        f"compared with the top of this list, and the number is its actual score. "
+        f"The readers behind it follow. “Thin evidence” marks a book fewer than "
+        f"{THIN_EVIDENCE_SHARE:.0%} of this book's readers also read.</div>",
         unsafe_allow_html=True,
     )
 
     widths = bar_widths(suggestions)
-    cut = divider_after(suggestions)
     for index, (suggestion, width) in enumerate(zip(suggestions, widths, strict=True)):
         st.markdown(render_row(index + 1, suggestion, width), unsafe_allow_html=True)
-        if cut is not None and index == cut:
-            st.markdown('<div class="cut">further out: few shared readers</div>', unsafe_allow_html=True)
 
     st.caption(f"Answered in {elapsed * 1000:.0f} ms.")
 

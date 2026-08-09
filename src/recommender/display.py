@@ -1,4 +1,4 @@
-"""Display-only rules for the demo's result list (milestone M15).
+"""Display-only rules for the demo's result list (milestones M15 and M17).
 
 Nothing here scores, ranks, filters or reorders anything. Every function takes the list
 :meth:`recommender.demo.DemoEngine.similar` already produced, in the order it produced it,
@@ -8,6 +8,16 @@ ledger measures, so anything that could change it does not belong in this module
 
 It lives beside ``demo.py`` rather than inside ``app/main.py`` because these rules have
 edge cases worth a regression test, and the Streamlit layer is deliberately untested.
+
+**M17 moved the bar from the evidence to the similarity, and deleted the divider.** Both
+changes come from one finding: the list is ordered by the similarity, and M14.6 had taken
+the similarity off the screen entirely. What was left was a ranking with nothing on screen
+to justify it and one visible counter-argument — on *The Little Prince*, rank 1 showed 16
+shared readers, rank 2 showed 17. The incomparability L63 measures is a claim *across*
+anchors; within one list the cosine is exactly the sort key, and the app only ever shows one
+list. The cross-anchor caveat is a sentence in the talk track, not a reason to hide the sort
+key. The divider went for the sharper version of the same point: see the git history of
+``divider_after`` for the argument, and M17.3 in `the milestone notes`.
 """
 
 from __future__ import annotations
@@ -46,40 +56,29 @@ def is_thin(evidence: Evidence) -> bool:
 
 
 def bar_widths(suggestions: list[Suggestion]) -> list[float]:
-    """Each row's evidence bar, as a fraction of the **strongest row in this same list**.
+    """Each row's **similarity** bar, as a fraction of the strongest row in this same list.
 
-    Scaled within the list, never against a fixed maximum, and that is forced rather than
-    chosen: similarity and co-reader counts are not comparable across anchors, so a bar on
-    a common scale would render every thinly-read anchor as a row of empty tracks and would
-    invite precisely the cross-anchor comparison the ledger forbids. Scaled within the
-    list, the bar answers the one question it can answer honestly — which of *these ten*
-    rests on the most readers.
+    The bar is the sort key (M17.1). It was the evidence share until M17, which read
+    honestly row by row and fought the list it was drawn on: the rows are ordered by
+    similarity, so an evidence bar that lengthens partway down looks like a mistake in the
+    ranking rather than the measured fact it is. One bar per row, and it is the one the
+    order comes from; the evidence keeps its place beside it as text, where it reads as
+    "how much this rests on" rather than as a competing ranking.
 
-    An all-zero list yields all-zero widths rather than a division by zero.
+    **Scaled within the list, never against a fixed 0-1 axis**, and that is forced rather
+    than chosen. L63 measures that a cosine is not comparable across anchors: similarity
+    spans 0.33 to 0.40 on *The Little Prince* and 0.50 to 0.80 on *Interview with the
+    Vampire*, so a fixed axis would draw the first list as a row of stubs and invite exactly
+    the cross-anchor comparison the ledger forbids. Relative to the top row, the bar answers
+    the one question it can answer honestly — how far each of *these ten* falls off the best
+    one. The **absolute** value goes on screen as the number beside it, because within a
+    list it is the sort key and it is honest.
+
+    Negative similarities cannot reach here (a row only enters the list by being among the
+    top-k of a cosine that the anchor itself scores 1.0 on), and a non-positive best would
+    make the ratio meaningless, so that case yields all-zero widths rather than a division
+    by zero or a bar pointing the wrong way.
     """
-    shares = [evidence_share(item.evidence) for item in suggestions]
-    largest = max(shares, default=0.0)
-    return [0.0 for _ in shares] if largest <= 0 else [share / largest for share in shares]
-
-
-def divider_after(suggestions: list[Suggestion]) -> int | None:
-    """Index of the last row above the thin threshold, or ``None`` for no divider.
-
-    The divider marks where the evidence runs out. It is **not a filter and not a sort**:
-    no row moves and none is removed, and everything below the line is thin *by
-    construction*, because the line goes after the last row that is not.
-
-    Rows above the line may still carry a thin tag — a strong row can sit below a weak one,
-    which is itself one of this project's measured results and is the reason the ranking is
-    left alone rather than corrected. The tag is per row; the divider is the boundary.
-
-    Two cases render nothing, both on purpose:
-
-    - **every row is above the threshold** — there is no "further out" to mark;
-    - **the first row is already below it** — the whole list is thin, the tags say so, and
-      a divider under nothing would imply a quality break that does not exist.
-    """
-    above = [index for index, item in enumerate(suggestions) if not is_thin(item.evidence)]
-    if not above or above[-1] == len(suggestions) - 1:
-        return None
-    return above[-1] if above[0] == 0 else None
+    scores = [item.evidence.score for item in suggestions]
+    largest = max(scores, default=0.0)
+    return [0.0 for _ in scores] if largest <= 0 else [max(score, 0.0) / largest for score in scores]
