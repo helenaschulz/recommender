@@ -101,6 +101,7 @@ EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
 MARGINS = (
     ("als", "item-item"),
     ("embeddings", "popularity"),
+    ("hybrid-rrf", "item-item"),
 )
 
 
@@ -188,7 +189,7 @@ def check_reference(run: dict[str, object], cached: dict[str, np.ndarray] | None
     return failures
 
 
-def run_seed(seed: int, catalog, *, k: int, tier2: bool, drifted: set[str]) -> dict[str, object]:
+def run_seed(seed: int, catalog, *, k: int, tier2: bool, drifted: set[str], fusion_alpha: float) -> dict[str, object]:
     """Fit and score every model on one draw. Returns metrics plus per-user hit vectors."""
     bench = build_bench(work_level=True, catalog=catalog, seed=seed)
     holdout = bench.split.test["ISBN"].to_numpy()
@@ -220,9 +221,15 @@ def run_seed(seed: int, catalog, *, k: int, tier2: bool, drifted: set[str]) -> d
               f"[{time.perf_counter() - started:.0f}s]", flush=True)
 
     if tier2 and {"item-item", "tfidf"} <= fitted.keys():
-        for label, rule in (("hybrid-cascade", CASCADE), ("hybrid-fusion", FUSION), ("hybrid-rrf", RRF)):
+        # RRF first, deliberately: it is **parameter-free**, so it is the one fusion-family row
+        # comparable across seeds without inheriting a tuned constant. L78 established it is
+        # indistinguishable from tuned fusion (p = 0.867), so the margin-2 question survives
+        # through RRF even where the alpha row cannot carry it.
+        for label, rule in (("hybrid-rrf", RRF), ("hybrid-cascade", CASCADE), ("hybrid-fusion", FUSION)):
             started = time.perf_counter()
-            model = HybridRecommender(fitted["item-item"], fitted["tfidf"], rule=rule, name=label)
+            model = HybridRecommender(
+                fitted["item-item"], fitted["tfidf"], rule=rule, alpha=fusion_alpha, name=label
+            )
             result = evaluate(
                 model, bench.split, bench.train, catalog_isbns=bench.catalog_ids,
                 catalog_size=bench.catalog_size, k=k,
@@ -249,6 +256,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--drift-only", action="store_true", help="run the gate and stop")
     parser.add_argument("--no-tier2", action="store_true", help="skip the three M19 hybrid rules")
+    parser.add_argument(
+        "--fusion-alpha",
+        type=float,
+        default=0.6,
+        help="alpha for the fusion rule. Default 0.6 — L77's value, chosen on the inner validation "
+        "split at seed 42 and INHERITED here rather than re-tuned per seed (see the module "
+        "docstring). The constructor default is 0.5, which is a different rule and not L77.",
+    )
     args = parser.parse_args(argv)
     seeds = tuple(args.seeds)
 
@@ -271,7 +286,10 @@ def main(argv: list[str] | None = None) -> int:
     users_reference = None
     for seed in seeds:
         print(f"=== seed {seed} ===", flush=True)
-        run = run_seed(seed, catalog, k=args.k, tier2=not args.no_tier2, drifted=drifted_ids[seed])
+        run = run_seed(
+            seed, catalog, k=args.k, tier2=not args.no_tier2,
+            drifted=drifted_ids[seed], fusion_alpha=args.fusion_alpha,
+        )
         # Decision 4: the eligible set is an intersect1d over two data thresholds and the seed
         # enters at a single rng.integers, so every draw must score the SAME readers. That is
         # what makes five runs a paired sample instead of five unrelated experiments. It is
@@ -378,14 +396,23 @@ def main(argv: list[str] | None = None) -> int:
         np.savez_compressed(CACHE / f"hits_work_k{args.k}_seed{seed}.npz", **runs[seed]["hits"])
     print(f"\nwritten to {out}; per-seed hit vectors alongside it")
 
-    flipped = [row["model"] for row in ordering if row["sign holds"] == "**NO**" or row["verdict holds"] == "**NO**"]
-    if flipped:
-        print(f"\nORDERING MOVED for: {', '.join(flipped)}. Per M21's escalation rule the primary "
-              f"table is NOT rewritten tonight — write the numbers into the milestone notes and leave it "
-              f"for the project owner.")
+    # Two different failures, and conflating them raises an alarm the situation does not
+    # warrant. A **sign** flip means the table is in the wrong order on some draw — that is
+    # what M21's escalation rule is about. A **verdict** change means a near-tie crossed
+    # p = 0.05, which is a caveat on one sentence, not a wrong table. Reported separately.
+    reordered = [row["model"] for row in ordering if row["sign holds"] == "**NO**"]
+    requalified = [row["model"] for row in ordering if row["verdict holds"] == "**NO**"]
+    if reordered:
+        print(f"\nORDERING FLIPPED for: {', '.join(reordered)} — the table is in a different order "
+              f"on some draw. Per M21's escalation rule the primary table is NOT rewritten "
+              f"tonight; write the numbers into the milestone notes and leave it for the project owner.")
     else:
-        print("\nThe ordering holds on every draw: same sign, same verdict, for every model "
-              "against item-item.")
+        print("\nThe ordering holds on every draw: every comparison keeps its sign, on all "
+              f"{len(seeds)} draws.")
+    if requalified:
+        print(f"Distinguishability is draw-dependent for: {', '.join(requalified)} — same sign "
+              f"every time, but p crosses 0.05 between draws. These are near-ties, and the "
+              f"caveat belongs on the sentence that calls them separable, not on the ordering.")
     return 0
 
 
