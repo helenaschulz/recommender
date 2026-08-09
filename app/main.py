@@ -71,10 +71,6 @@ except ModuleNotFoundError as error:  # pragma: no cover - the wrong-interpreter
     )
     st.stop()
 
-#: The free-text example, offered as a click rather than as a placeholder nobody types. It
-#: is the query that took two serving rules to make work (L62), so it is worth being seen.
-EXAMPLE_QUERY = "harry potter stein"
-
 #: Everything visual that Streamlit's theme cannot express. Kept in one block so the layout
 #: can be read in one place, and deliberately small: the theme in `.streamlit/config.toml`
 #: does most of the work.
@@ -96,9 +92,6 @@ STYLE = """
      match the current DOM, which is why the first attempt silently did nothing. */
   [data-testid^="stBaseButton"] {min-height: 3.4rem; white-space: normal;
                                  line-height: 1.2; font-size: 14px;}
-  /* ...except the tertiary "try this query" link, which is a line of text, not a target. */
-  [data-testid="stBaseButton-tertiary"] {min-height: 0; height: auto; font-size: 13px;}
-
   /* The reader count belongs *to* its button, so it sits against it rather than floating in
      the middle of the gap Streamlit puts between two elements in a column. Scoped to the
      keyed container, so every other caption in the app keeps its normal spacing. */
@@ -293,14 +286,14 @@ def main() -> None:
             # product rather than only asserted on a slide.
             column.caption(f"{engine.describe(isbn).readers:,} readers")
 
-    # Every writer of `st.session_state["query"]` has to run **before** the text input that
-    # owns that key is instantiated — Streamlit raises `StreamlitAPIException` otherwise,
-    # and the first version of this had the example button underneath the field, where it
-    # crashed the app on click. The anchor buttons above were always on the right side of
-    # that line; this one was not.
-    if st.button(f"Try “{EXAMPLE_QUERY}”", type="tertiary"):
-        st.session_state["query"] = EXAMPLE_QUERY
-
+    # M15.7 offered "harry potter stein" as a clickable example here; it was cut on
+    # 09.08. The query is still the one worth showing — it takes two serving rules to
+    # resolve (L62) — but it is a thing to *say* while typing it live, not a control the
+    # screen has to carry. The anchor buttons already cover "I do not want to type".
+    #
+    # Anything that writes `st.session_state["query"]` must still run **before** this
+    # widget is created: Streamlit raises otherwise, and the example button crashed the
+    # app on click for exactly that reason before it was moved above the field.
     query = st.text_input(
         "Book",
         key="query",
