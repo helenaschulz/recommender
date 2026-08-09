@@ -66,6 +66,8 @@ import pandas as pd
 from recommender.benchmark import build_bench
 from recommender.eval import (
     anchor_comparison_table,
+    anchor_strata_pairwise,
+    anchor_strata_table,
     evaluate_anchors,
     hit_vector,
     mcnemar,
@@ -123,14 +125,10 @@ PUBLISHED_ANCHOR = {
     "content-embeddings": 0.0126,
 }
 
-#: Anchor train-support bands. L73's boundaries with its leftmost bin dropped: an anchor is
-#: itself a train interaction, so support 0 cannot occur and a 0 column would be a lie
-#: shaped like a comparison. The 50+ band is also the app's askable-anchor floor (L65).
-STRATA: tuple[tuple[str, int, int | None], ...] = (
-    ("1-4", 1, 4),
-    ("5-49", 5, 49),
-    ("50+", 50, None),
-)
+#: The band boundaries and the two grouped tables moved to `recommender.eval` in M23
+#: (`PUBLISHED_BANDS`, `anchor_strata_table`, `anchor_strata_pairwise`) so the band re-cut
+#: L88 asks for reads the *same* code as the rows it must stay comparable with, and so
+#: evaluation logic sits in the evaluation layer rather than in a script.
 
 
 def profile_hits(users: int) -> dict[str, np.ndarray] | None:
@@ -233,41 +231,6 @@ def pairwise(hits: dict[str, np.ndarray], opponent: str) -> list[dict[str, objec
             }
         )
     return rows
-
-
-def strata_pairwise(hits: dict[str, np.ndarray], support: np.ndarray, opponent: str) -> pd.DataFrame:
-    """Paired McNemar against one row, **within each anchor-support band**.
-
-    L81 reports exactly this shape for ALS against item-item and had to compute it by hand.
-    It is the table that decides whether a win on the aggregate means anything for the demo:
-    the app refuses anchors below 50 readers (L65), so a rule whose advantage sits entirely
-    in the thin bands wins the column and changes nothing on screen.
-    """
-    rows = []
-    for name, vector in hits.items():
-        if name == opponent:
-            continue
-        row: dict[str, object] = {"model": name, "against": opponent}
-        for label, lo, hi in STRATA:
-            mask = (support >= lo) if hi is None else ((support >= lo) & (support <= hi))
-            test = mcnemar(vector[mask], hits[opponent][mask])
-            p = f"{test['p']:.1e}" if test["p"] < 0.001 else f"{test['p']:.3f}"
-            row[f"{label} (n={int(mask.sum()):,})"] = f"{test['a_only']}/{test['b_only']}, p={p}"
-        rows.append(row)
-    return pd.DataFrame(rows)
-
-
-def strata_table(hits: dict[str, np.ndarray], support: np.ndarray) -> pd.DataFrame:
-    """The same vectors grouped by anchor support — one definition of a hit, grouped."""
-    rows = []
-    for name, vector in hits.items():
-        row: dict[str, object] = {"model": name}
-        for label, lo, hi in STRATA:
-            mask = (support >= lo) if hi is None else ((support >= lo) & (support <= hi))
-            rate = round(float(vector[mask].mean()), 4) if mask.any() else float("nan")
-            row[f"{label} (n={int(mask.sum()):,})"] = rate
-        rows.append(row)
-    return pd.DataFrame(rows)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -437,7 +400,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"\nall {len(checked)} of L80's published anchor rows present in this run reproduce to the digit")
 
     print("\n=== By the anchor's train support (the same vectors, grouped) ===\n")
-    print(strata_table(hits, support).to_markdown(index=False))
+    print(anchor_strata_table(hits, support).to_markdown(index=False))
 
     paired: dict[str, np.ndarray] = {}
     if cap == len(holdout):
@@ -486,7 +449,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\n=== Every model against {reference} ===\n")
         print(pd.DataFrame(pairwise(hits, reference)).to_markdown(index=False))
         print(f"\n--- the same comparison inside each anchor-support band (wins/losses against {reference}) ---\n")
-        print(strata_pairwise(hits, support, reference).to_markdown(index=False))
+        print(anchor_strata_pairwise(hits, support, reference).to_markdown(index=False))
 
     CACHE.mkdir(parents=True, exist_ok=True)
     # A capped run writes under its own name. Found by running one: the smoke test overwrote

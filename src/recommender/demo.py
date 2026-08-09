@@ -427,11 +427,25 @@ def load_assets(directory: Path | None = None) -> DemoAssets:
 class DemoEngine:
     """Free text in, ten explained books out. Holds no state beyond the assets."""
 
-    def __init__(self, assets: DemoAssets, *, encoder=None) -> None:
+    def __init__(self, assets: DemoAssets, *, encoder=None, source=None) -> None:
         self.assets = assets
         self._index = assets.item_index
         self._lookup_index = {isbn: i for i, isbn in enumerate(assets.lookup_ids.tolist())}
         self._encoder = encoder
+        # M23's seam. `None` is configuration A, the engine that ships, and the default is
+        # constructed here rather than defaulted in the signature so that no caller can get
+        # a source built against a *different* assets object than the one this engine reads.
+        if source is None:
+            from recommender.engines import AlsFactors
+
+            source = AlsFactors(assets.factors)
+        self.source = source
+        # The candidate floor is the engine's decision, not the source's, so that switching
+        # the engine cannot silently move a floor as well (M23 decision 6).
+        # **A source belongs to exactly one engine.** This writes to it, so handing the same
+        # source to two engines with different floors leaves the first one reading the
+        # second one's mask. Build a fresh source per configuration.
+        self.source._eligible = assets.item_support >= assets.similar_min_support
 
     # -- metadata -----------------------------------------------------------------
 
@@ -590,15 +604,13 @@ class DemoEngine:
         if anchor is None or self.assets.item_support[anchor] < self.assets.anchor_floor:
             return []
 
-        scores = np.asarray(self.assets.factors @ np.asarray(self.assets.factors[anchor]))
         # The L34 support floor: 196k single-interaction items have noise-direction
         # factors, and the best of 196k coincidences reaches cosine 0.95 in 128 dimensions.
-        scores[self.assets.item_support < self.assets.similar_min_support] = -np.inf
-        scores[anchor] = -np.inf
-
-        take = min(k * OVERSAMPLE, scores.size - 1)
-        best = np.argpartition(-scores, kth=take - 1)[:take]
-        best = best[np.argsort(-scores[best], kind="stable")]
+        # It is applied here rather than inside the source, so that swapping the engine
+        # (M23) cannot also move a floor — one control, one variable.
+        take = min(k * OVERSAMPLE, len(self.assets.item_ids) - 1)
+        best, best_scores = self.source.candidates(anchor, take)
+        scores = dict(zip(best.tolist(), best_scores.tolist(), strict=True))
 
         # The reason sentence names the anchor, and the canonical title keeps its edition
         # parenthetical -- "Harry Potter and the Sorcerer's Stone (Harry Potter (Paperback))"
@@ -616,8 +628,6 @@ class DemoEngine:
         seen = {isbn}
         out: list[Suggestion] = []
         for row in best.tolist():
-            if not np.isfinite(scores[row]):
-                continue
             other = str(self.assets.item_ids[row])
             if other in seen or other not in self.assets.books.index:
                 # A book we cannot name is a book we cannot show (ledger L46): 10.3% of

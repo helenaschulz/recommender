@@ -44,6 +44,7 @@ import numpy as np
 
 from recommender.demo import DemoEngine, load_assets
 from recommender.display import THIN_EVIDENCE_SHARE, evidence_share
+from recommender.engines import build_source
 from recommender.gallery import DEMO_ANCHORS
 
 #: (low, high) interaction counts, high exclusive. The top band is open-ended.
@@ -106,6 +107,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--k", type=int, default=10)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--floors", type=int, nargs="*", default=[20, 50, 100, 200], help="M14.2")
+    parser.add_argument(
+        "--engines",
+        nargs="*",
+        default=["als"],
+        help="M23.1: which neighbour engines to run section 1 and 2 for (als, item-item, rrf)",
+    )
     args = parser.parse_args(argv)
 
     started = time.perf_counter()
@@ -130,101 +137,102 @@ def main(argv: list[str] | None = None) -> int:
         flush=True,
     )
 
-    # -- 1 · The calibration finding -------------------------------------------------
-    rng = np.random.default_rng(args.seed)
-    print("=" * 104)
-    print(f"1 · Evidence against score, by anchor support ({args.per_band} random anchors per band, seed {args.seed})")
-    print("=" * 104)
-    print(
-        f"{'anchor support':<16} {'anchors':>8} {'slots':>7} {'median':>8} {'mean':>7} "
-        f"{'<5 co-readers':>14} {'<2% of anchor':>14} {'=0':>7} {'median sim':>11}"
-    )
-    rows_out = []
-    for low, high in BANDS:
-        rows = sample_anchors(rng, support, nameable, low, high, args.per_band)
-        stats = measure(engine, rows, args.k) | {"band": band_label(low, high)}
-        rows_out.append(stats)
+    # -- 1 and 2, once per engine (M23.1) --------------------------------------------
+    # Until M23 both sections ran for the one engine the app has. L81 and L85 then found the
+    # same shape twice — every engine separated from item-item *below* the anchor floor and
+    # indistinguishable *above* it — which makes the floor and the engine one decision. So
+    # the calibration question has to be asked of each engine that could hold the floor up.
+    for engine_name in args.engines:
+        built = time.perf_counter()
+        source = build_source(engine_name, assets)
+        engine = DemoEngine(assets, source=source)
+        label = source.score_label or "fused rank sum — NOT a similarity, see engines.py"
+        print("\n" + "#" * 104)
+        print(f"# ENGINE: {engine_name}   (displayed number: {label})   [built in {time.perf_counter() - built:.0f}s]")
+        print("#" * 104)
+
+        # -- 1 · The calibration finding ---------------------------------------------
+        rng = np.random.default_rng(args.seed)
+        print("=" * 104)
         print(
-            f"{stats['band']:<16} {stats['n_anchors']:>8,} {stats['n_slots']:>7,} "
-            f"{stats['median_co_readers']:>8.1f} {stats['mean_co_readers']:>7.1f} "
-            f"{stats['share_thin']:>13.1%} {stats['share_tagged']:>13.1%} "
-            f"{stats['share_zero']:>6.1%} {stats['median_score']:>11.3f}",
-            flush=True,
+            f"1 · Evidence against score, by anchor support "
+            f"({args.per_band} random anchors per band, seed {args.seed})"
         )
-    top, bottom = rows_out[0], rows_out[-1]
-    factor = bottom["median_co_readers"] / max(top["median_co_readers"], 1e-9)
-    drift = (bottom["median_score"] - top["median_score"]) / top["median_score"]
-    print(
-        f"\nacross the bands the median evidence moves {top['median_co_readers']:.1f} -> "
-        f"{bottom['median_co_readers']:.1f} co-readers (x{factor:.0f}) while the median similarity "
-        f"moves {top['median_score']:.3f} -> {bottom['median_score']:.3f} ({drift:+.0%}), "
-        f"in the wrong direction."
-    )
-    print(
-        f"thin slots (<{THIN} co-readers): {top['share_thin']:.1%} in the lowest band, "
-        f"{bottom['share_thin']:.1%} in the highest."
-    )
+        print("=" * 104)
+        print(
+            f"{'anchor support':<16} {'anchors':>8} {'slots':>7} {'median':>8} {'mean':>7} "
+            f"{'<5 co-readers':>14} {'<2% of anchor':>14} {'=0':>7} {'median sim':>11}"
+        )
+        rows_out = []
+        for low, high in BANDS:
+            rows = sample_anchors(rng, support, nameable, low, high, args.per_band)
+            stats = measure(engine, rows, args.k) | {"band": band_label(low, high)}
+            rows_out.append(stats)
+            print(
+                f"{stats['band']:<16} {stats['n_anchors']:>8,} {stats['n_slots']:>7,} "
+                f"{stats['median_co_readers']:>8.1f} {stats['mean_co_readers']:>7.1f} "
+                f"{stats['share_thin']:>13.1%} {stats['share_tagged']:>13.1%} "
+                f"{stats['share_zero']:>6.1%} {stats['median_score']:>11.3f}",
+                flush=True,
+            )
+        top, bottom = rows_out[0], rows_out[-1]
+        factor = bottom["median_co_readers"] / max(top["median_co_readers"], 1e-9)
+        drift = (bottom["median_score"] - top["median_score"]) / max(abs(top["median_score"]), 1e-12)
+        print(
+            f"\n{engine_name}: median evidence moves {top['median_co_readers']:.1f} -> "
+            f"{bottom['median_co_readers']:.1f} co-readers (x{factor:.0f}) while the median displayed "
+            f"number moves {top['median_score']:.3f} -> {bottom['median_score']:.3f} ({drift:+.0%})."
+        )
+        print(
+            f"thin slots (<{THIN} co-readers): {top['share_thin']:.1%} in the lowest band, "
+            f"{bottom['share_thin']:.1%} in the highest."
+        )
+        # L63's claim, restated as a test the engine either fails or passes: the displayed
+        # number is anti-calibrated when it is *higher* where the evidence is thinner.
+        verdict = "ANTI-CALIBRATED" if drift < 0 else "calibrated in the right direction"
+        print(
+            f"L63's pathology under {engine_name}: {verdict} "
+            f"(displayed number {drift:+.0%} against a x{factor:.0f} gain in evidence)."
+        )
 
-    # -- 1b · The self-check M15.4 asks for, on the rule the screen actually uses --------
-    tagged = sum(row["share_tagged"] * row["n_slots"] for row in rows_out)
-    slots = sum(row["n_slots"] for row in rows_out)
-    print(
-        f"\n\"thin evidence\" tag (< {THIN_EVIDENCE_SHARE:.0%} of the anchor's readers) fires on "
-        f"{tagged / slots:.1%} of all {slots:,} slots — the M15.4 self-check ceiling is 30%."
-    )
-    print(
-        "Read the two thin columns against each other, because they disagree by design and the\n"
-        "disagreement is worth knowing: the absolute one falls with support "
-        f"({top['share_thin']:.0%} -> {bottom['share_thin']:.0%}) and the share-based one *rises*\n"
-        f"({top['share_tagged']:.0%} -> {bottom['share_tagged']:.0%}). At {BANDS[0][0]} readers, "
-        f"{THIN_EVIDENCE_SHARE:.0%} of the anchor is under one reader, so a slot cannot be tagged at\n"
-        "all; at 900 readers six shared readers is 0.7% and is tagged. The tag is a statement about\n"
-        "*this anchor's* audience, not about absolute evidence, and it can only mean that."
-    )
+        tagged = sum(row["share_tagged"] * row["n_slots"] for row in rows_out)
+        slots = sum(row["n_slots"] for row in rows_out)
+        print(
+            f'"thin evidence" tag (< {THIN_EVIDENCE_SHARE:.0%} of the anchor\'s readers) fires on '
+            f"{tagged / slots:.1%} of all {slots:,} slots — the M15.4 self-check ceiling is 30%."
+        )
 
-    # -- 2 · What a higher floor costs and buys (M14.2) -------------------------------
-    print("\n" + "=" * 104)
-    print("2 · Pricing the floor: breadth against trustworthiness")
-    print("=" * 104)
-    total_interactions = int(support.sum())
-    nameable_items = int(nameable.sum())
-    print(
-        "The floor was ONE number until this measurement. It has to be two, and the reason is in\n"
-        "the second block: raising the *candidate* floor buys evidence and pays for it in relevance —\n"
-        "Dune stops recommending Heretics of Dune, Harry Potter stops recommending Quidditch. L34\n"
-        "pinned the candidate floor at 20 and that is still right. L63 is a claim about the ANCHOR.\n"
-    )
-    print(
-        f"{'anchor':>7} {'cand.':>6} {'answerable works':>18} {'share':>8} {'interaction cov.':>18} "
-        f"{'thin slots':>12} {'median co-readers':>18}"
-    )
-    variants = (("anchor floor only (candidates stay at 20)", False), ("both floors together", True))
-    for label, raise_candidates in variants:
-        print(f"\n  -- {label} " + "-" * (72 - len(label)))
+        # -- 2 · What a higher floor costs and buys (M14.2, per engine in M23.1) -------
+        print("\n" + "=" * 104)
+        print(f"2 · Pricing the anchor floor under {engine_name}: breadth against trustworthiness")
+        print("=" * 104)
+        total_interactions = int(support.sum())
+        nameable_items = int(nameable.sum())
+        print(
+            f"{'anchor':>7} {'cand.':>6} {'answerable works':>18} {'share':>8} {'interaction cov.':>18} "
+            f"{'thin slots':>12} {'median co-readers':>18} {'median shown':>13}"
+        )
         for floor in args.floors:
             answerable = nameable & (support >= floor)
-            # The honest denominator for "how often can we answer a real reader": the share
-            # of all interactions that point at a work the engine would still speak about.
             reach = int(support[answerable].sum()) / total_interactions
             rng_floor = np.random.default_rng(args.seed)
             sample = sample_anchors(rng_floor, support, nameable, floor, 10**9, args.per_band * len(BANDS))
-            tuned = (
-                replace(assets, similar_min_support=floor)
-                if raise_candidates
-                else replace(assets, anchor_min_support=floor)
-            )
-            stats = measure(DemoEngine(tuned), sample, args.k)
+            tuned = replace(assets, anchor_min_support=floor)
+            # A fresh source per configuration: DemoEngine writes the candidate mask into it.
+            stats = measure(DemoEngine(tuned, source=build_source(engine_name, tuned)), sample, args.k)
             print(
                 f"{floor:>7} {tuned.similar_min_support:>6} {int(answerable.sum()):>18,} "
                 f"{answerable.sum() / nameable_items:>7.1%} {reach:>17.1%} "
-                f"{stats['share_thin']:>11.1%} {stats['median_co_readers']:>17.1f}",
+                f"{stats['share_thin']:>11.1%} {stats['median_co_readers']:>17.1f} "
+                f"{stats['median_score']:>13.3f}",
                 flush=True,
             )
-    print(
-        "\nThe anchor floor also decides what a visitor may *type*: `find()` offers only works "
-        "`similar()` would answer for, so 'answerable works' is the size of the searchable "
-        "catalogue, not only of the recommendable one."
-    )
+        print(
+            "\nThe anchor floor also decides what a visitor may *type*: `find()` offers only works "
+            "`similar()` would answer for, so 'answerable works' is the size of the searchable "
+            "catalogue, not only of the recommendable one. The candidate floor stays at "
+            f"{assets.similar_min_support} throughout (L34) — one control, one variable."
+        )
 
     # -- 3 · The same choice, in the only currency a demo is judged in ----------------
     print("\n" + "=" * 104)

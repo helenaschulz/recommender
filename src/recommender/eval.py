@@ -444,3 +444,71 @@ def evaluate_anchors(
 def anchor_comparison_table(results: list[AnchorEvalResult]) -> pd.DataFrame:
     """The M20 table: one row per model, identical split, identical anchors."""
     return pd.DataFrame([r.as_row() for r in results])
+
+
+#: L73's bands minus its leftmost bin, the boundaries L81 and L85 are reported on. An anchor
+#: *is* a train interaction, so support 0 cannot occur and a 0 column would be a
+#: comparison-shaped lie. The 50+ band is also the app's askable-anchor floor (L65).
+PUBLISHED_BANDS: tuple[tuple[str, int, int | None], ...] = (
+    ("1-4", 1, 4),
+    ("5-49", 5, 49),
+    ("50+", 50, None),
+)
+
+#: M23's re-cut. The band the demo would actually open by moving its floor from 50 to 20 is
+#: **20-49**, and no published line has a row for it: L85's "5-49" mixes 5-19 with 20-49 and
+#: cannot say which half carries the effect. Reported *beside* :data:`PUBLISHED_BANDS`, never
+#: instead of it, so every existing row stays comparable.
+FLOOR_BANDS: tuple[tuple[str, int, int | None], ...] = (
+    ("1-4", 1, 4),
+    ("5-19", 5, 19),
+    ("20-49", 20, 49),
+    ("50+", 50, None),
+)
+
+
+def _band_masks(support: np.ndarray, bands) -> list[tuple[str, np.ndarray]]:
+    out = []
+    for label, lo, hi in bands:
+        mask = (support >= lo) if hi is None else ((support >= lo) & (support <= hi))
+        out.append((f"{label} (n={int(mask.sum()):,})", mask))
+    return out
+
+
+def anchor_strata_table(hits: dict[str, np.ndarray], support: np.ndarray, bands=PUBLISHED_BANDS) -> pd.DataFrame:
+    """The same per-anchor hit vectors grouped by the anchor's train support.
+
+    One definition of a hit, grouped — never a second scoring path. *bands* selects the
+    boundaries; every caller in this repo passes either :data:`PUBLISHED_BANDS` or
+    :data:`FLOOR_BANDS`, and a line that uses the latter says so.
+    """
+    rows = []
+    for name, vector in hits.items():
+        row: dict[str, object] = {"model": name}
+        for label, mask in _band_masks(support, bands):
+            row[label] = round(float(vector[mask].mean()), 4) if mask.any() else float("nan")
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def anchor_strata_pairwise(
+    hits: dict[str, np.ndarray], support: np.ndarray, opponent: str, bands=PUBLISHED_BANDS
+) -> pd.DataFrame:
+    """Paired McNemar against one named row, **within each anchor-support band**.
+
+    L81 reports exactly this shape and had to compute it by hand. It is the table that
+    decides whether a win on the aggregate means anything for the demo: a rule whose
+    advantage sits entirely below the app's anchor floor wins the column and changes nothing
+    on screen.
+    """
+    rows = []
+    for name, vector in hits.items():
+        if name == opponent:
+            continue
+        row: dict[str, object] = {"model": name, "against": opponent}
+        for label, mask in _band_masks(support, bands):
+            test = mcnemar(vector[mask], hits[opponent][mask])
+            p = f"{test['p']:.1e}" if test["p"] < 0.001 else f"{test['p']:.3f}"
+            row[label] = f"{test['a_only']}/{test['b_only']}, p={p}"
+        rows.append(row)
+    return pd.DataFrame(rows)
