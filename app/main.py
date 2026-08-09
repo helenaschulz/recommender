@@ -210,11 +210,15 @@ def sidebar(engine: DemoEngine) -> None:
         # Its rule is unchanged and is the reason it is a function rather than a string:
         # exactly one place in the app states the corpus size, and it is counted off the
         # assets at runtime.
-        st.caption(corpus_line(engine))
-        st.markdown(
-            "One book in, similar books out. No login and no reading history: the only "
-            "input is the book you name."
-        )
+        #
+        # Body text, not a caption (review,09.08.): the two differed only in size, 13.1px
+        # against 15px, and at caption size it read as a footnote to the name above it
+        # rather than as the first thing the app tells you.
+        #
+        # The pinned copy's opening line — "One book in, similar books out. No login and no
+        # reading history" — is cut with it. The page title says the first half and the
+        # absence of any login field says the second.
+        st.markdown(corpus_line(engine))
         st.markdown("### How it works")
         st.markdown(
             "Reading patterns from 1.1 million ratings, compressed into a short profile per "
