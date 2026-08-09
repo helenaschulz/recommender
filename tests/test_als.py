@@ -106,3 +106,21 @@ def test_batching_does_not_change_recommendations(toy_ratings: pd.DataFrame, toy
     big = _fit(toy_ratings, toy_catalog, batch_size=64).recommend(users, k=2)
     small = _fit(toy_ratings, toy_catalog, batch_size=1).recommend(users, k=2)
     assert big.tolist() == small.tolist()
+
+
+def test_cached_item_norms_give_the_identical_neighbour_list(
+    toy_ratings: pd.DataFrame, toy_catalog: BookCrossing
+) -> None:
+    """The `_item_norms` cache is a speed fix and must be nothing else (M20)."""
+    model = _fit(toy_ratings, toy_catalog)
+    cached = model.similar_items("b1", k=4)
+    model._item_norms = None  # fall back to recomputing the norms per call
+    assert model.similar_items("b1", k=4) == cached
+
+
+def test_refitting_invalidates_the_cached_norms(toy_ratings: pd.DataFrame, toy_catalog: BookCrossing) -> None:
+    """A second fit must not serve the first fit's norms."""
+    model = _fit(toy_ratings, toy_catalog)
+    model.similar_items("b1", k=4)
+    model.fit(build_interactions(toy_ratings), toy_catalog, ratings=toy_ratings)
+    assert model._item_norms is None

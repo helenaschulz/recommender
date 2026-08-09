@@ -9,10 +9,19 @@ a model, never reads ``data/`` and never touches the network.
 
 **One engine, for now.** The similar-items engine is ALS item factors over the work-keyed
 matrix, with the support floors from ledger L34 (candidates) and L65 (anchors). ALS places
-*second of six* on HitRate@10 in the published table (L55) and has the best item-to-item
-neighbourhoods in the project. That the offline metric and the product surface disagree is
-the finding, not an inconsistency — so the table where ALS loses is in the sidebar rather
-than hidden.
+*second of six* on HitRate@10 in the published table (L55). That the offline metric and the
+product surface ask different questions is the finding, not an inconsistency — so the table
+where ALS loses is in the sidebar rather than hidden.
+
+**What M20 changed about the reason ALS is here** (L80–L82). This docstring used to say ALS
+"has the best item-to-item neighbourhoods in the project", carried from L34 — three anchors
+read by eye in M8, before the re-base that made item-item's and ALS's *Harry Potter*
+neighbourhoods identical. Measured on 13,580 anchors, **ALS and item-item are not
+distinguishable on the item query** (169/155, p = 0.47), and ALS's measured edge lives
+entirely below 5 readers of anchor support — a band this app *declines to serve* (L65, L81).
+What the measurement does vindicate is the **floor**, not the factorization: without it ALS
+scores below the popularity baseline (L82). The engine choice is defensible, not evidenced,
+and the honest version of that is now in the sidebar.
 
 **Why there is no engine switcher yet, corrected.** M13.2 dropped one on the grounds that
 each engine would need its own similarity artefact and would cost the cold start this app
@@ -274,10 +283,20 @@ def sidebar(engine: DemoEngine) -> None:
         # The closing sentence's "asks the second" becomes "asks the latter" with it: the
         # pinned copy could carry two senses of "second" once the ordinal is right, and the
         # one that matters is which of the two questions the demo asks.
+        #
+        # **The superlative goes too (M20, 09.08.).** "produces the best 'books like this
+        # one' lists of the six approaches we tried" was the pinned copy's strongest claim
+        # and the only one on this screen with no number behind it. M20 measured it: on the
+        # item query ALS and item-item are not distinguishable (L80, 169/155, p = 0.47).
+        # The replacement says what was measured and keeps the reason the engine is here.
+        # This is a deviation from M15.5's pinned copy, recorded with M20,
+        # and it is open to reverse — but a superlative that a run of our own contradicts
+        # is the one thing this demo cannot leave on screen.
         st.markdown(
             "This demo runs on matrix factorization. It comes second on the accuracy table "
-            "below and produces the best \"books like this one\" lists of the six approaches "
-            "we tried. Those are two different questions, and a demo like this one asks the "
+            "below. We also measured the question this demo actually asks — one book in, "
+            "similar books out — and on that one it is level with the approach that comes "
+            "first. Those are two different questions, and a demo like this one asks the "
             "latter."
         )
         # The table keeps its published form and numbers (L52-L57); only the labels change,

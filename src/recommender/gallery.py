@@ -7,6 +7,13 @@ the neighbourhoods a model builds are *sensible*, and a plausible-looking neighb
 cannot see whether they are *predictive*. Reporting both, and saying where each one is
 blind, is cheaper than defending one number that quietly stands in for the other.
 
+**What M20 changed, and what it did not.** ``AnchorHitRate@10`` (ledger L80) now measures the
+item query's *predictive* half on 13,580 anchors, so "these neighbourhoods are better" no
+longer has to rest on three anchors read by eye — which is how it rested from M13 to M19, and
+how it survived a re-base that overtook it. This gallery keeps the other half. Face validity
+is the thing a number cannot supply: L79's fusion rule scores well and answers *The Lovely
+Bones* with the same book in three languages, and only a person looking at the list sees it.
+
 The anchors are fixed so every model is judged on identical input:
 
 - ``0385504209`` **The Da Vinci Code** — the 2003 blockbuster, 853 train interactions.

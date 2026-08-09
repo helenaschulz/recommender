@@ -89,6 +89,10 @@ class ALSRecommender(Recommender):
         }
         self.user_factors: np.ndarray | None = None
         self.item_factors: np.ndarray | None = None
+        #: Row norms of :attr:`item_factors`, cached at fit. Recomputing them over
+        #: 303,381 x 128 on every neighbour query was 22 ms of pure repetition per call.
+        #: Same values, so the neighbour lists are unchanged.
+        self._item_norms: np.ndarray | None = None
 
     def fit(self, train: Interactions, catalog: BookCrossing, *, ratings=None) -> ALSRecommender:
         """Fit on train.
@@ -118,6 +122,7 @@ class ALSRecommender(Recommender):
         model.fit(matrix, show_progress=False)
         self.user_factors = np.asarray(model.user_factors, dtype=np.float32)
         self.item_factors = np.asarray(model.item_factors, dtype=np.float32)
+        self._item_norms = None
         return self
 
     def recommend(self, user_ids: np.ndarray, k: int = 10) -> np.ndarray:
@@ -143,6 +148,15 @@ class ALSRecommender(Recommender):
                 out[row, : usable.sum()] = train.item_ids[chosen[usable]]
         return out
 
+    def item_norms(self) -> np.ndarray:
+        """Row norms of the item factors, computed once. Zeros become 1.0 so an untouched
+        item scores 0 rather than dividing by zero."""
+        if self._item_norms is None:
+            norms = np.linalg.norm(self.item_factors, axis=1)
+            norms[norms == 0] = 1.0
+            self._item_norms = norms
+        return self._item_norms
+
     def similar_items(self, isbn: str, k: int = 10) -> list[tuple[str, float]]:
         """Cosine between item factors, restricted to items with real evidence behind them.
 
@@ -163,8 +177,7 @@ class ALSRecommender(Recommender):
         item = train.item_index.get(isbn)
         if item is None:
             return []
-        norms = np.linalg.norm(self.item_factors, axis=1)
-        norms[norms == 0] = 1.0
+        norms = self.item_norms()
         query = self.item_factors[item] / norms[item]
         scores = (self.item_factors @ query) / norms
         scores[train.item_popularity < self.similar_min_support] = -np.inf

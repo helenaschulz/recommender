@@ -20,11 +20,20 @@ front of a reviewer:
    same time.
 
 **Why ALS drives it, when ALS loses the comparison table.** The app is an item-to-item
-surface, and item-to-item is exactly where ALS wins: with a support floor of 20 its
-factors give the best neighbourhoods of any model in the project (ledger L34), while its
-HitRate@10 is second of six (L55). That the metric and the product surface disagree is not
-an embarrassment to hide behind a better-looking number — it is the finding, and the table
-where ALS loses gets shown next to the demo deliberately.
+surface and asks a different question from HitRate@10, on which ALS is second of six (L55).
+That the metric and the product surface ask different questions is not an embarrassment to
+hide behind a better-looking number — it is the finding, and the table where ALS loses gets
+shown next to the demo deliberately.
+
+**Corrected by measurement, M20 (L80–L82).** This paragraph used to continue "item-to-item is
+exactly where ALS wins: its factors give the best neighbourhoods of any model in the project
+(L34)". That was three anchors read by eye in M8, and the M12 re-base overtook it without
+anyone re-reading it. On 13,580 anchors the item query cannot separate ALS from item-item
+(169/155, p = 0.47), and ALS's measured edge is confined to anchors with under five readers —
+which the anchor floor refuses to answer for anyway (L65, L81). The floor *is* vindicated:
+without it ALS falls below the popularity baseline on this question (L82). So ALS drives the
+demo as a defensible choice among three that cannot be told apart here, not as the winner of
+a comparison — and the sidebar now says that rather than a superlative.
 
 **Fitted on everything, and that is not leakage.** The evaluation models fit on
 ``split.train`` because a metric measured on data the model has seen is worthless. The app

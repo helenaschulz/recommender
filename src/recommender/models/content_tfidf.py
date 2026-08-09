@@ -81,6 +81,11 @@ class TfidfRecommender(Recommender):
         self.vectors: sp.csr_matrix | None = None
         self.item_ids: np.ndarray | None = None
         self._index: dict[str, int] = {}
+        #: ``vectors.T`` kept as CSR. ``csr @ csc`` converts the right operand to CSR on
+        #: *every* call, and at 235,824 x 215,377 that conversion dominates a single-anchor
+        #: neighbour query by two orders of magnitude. Hoisting it is pure caching: scipy
+        #: takes the same code path either way, so the scores are bit-identical.
+        self._vectors_t: sp.csr_matrix | None = None
 
     def fit(self, train: Interactions, catalog: BookCrossing) -> TfidfRecommender:
         self.train = train
@@ -101,6 +106,7 @@ class TfidfRecommender(Recommender):
             dtype=np.float32,
         )
         self.vectors = normalize(vectorizer.fit_transform(content_text(books)))
+        self._vectors_t = self.vectors.T.tocsr()
         self.params["catalogue_vectorized"] = len(self.item_ids)
         self.params["vocabulary"] = len(vectorizer.vocabulary_)
         return self
@@ -160,7 +166,8 @@ class TfidfRecommender(Recommender):
         item = self._index.get(isbn)
         if item is None:
             return []
-        scores = np.asarray((self.vectors[item] @ self.vectors.T).todense()).ravel()
+        transposed = self._vectors_t if self._vectors_t is not None else self.vectors.T.tocsr()
+        scores = np.asarray((self.vectors[item] @ transposed).todense()).ravel()
         scores[item] = -np.inf
         take = min(k, scores.size - 1)
         best = np.argpartition(-scores, kth=take - 1)[:take]

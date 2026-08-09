@@ -20,6 +20,23 @@
   recommend books with zero interactions, and an unsmoothed share would make their
   novelty infinite rather than merely high.
 
+**AnchorHitRate@K — the second question, measured (M20).** Everything above scores a
+*user* query: given this reader's history, rank their held-out book. The demo asks an
+**item** query: given this one book, what is like it. Those are different questions, the
+project has said so since M13, and until M20 only the first had a number — the claim that
+one model has "the best neighbourhoods" rested on three anchors read by eye, from before the
+work-level re-base. :func:`neighbour_matrix` measures the second on the *same* split: one
+anchor per user from :func:`recommender.split.pick_anchors`, the anchor's top-K neighbours
+with that reader's train items filtered out, and a hit when the held-out book is among them.
+Same readers, same held-out books, same row order — so the two columns pair under
+:func:`mcnemar` and the difference between the questions becomes a measured quantity
+instead of an assertion.
+
+Two things it is not. It is not a better metric than HitRate@K, it is a different one, and a
+model may honestly win either. And it is **not free of a judgement call**: which train book
+becomes the anchor is a free parameter, pinned in :mod:`recommender.split` and reported with
+the number.
+
 Popularity is always computed on **train only** — a novelty score that used the full
 data would leak the holdout into the metric.
 
@@ -267,4 +284,163 @@ def evaluate(
 
 def comparison_table(results: list[EvalResult]) -> pd.DataFrame:
     """The M10 comparison table: one row per model, identical split, all three metrics."""
+    return pd.DataFrame([r.as_row() for r in results])
+
+
+#: Ceiling on how deep a neighbour list is requested before the asking reader's own train
+#: items are filtered out of it. Depth is ``k + len(owned)`` so that k slots survive the
+#: filter even for a reader who owns every early neighbour; the cap stops a reader with
+#: thousands of interactions from asking for a full sort of the catalogue.
+NEIGHBOUR_DEPTH_CAP = 1000
+
+
+def owned_items(train: Interactions, user_ids: np.ndarray) -> list[frozenset[str]]:
+    """Each user's train items, in the order *user_ids* gives them.
+
+    The item-to-item column has to exclude what the reader has already read, because the
+    profile column does (:meth:`recommender.models.base.Recommender.recommend` excludes it
+    by contract). Comparing a filtered list against an unfiltered one would test the filter
+    rather than the query.
+    """
+    out: list[frozenset[str]] = []
+    for user_id in user_ids:
+        row = train.user_index.get(int(user_id))
+        if row is None:
+            out.append(frozenset())
+            continue
+        lo, hi = train.matrix.indptr[row], train.matrix.indptr[row + 1]
+        out.append(frozenset(train.item_ids[train.matrix.indices[lo:hi]].tolist()))
+    return out
+
+
+def neighbour_matrix(
+    model: Recommender,
+    anchors: np.ndarray,
+    *,
+    k: int = 10,
+    owned: list[frozenset[str]] | None = None,
+    verbose: bool = False,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Top-k neighbours of each anchor, already filtered, plus which anchors were answered.
+
+    Returns ``(neighbours, answered)``: an ``(n, k)`` object array padded with ``None``,
+    and a boolean vector that is True where the model returned *anything at all* for that
+    anchor. ``answered`` is taken from the **raw** list, before filtering, so "this model
+    has no representation for that book" stays distinguishable from "everything it returned
+    was already on the reader's shelf".
+
+    An unanswered anchor is a padded row and therefore a miss, never a dropped user: a
+    model that declines to answer must not be rewarded with a smaller denominator, and
+    dropping the row would silently break the pairing with the profile column
+    (:func:`mcnemar` does not check that its two vectors are the same length).
+    """
+    n = len(anchors)
+    out = np.full((n, k), None, dtype=object)
+    answered = np.zeros(n, dtype=bool)
+    for row, anchor in enumerate(anchors):
+        if not isinstance(anchor, str):
+            continue
+        seen = owned[row] if owned is not None else frozenset()
+        raw = model.similar_items(anchor, k=min(k + len(seen), NEIGHBOUR_DEPTH_CAP))
+        answered[row] = bool(raw)
+        picked = [item for item, _ in raw if item not in seen][:k]
+        out[row, : len(picked)] = picked
+        if verbose and row and row % 2000 == 0:
+            print(f"  {model.name}: {row:,}/{n:,} anchors", flush=True)
+    return out, answered
+
+
+@dataclass
+class AnchorEvalResult:
+    """One row of the item-to-item table. Deliberately not an :class:`EvalResult`.
+
+    A different query answers a different question, and giving it the same type would let
+    the two be concatenated into one table by accident — which is the mistake ledger L46
+    records for the two item bases. The field names say ``anchor`` for the same reason.
+    """
+
+    model: str
+    anchor_hit_rate: float
+    answered: float
+    coverage: float
+    novelty: float
+    n_users: int
+    k: int
+    params: str
+    seconds: float
+    notes: str = ""
+    anchors: np.ndarray | None = field(default=None, repr=False)
+    neighbours: np.ndarray | None = field(default=None, repr=False)
+    hits: np.ndarray | None = field(default=None, repr=False)
+
+    def as_row(self) -> dict[str, object]:
+        return {
+            "model": self.model,
+            f"AnchorHitRate@{self.k}": round(self.anchor_hit_rate, 4),
+            "answered": round(self.answered, 4),
+            f"AnchorCoverage@{self.k}": round(self.coverage, 5),
+            f"Novelty@{self.k}": round(self.novelty, 2),
+            "users": self.n_users,
+            "seconds": round(self.seconds, 1),
+            "params": self.params,
+        }
+
+    def __str__(self) -> str:
+        return (
+            f"{self.model:<28} AnchorHitRate@{self.k}={self.anchor_hit_rate:.4f}  "
+            f"answered={self.answered:.1%}  Coverage@{self.k}={self.coverage:.3%}  "
+            f"Novelty@{self.k}={self.novelty:.2f}  ({self.n_users:,} anchors, {self.seconds:.0f}s)"
+        )
+
+
+def evaluate_anchors(
+    model: Recommender,
+    split: Split,
+    train: Interactions,
+    anchors: np.ndarray,
+    *,
+    catalog_isbns: set[str],
+    catalog_size: int = CATALOG_SIZE,
+    k: int = 10,
+    owned: list[frozenset[str]] | None = None,
+    notes: str = "",
+    verbose: bool = False,
+) -> AnchorEvalResult:
+    """Score *model* on the item-to-item question and return one row of that table.
+
+    *anchors* must be aligned row-for-row with ``split.test`` — see
+    :class:`recommender.split.Anchors`. The hit is
+    :func:`hit_vector` unchanged: one definition of a hit, so this column can never
+    disagree with the one it is compared against.
+    """
+    holdout = split.test["ISBN"].to_numpy()
+    if len(anchors) != len(holdout):
+        raise ValueError(f"{len(anchors)} anchors against {len(holdout)} held-out items — the pairing is broken")
+    popularity = dict(zip(train.item_ids.tolist(), train.item_popularity.tolist(), strict=True))
+    total_interactions = int(train.item_popularity.sum())
+
+    started = time.perf_counter()
+    neighbours, answered = neighbour_matrix(model, anchors, k=k, owned=owned, verbose=verbose)
+    seconds = time.perf_counter() - started
+
+    hits = hit_vector(neighbours, holdout)
+    return AnchorEvalResult(
+        model=model.name,
+        anchor_hit_rate=float(hits.mean()) if len(hits) else float("nan"),
+        answered=float(answered.mean()) if len(answered) else float("nan"),
+        coverage=catalog_coverage_at_k(neighbours, catalog_isbns, catalog_size),
+        novelty=novelty_at_k(neighbours, popularity, total_interactions, catalog_size),
+        n_users=len(holdout),
+        k=k,
+        params=model.describe_params(),
+        seconds=seconds,
+        notes=notes,
+        anchors=anchors,
+        neighbours=neighbours,
+        hits=hits,
+    )
+
+
+def anchor_comparison_table(results: list[AnchorEvalResult]) -> pd.DataFrame:
+    """The M20 table: one row per model, identical split, identical anchors."""
     return pd.DataFrame([r.as_row() for r in results])
