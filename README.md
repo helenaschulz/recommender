@@ -91,23 +91,34 @@ python scripts/decompose_work_level_lift.py
 ## The demo
 
 Paste a book, get ten similar books, each with one grounded reason. Build the assets once
-(~4 minutes; writes ~900 MB to the gitignored `artifacts/app/`):
+(~4 minutes; writes ~900 MB to the gitignored `artifacts/app/`), then the precomputed
+answer table for configuration B (~22 seconds, adds 0.22 MB):
 
 ```bash
 python scripts/build_app_assets.py
+python scripts/build_answer_table.py
 ```
 
-Then start it — cold start about 10 seconds, no network, no fitting:
+Then start it — cold start under 9 seconds, no network, no fitting:
 
 ```bash
 streamlit run app/main.py
 ```
 
-The engine is ALS item factors over the work-keyed matrix with the L34 support floor, and
-the reason sentences come from structured evidence only — co-reader counts, shared author,
+The app ships **two selectable engines** behind a sidebar picker. Configuration A, the
+default, is ALS item factors over the work-keyed matrix. Configuration B is the comparison
+table's accuracy winner, item-item collaborative filtering with a shrunk cosine, answering
+from the precomputed answer table above. Both run on the same support floors (candidate
+floor 20 per ledger L34, the line showing ALS needs one; anchor floor 50), so the picker
+moves exactly one variable: the model. The switch costs nothing measurable — cold start
+8.8 s (A) / 8.5 s (B), warm query 21/22 ms, assets unchanged (L91, the switch-cost
+measurement). A single flag in `app/main.py` (`SHOW_ENGINE_PICKER`) rolls back to A-only.
+
+The reason sentences come from structured evidence only — co-reader counts, shared author,
 shared series, similarity — never from a language model. Screenshots of the three anchor
-flows are in [`docs/img/`](docs/img/); `python scripts/measure_app_latency.py` and
-`python scripts/audit_app_lookup.py` reproduce ledger lines L61 and L62.
+flows are in [`docs/img/`](docs/img/); `python scripts/measure_app_latency.py`
+(per configuration via `--configuration A|B`) and `python scripts/audit_app_lookup.py`
+reproduce the latency and lookup-audit ledger lines (L61/L91 and L62).
 
 ## Repository layout
 
@@ -115,10 +126,10 @@ flows are in [`docs/img/`](docs/img/); `python scripts/measure_app_latency.py` a
 |---|---|
 | `data/` | The raw Book-Crossing CSVs (not committed — see above). |
 | `notebooks/` | The journey: `01_eda.ipynb` (data understanding), `02_models.ipynb` (model comparison). |
-| `docs/` | [`RESULTS.md`](docs/RESULTS.md) — the measurement ledger — plus [`dataset_findings.md`](docs/dataset_findings.md), the model-selection write-up [`model_selection.md`](docs/model_selection.md), and figures under `docs/img/`. |
-| `app/` | The Streamlit demo (`main.py`) — widgets only; its engine is `recommender.demo`. |
-| `src/recommender/` | One module per responsibility: data prep, split, models, evaluation, gallery, serving, demo engine. |
-| `scripts/` | Entry points: `run_model.py` (evaluate models), `tune_*.py` (hyperparameters on a validation split), `analyze_editions.py` and `analyze_dedup.py` (the edition-clustering measurements), `decompose_work_level_lift.py` (why the work-keyed table differs from the ISBN-keyed one), `build_app_assets.py` / `measure_app_latency.py` / `audit_app_lookup.py` / `capture_app_screenshots.py` (the demo). |
+| `docs/` | [`RESULTS.md`](docs/RESULTS.md) — the measurement ledger — plus [`dataset_findings.md`](docs/dataset_findings.md), the model-selection write-up [`model_selection.md`](docs/model_selection.md), the two hand audits [`floor_band_audit.md`](docs/floor_band_audit.md) and [`anchor_set_audit.md`](docs/anchor_set_audit.md), and figures under `docs/img/`. |
+| `app/` | The Streamlit demo (`main.py`) — widgets only; its engines are `recommender.demo` and `recommender.engines`. |
+| `src/recommender/` | One module per responsibility: data prep, split, models, evaluation, gallery, serving, demo engines, precomputed answers. |
+| `scripts/` | Entry points, grouped: `run_model.py` and `tune_*.py` (the comparison table), `measure_significance.py` / `measure_seed_sensitivity.py` (its statistical checks), `measure_hybrid.py` and `measure_anchor_hitrate.py` (the hybrid rules and the item-query metric), `analyze_editions.py` / `analyze_dedup.py` / `decompose_work_level_lift.py` (the edition-clustering work), `audit_floor_band.py` / `audit_anchor_set.py` (the hand audits), `build_app_assets.py` / `build_answer_table.py` / `verify_configuration_a.py` / `measure_app_latency.py` / `audit_app_lookup.py` (the demo), `measure_serving_footprint.py` (the Part 3 sizing numbers). |
 | `tests/` | Offline, deterministic tests — no network, no model downloads. |
 
 [`docs/RESULTS.md`](docs/RESULTS.md) is the measurement ledger: every headline number used
@@ -126,15 +137,35 @@ anywhere in this project traces to a line there, including the negative results.
 
 ## Status
 
-Data understanding and the model comparison are done. Six models — popularity baseline,
-item-item CF (plus an explicit-only ablation), ALS, content TF-IDF and multilingual
-sentence embeddings — are fitted on one pinned leave-one-out split and measured on
-HitRate@10, Coverage@10 and Novelty@10; the table and every negative result behind it are
-in [`docs/RESULTS.md`](docs/RESULTS.md), and the reasoning behind the choice is written up
-in [`docs/model_selection.md`](docs/model_selection.md). **The interface is built** — see
-[The demo](#the-demo) above; it starts in 10.6 s and answers in 20 ms (L69, which
-re-measured L61 after the M15 surface rebuild).
-The productionization write-up follows.
+Data understanding, the model comparison and the interface are done. Six models —
+popularity baseline, item-item CF (plus an explicit-only ablation), ALS, content TF-IDF
+and multilingual sentence embeddings — are fitted on one pinned leave-one-out split and
+measured on HitRate@10, Coverage@10 and Novelty@10; the table and every negative result
+behind it are in [`docs/RESULTS.md`](docs/RESULTS.md), and the reasoning behind the choice
+is written up in [`docs/model_selection.md`](docs/model_selection.md).
+
+Since the table was published, the comparison has been stress-tested rather than extended.
+Every pairwise comparison carries Wilson intervals and a paired McNemar test (L74, which
+also sets the split's resolution at about ±0.002–0.004), and the ordering survives five
+independent split draws, although three near-ties change their significance verdict
+between draws (L86, the seed-sensitivity sweep). The hybrid is measured, not bounded: the
+recommended cascade/backfill rule improves both accuracy and coverage with zero readers
+losing a hit (L76), while the two higher-scoring rules, score fusion and RRF, fill roughly
+a third of readers' lists with another edition of a book they already own and are not
+recommended (L79, the gallery read that caught it).
+
+On the demo's own question (one book in, ten out), the sharpest finding is that the
+support floor is worth more than the model choice: ALS scores 0.0308 with the floor and
+0.0130 without it, below the popularity baseline (L82), and in the band the app actually
+serves, the engines are statistically indistinguishable (L85). That is why the demo ships
+two engines behind a picker instead of declaring a winner. Two hand audits back the
+shipped pair: 240 and then 440 hand-read recommendation slots (L89 and L90, the
+floor-band and anchor-set audits in [`docs/`](docs/)), where B produced zero bad slots
+and A stayed within one to seven of 220, with thinner evidence per slot.
+
+The productionization write-up follows; its sizing evidence is already measured — the
+demo's 890 MB of serving assets, of which the recommender itself is 17.5% (L71), against
+a 1.5 MB precomputed answer table for the whole product (L72).
 
 The published table is keyed by **work** rather than by ISBN — merging editions before
 training is the largest single accuracy gain in the project, and it is a data-preparation

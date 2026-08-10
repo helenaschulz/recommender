@@ -330,15 +330,31 @@ def sidebar(engine: DemoEngine) -> None:
         # nobody would write, saying something the picker three blocks down now says properly.
         # Cut on the copy read, 10.08.2026. The rule it illustrates: when a block loses
         # its job, delete it; a rewrite that keeps the slot is how filler survives a review.
+        # The evidence sentence moved up here from "Where it stops" (review,10.08.2026).
+        # It describes how the app works, not where it stops, and under the old heading it
+        # was the third sentence of a block that was supposed to state one rule.
         st.markdown(
             "Editions of the same title are merged before anything is computed, so the "
-            "results are books rather than reprints."
+            "results are books rather than reprints. Every result names the readers behind "
+            "it, so you can see how much it rests on."
         )
-        st.markdown("### Where it stops")
+        # **"The anchor floor", the agreed word (10.08.2026), replacing "Where it stops".** She
+        # asked for the functionality named rather than described, and this is the name the
+        # ledger has used since L65 — so the screen, the talk track and the ledger say one
+        # thing. It is the first house term this app has ever printed, which is why the
+        # sentence defines it before it uses it: on this screen the anchor is simply the book
+        # you typed, and six words of definition are cheaper than a client silently not
+        # knowing what a floor is under.
+        #
+        # The number is read off the assets rather than typed, the same rule as `corpus_line`:
+        # the floor has already moved once (M14.2 split it from the candidate floor) and a
+        # hard-coded 50 here would have been stale within the day.
+        st.markdown("### The anchor floor")
         st.markdown(
-            f"Below {engine.assets.anchor_floor} readers the demo declines to answer. The "
-            "model would still return ten titles and they would be noise. Every result "
-            "names the readers behind it, so you can see how much it rests on."
+            f"The book you name is the anchor, and it needs {engine.assets.anchor_floor} "
+            "readers in this dataset before the demo will answer for it. Below that the "
+            "model would still return ten titles and they would be noise, so it declines "
+            "instead."
         )
         st.markdown("### The engine")
         # "second", not "third" (review,09.08.): the sentence said third and the table
