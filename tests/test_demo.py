@@ -493,3 +493,112 @@ class TestAssetContract:
     def test_missing_assets_do_not_pretend_to_work(self, tmp_path) -> None:
         with pytest.raises((FileNotFoundError, ValueError)):
             load_assets(tmp_path)
+
+
+class TestResolve:
+    """M23 decision 5b: what the anchor floor removes from the search box, said out loud.
+
+    The rule under test is deliberately the weakest one that does the job — the best match the
+    floor removed has to beat the best match the floor left — because the failure modes are
+    asymmetric. A false positive adds one labelled row the app then explains it cannot answer;
+    a false negative leaves the behaviour the app has had since M13. Neither can change an
+    answer, and the tests below pin that.
+    """
+
+    @staticmethod
+    def _engine(vector: list[float], **kwargs) -> DemoEngine:
+        return DemoEngine(_assets(**kwargs), encoder=lambda texts: np.array([vector], dtype=np.float32))
+
+    def test_the_matches_are_exactly_what_find_returns(self) -> None:
+        """The load-bearing one: no query may resolve anywhere new because this method exists."""
+        engine = self._engine([1.0, 0.0])
+        assert [b.isbn for b in engine.resolve("hobbit", k=3).matches] == [
+            b.isbn for b in engine.find("hobbit", k=3)
+        ]
+
+    def test_nothing_is_hidden_when_the_floor_removes_nothing_better(self) -> None:
+        assert self._engine([1.0, 0.0]).resolve("hobbit", k=3).below_floor == []
+
+    def test_the_book_under_the_floor_is_named_when_the_query_means_it(self) -> None:
+        """*The Kite Runner* in miniature: Ubik is the best match and the floor removes it.
+
+        Without this the query does not come back empty — 2,508 works clear the real floor, so
+        something is always within the picker margin — it comes back with a different book.
+        """
+        hidden = self._engine([-1.0, 0.0]).resolve("ubik", k=3).below_floor
+        assert [b.isbn for b in hidden] == [UBIK]
+        assert hidden[0].readers == 3
+
+    def test_the_hidden_group_is_ordered_by_readership(self) -> None:
+        """It may be: every member is unanswerable, so the order names a book and decides
+        nothing. On the real query it is what puts *The Kite Runner* at 39 readers above
+        *The Kite Rider* at 7, which the cosine alone gets backwards."""
+        hidden = self._engine([-1.0, 0.0], support=(50, 50, 50, 5, 3)).resolve(
+            "ubik", k=3, margin=2.0
+        ).below_floor
+        assert [b.isbn for b in hidden] == [DUNE, UBIK]
+        assert [b.readers for b in hidden] == [5, 3]
+
+    def test_a_near_tie_does_not_fire_it(self) -> None:
+        """"harry potter stein" is the case this protects: the 21-reader German edition is a
+        legitimate match *below* the English one, and nothing about that query may change."""
+        engine = self._engine([1.0, 0.0], support=(50, 50, 50, 50, 3))
+        assert engine.resolve("hobbit", k=3).below_floor == []
+
+    def test_an_empty_query_asks_nothing_of_the_encoder(self) -> None:
+        def explode(texts: list[str]) -> np.ndarray:
+            raise AssertionError("the encoder must not run on an empty query")
+
+        got = DemoEngine(_assets(), encoder=explode).resolve("   ")
+        assert got.matches == [] and got.below_floor == []
+
+    def test_a_named_book_is_still_refused_by_similar(self) -> None:
+        """Naming it is a message, not an exception: the floor is unchanged and still refuses."""
+        engine = self._engine([-1.0, 0.0])
+        hidden = engine.resolve("ubik", k=3).below_floor
+        assert engine.similar(hidden[0].isbn) == []
+
+
+class TestConfigurationArgument:
+    """M23.10.2: the engine takes a configuration, and never two ways of saying one thing."""
+
+    def test_the_default_is_configuration_a(self) -> None:
+        engine = DemoEngine(_assets())
+        assert engine.configuration is not None and engine.configuration.key == "A"
+
+    def test_a_named_configuration_is_carried(self) -> None:
+        assert DemoEngine(_assets(), configuration="B").configuration.key == "B"
+
+    def test_switching_changes_the_list_and_not_the_vocabulary(self) -> None:
+        """Decision 6. Both answer, both count evidence the same way, both explain the same way."""
+        assets = _assets()
+        a = DemoEngine(assets, configuration="A").similar(HOBBIT, k=3, tau=0)
+        b = DemoEngine(assets, configuration="B").similar(HOBBIT, k=3, tau=0)
+        assert a and b
+        assert [s.evidence.anchor_readers for s in a] == [s.evidence.anchor_readers for s in b]
+        assert all(s.reason for s in a + b)
+
+    def test_a_source_and_a_configuration_together_are_an_error(self) -> None:
+        """A precedence rule is how two controls end up disagreeing about one variable."""
+        from recommender.engines import AlsFactors
+
+        assets = _assets()
+        with pytest.raises(ValueError, match="not both"):
+            DemoEngine(assets, source=AlsFactors(assets.factors), configuration="A")
+
+    def test_an_unknown_configuration_is_an_error(self) -> None:
+        with pytest.raises(ValueError, match="unknown configuration"):
+            DemoEngine(_assets(), configuration="C")
+
+    def test_the_score_label_comes_from_the_configuration(self) -> None:
+        assert DemoEngine(_assets(), configuration="B").score_label == (
+            "shared readers, weighted against how widely each book is read"
+        )
+
+    def test_a_bare_source_falls_back_to_the_sources_own_label(self) -> None:
+        from recommender.engines import ItemItemCosine
+
+        assets = _assets()
+        engine = DemoEngine(assets, source=ItemItemCosine(assets.readers, assets.item_support))
+        assert engine.configuration is None
+        assert engine.score_label == ItemItemCosine.score_label

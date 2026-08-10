@@ -66,3 +66,19 @@ def test_batching_does_not_change_recommendations(toy_ratings: pd.DataFrame, toy
     small = TfidfRecommender(min_df=1, batch_size=1).fit(train, toy_catalog)
     users = [1, 2, 3, 4, 5, 6]
     assert big.recommend(users, k=3).tolist() == small.recommend(users, k=3).tolist()
+
+
+def test_cached_transpose_gives_the_identical_neighbour_list(
+    toy_ratings: pd.DataFrame, toy_catalog: BookCrossing
+) -> None:
+    """The `_vectors_t` cache is a speed fix and must be nothing else (M20).
+
+    `csr @ csc` re-converts the right operand on every call, which at catalogue scale
+    dominated a neighbour query by two orders of magnitude and made the item-to-item sweep
+    intractable. scipy takes the same code path either way, so this pins that the scores
+    are identical rather than merely close.
+    """
+    model = _fit(toy_ratings, toy_catalog)
+    cached = model.similar_items("b1", k=6)
+    model._vectors_t = None  # fall back to transposing per call
+    assert model.similar_items("b1", k=6) == cached

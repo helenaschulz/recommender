@@ -18,6 +18,11 @@ sequence by the machine, and only their sum is honest:
 
 Per-query time is measured warm and reported as a median over the three gallery anchors,
 because that is the number a presenter experiences after the first click.
+
+``--configuration`` picks which of M23.10's two the numbers are for. It defaults to **A**, so
+the figure this script has always printed keeps meaning what it meant and stays comparable with
+L61 and L69. B is measured separately rather than averaged in: a presenter pays one cold start,
+for whichever setting the app opens on, and that is A.
 """
 
 from __future__ import annotations
@@ -36,12 +41,15 @@ from recommender.data import project_root
 from recommender.gallery import ANCHORS
 
 #: Run in a subprocess with a clean interpreter, so imports are part of the measurement.
+#: The configuration arrives as ``sys.argv[1]`` rather than through ``str.format`` — M23.10
+#: gave the app two and a cold start measured on one is not a measurement of the other, but
+#: the snippet is full of ``json.dumps({...})`` braces and formatting it raises.
 FIRST_ANSWER = """
-import json, time
+import json, sys, time
 started = time.perf_counter()
 from recommender.demo import DemoEngine, load_assets
 imported = time.perf_counter()
-engine = DemoEngine(load_assets())
+engine = DemoEngine(load_assets(), configuration=sys.argv[1])
 loaded = time.perf_counter()
 book = engine.find("harry potter stein", k=1)[0]
 found = time.perf_counter()
@@ -97,14 +105,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=8599)
     parser.add_argument("--repeats", type=int, default=5)
     parser.add_argument("--skip-server", action="store_true")
+    parser.add_argument("--configuration", default="A", help="M23.10's A or B; default A, what the app opens on")
     args = parser.parse_args(argv)
 
     root = project_root()
+    print(f"0 · configuration           : {args.configuration}", flush=True)
     ready, note = (float("nan"), "skipped") if args.skip_server else server_ready_seconds(args.port)
     print(f"1 · streamlit server ready : {ready:6.1f}s  ({note})", flush=True)
 
     completed = subprocess.run(  # noqa: S603 - fixed argv, no shell
-        [sys.executable, "-c", FIRST_ANSWER], cwd=root, capture_output=True, text=True, check=False
+        [sys.executable, "-c", FIRST_ANSWER, args.configuration],
+        cwd=root, capture_output=True, text=True, check=False,
     )
     if completed.returncode != 0:
         print(completed.stdout[-2000:] + completed.stderr[-2000:])
@@ -122,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
     # Warm timings, in this process, after everything is paged in.
     from recommender.demo import DemoEngine, load_assets
 
-    engine = DemoEngine(load_assets())
+    engine = DemoEngine(load_assets(), configuration=args.configuration)
     for isbn in ANCHORS:
         engine.similar(isbn, k=10)  # page in the factor array before timing
 

@@ -12,6 +12,13 @@ The offline harness scores user histories; the product is item-to-item. That gap
 deliberate and is argued in ``docs/model_selection.md`` rather than papered over: a model
 that ranks a user's next book well is evidence about its item neighbourhoods, not proof.
 
+**Since M20 the gap is measured rather than only argued** (ledger L80).
+:func:`recommender.eval.evaluate_anchors` scores :meth:`~Recommender.similar_items` on the
+same split, the same readers and the same held-out books as HitRate@10, so the two questions
+can be compared reader by reader. It measures whether a neighbourhood is *predictive* under
+an item query; whether one *looks sensible* is still the gallery's job, and the two remain
+different claims.
+
 Implementations return **ISBNs**, never internal column indices. Each model owns its own
 candidate universe (collaborative models can only reach items that appear in train;
 content models reach the whole catalogue), so translating indices is the model's job and

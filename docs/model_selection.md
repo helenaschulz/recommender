@@ -242,8 +242,16 @@ re-base changed it and the change is the point.
 correct — its evidence had been split over 120 Harry Potter rows, and merging them was
 enough (L53). The content models stopped returning the anchor's own ISBNs and started
 returning the anchor's own *titles in other languages*, which is L47's wall, still
-standing. What did not change: ALS remains the model whose neighbourhoods you would show a
-reader, and it is still beaten on every metric in §4.
+standing. What did not change: ALS is still beaten on every metric in §4.
+
+**What this table used to conclude, and what M20 measured instead.** It read "ALS remains the
+model whose neighbourhoods you would show a reader" — off *this* column, three anchors, by
+eye. Read it again: after the re-base **item-item and ALS return the same four books in the
+same order**. The sentence outlived its own evidence by four milestones. M20 put a number on
+the question it was answering: on 13,580 anchors the item query **cannot separate them**
+(L80, 169/155, p = 0.47), and in the ≥50-reader band the app actually serves, item-item is
+nominally ahead (L81). What the number *does* settle is L34's other half — the support floor
+is worth more than the choice of model (L82).
 
 **That divergence is the reason both numbers and galleries are reported.** A HitRate cannot
 see whether a neighbourhood is sensible, and a sensible-looking neighbourhood cannot see
@@ -315,9 +323,14 @@ evidence, and there TF-IDF scores 0.0304 against every collaborative model's 0.0
 number, and a small one.
 
 **ALS kept in the plan for what the metrics do not show.** Free personalization from the
-same fit, the best item-to-item neighbourhoods of any model here, and the only model that
-ports to Spark without a rewrite — which makes productionization a port rather than a
-second project.
+same fit, item-to-item neighbourhoods that hold up where its HitRate does not (M20: level
+with item-item on the item query, L80, and an advantage on thin anchors, L81), and the only
+model that ports to Spark without a rewrite — which makes productionization a port rather than
+a second project. *This paragraph read "the best item-to-item neighbourhoods of any model here"
+until M20 measured it and no superlative survived. A second superlative went the same way on
+2026-08-10: the thin-anchor advantage was called* the only one *until **L85 (M22)** measured RRF
+and fusion on the same anchors and found both ahead of item-item in the 1-4 band as well — ALS's
+advantage there is real and it is no longer unique.*
 
 **None of this is expensive to run, and that is measured too.** The model artefact is
 **155.6 MB** of float32 factors, the precomputed answer table for the whole product is
@@ -364,8 +377,11 @@ have to find.** Both tests hold the *drawn* held-out item fixed and ask about sa
 users. Seed 42 also chooses **which** of a reader's favourites is held out, and on a
 catalogue this long-tailed that draw carries real variance of its own — L73 shows why: hit
 rates differ by a factor of seven between the lowest and highest support stratum, so it
-matters a great deal which stratum the drawn book landed in. Several seeds would measure it;
-it has not been done. And every metric is a proxy:
+matters a great deal which stratum the drawn book landed in. Several seeds would measure it,
+and **M21 did: five draws (seeds 42, 44, 45, 46, 47), ledger L86.** The ordering holds on all
+five — no row changes place — but the near-ties move, and the published cell sits at the
+favourable end of its range. *(This sentence read "it has not been done" until 2026-08-10; M21's
+own follow-up corrected four other places and missed this one.)* And every metric is a proxy:
 "was the held-out book in the top ten" stands in for "would a reader click, buy, or
 enjoy this". A recommendation the reader has never heard of scores zero whether it was a
 brilliant discovery or a mistake — which is precisely the outcome a long-tail recommender
@@ -384,9 +400,13 @@ not chosen by accident.
    the serving layer for the app, because the app's engine is fitted on the full
    interaction matrix and still has to collapse editions on the way to the screen.
 2. ~~**Which model should drive the app?**~~ **Answered: ALS**, and §12 gives the reason.
-   Item-item has the best numbers; **ALS has by far the best neighbourhoods** (L34), and the
-   app is an item-to-item surface. The demo shows ALS *and* the table where it loses, which
-   is a better account than either number alone.
+   Item-item has the best numbers; ALS's neighbourhoods were judged better by eye (L34), and
+   the app is an item-to-item surface. The demo shows ALS *and* the table where it loses,
+   which is a better account than either number alone. **Re-opened and re-answered by
+   measurement, M20:** on the item query the two are **not distinguishable** (L80), and in
+   the band the app serves item-item is nominally ahead (L81). The answer stands as
+   *defensible*; it no longer stands as *evidenced*, and the difference is the call to
+   take before the next build.
 3. ~~**Re-tune item-item for the similarity endpoint?**~~ **Answered, and the answer was
    "no re-tuning was needed".** L29 proposed a higher λ or a co-occurrence floor for the
    Harry Potter neighbourhood. On the work basis the same model with the same λ returns
@@ -406,7 +426,10 @@ not chosen by accident.
    users. Seed 42 also decides *which* of a user's ≥8-rated books is held out, and on a
    catalogue this long-tailed it matters a great deal whether that book was a bestseller or a
    one-reader title. That variance is invisible to both tests. Re-running the split under
-   several seeds is the way to measure it, it is cheap, and it is not done.
+   several seeds is the way to measure it, it is cheap, and **it is now done — M21, ledger
+   L86.** Five draws: the ordering holds on all five, and the caveat that survives is narrower
+   and sharper than the worry was. ALS against item-item is separable on four draws of five,
+   and the p = 2.7e-06 quoted above is seed 42's.
 
    *(Correction, 2026-08-09, and it is the reason the paragraph above exists. This item was
    first rewritten to dismiss the multi-seed idea, on the grounds that "re-seeding changes
@@ -418,7 +441,8 @@ not chosen by accident.
    measure a second source of variance rather than a spurious one. The two measurements
    answer different questions and the project wants both: McNemar for "is this difference
    bigger than user-sampling noise" — done, L74 — and seeds for "does the conclusion survive
-   a different draw" — not done.)*
+   a different draw" — **done 10.08.2026, L86: the conclusion survives, the ordering holds on
+   five draws, and three near-ties change verdict between them**.)*
 5. **The hybrid recommended in §7 has never been measured** (restored 09.08.2026 — this item
    was added, lost to a concurrent edit, and then recorded by the sweep as never having
    existed). It is argued from two *bounds*, the union ceiling (L50) and the near-disjoint
@@ -659,10 +683,12 @@ L69 is the shipped app), with no network and no fitting at query time.
 **It runs on ALS, which loses §4.** That is the point rather than an oversight. §6 measured
 the divergence: HitRate@10 scores how well a model ranks a held-out book in a *user's*
 history, and the app asks a different question — given this one book, what is like it. ALS
-is second of six on the first and best in the project on the second (L34, L55). Building the
-demo on the model that wins the table would have meant building it on the model with worse
-neighbourhoods, so the sidebar shows the table where ALS loses, next to the results it
-produces. A reviewer can then ask the question, and there is an answer.
+is second of six on the first (L55), and on the second — measured in M20 on 13,580 anchors —
+it is **level with the model that wins the first** (L80). The sidebar shows the table where
+ALS loses, next to the results it produces, and says that the second question was measured
+too. A reviewer can then ask the question, and there is an answer with a number in it rather
+than a preference: *we could not tell them apart on the question the demo asks, so we kept
+the one that also gives us personalization and a Spark port for free.*
 
 **It runs on works, like §4**, so the *Harry Potter* anchor returns *Chamber of Secrets*,
 *Prisoner of Azkaban*, *Goblet of Fire* and *Order of the Phoenix* rather than a shelf of

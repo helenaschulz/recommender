@@ -81,6 +81,11 @@ class TfidfRecommender(Recommender):
         self.vectors: sp.csr_matrix | None = None
         self.item_ids: np.ndarray | None = None
         self._index: dict[str, int] = {}
+        #: ``vectors.T`` kept as CSR. ``csr @ csc`` converts the right operand to CSR on
+        #: *every* call, and at 235,824 x 215,377 that conversion dominates a single-anchor
+        #: neighbour query by two orders of magnitude. Hoisting it is pure caching: scipy
+        #: takes the same code path either way, so the scores are bit-identical.
+        self._vectors_t: sp.csr_matrix | None = None
 
     def fit(self, train: Interactions, catalog: BookCrossing) -> TfidfRecommender:
         self.train = train
@@ -101,6 +106,7 @@ class TfidfRecommender(Recommender):
             dtype=np.float32,
         )
         self.vectors = normalize(vectorizer.fit_transform(content_text(books)))
+        self._vectors_t = self.vectors.T.tocsr()
         self.params["catalogue_vectorized"] = len(self.item_ids)
         self.params["vocabulary"] = len(vectorizer.vocabulary_)
         return self
@@ -146,7 +152,7 @@ class TfidfRecommender(Recommender):
 
         for start in range(0, len(profiles), self.batch_size):
             chunk = profiles[start : start + self.batch_size]
-            scores = np.asarray((sp.vstack(chunk) @ self.vectors.T).todense())
+            scores = np.asarray((sp.vstack(chunk) @ self._transposed()).todense())
             picked = top_k_from_scores(scores, k, blocked=blocked[start : start + self.batch_size])
             for local, row in enumerate(targets[start : start + self.batch_size]):
                 chosen = picked[local]
@@ -155,12 +161,18 @@ class TfidfRecommender(Recommender):
                 out_scores[row, : usable.sum()] = scores[local, chosen[usable]]
         return out, out_scores
 
+    def _transposed(self) -> sp.csr_matrix:
+        """``vectors.T`` as CSR, computed once. Both scoring paths multiply against it."""
+        if self._vectors_t is None:
+            self._vectors_t = self.vectors.T.tocsr()
+        return self._vectors_t
+
     def similar_items(self, isbn: str, k: int = 10) -> list[tuple[str, float]]:
         self._require_fit()
         item = self._index.get(isbn)
         if item is None:
             return []
-        scores = np.asarray((self.vectors[item] @ self.vectors.T).todense()).ravel()
+        scores = np.asarray((self.vectors[item] @ self._transposed()).todense()).ravel()
         scores[item] = -np.inf
         take = min(k, scores.size - 1)
         best = np.argpartition(-scores, kth=take - 1)[:take]
