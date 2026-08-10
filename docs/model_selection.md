@@ -324,11 +324,13 @@ number, and a small one.
 
 **ALS kept in the plan for what the metrics do not show.** Free personalization from the
 same fit, item-to-item neighbourhoods that hold up where its HitRate does not (M20: level
-with item-item on the item query, L80, and the only model whose advantage survives on
-thin anchors, L81), and the only model that ports to Spark without a rewrite — which makes
-productionization a port rather than a second project. *This paragraph read "the best
-item-to-item neighbourhoods of any model here" until M20 measured it and no superlative
-survived.*
+with item-item on the item query, L80, and an advantage on thin anchors, L81), and the only
+model that ports to Spark without a rewrite — which makes productionization a port rather than
+a second project. *This paragraph read "the best item-to-item neighbourhoods of any model here"
+until M20 measured it and no superlative survived. A second superlative went the same way on
+2026-08-10: the thin-anchor advantage was called* the only one *until **L85 (M22)** measured RRF
+and fusion on the same anchors and found both ahead of item-item in the 1-4 band as well — ALS's
+advantage there is real and it is no longer unique.*
 
 **None of this is expensive to run, and that is measured too.** The model artefact is
 **155.6 MB** of float32 factors, the precomputed answer table for the whole product is
@@ -375,8 +377,11 @@ have to find.** Both tests hold the *drawn* held-out item fixed and ask about sa
 users. Seed 42 also chooses **which** of a reader's favourites is held out, and on a
 catalogue this long-tailed that draw carries real variance of its own — L73 shows why: hit
 rates differ by a factor of seven between the lowest and highest support stratum, so it
-matters a great deal which stratum the drawn book landed in. Several seeds would measure it;
-it has not been done. And every metric is a proxy:
+matters a great deal which stratum the drawn book landed in. Several seeds would measure it,
+and **M21 did: five draws (seeds 42, 44, 45, 46, 47), ledger L86.** The ordering holds on all
+five — no row changes place — but the near-ties move, and the published cell sits at the
+favourable end of its range. *(This sentence read "it has not been done" until 2026-08-10; M21's
+own follow-up corrected four other places and missed this one.)* And every metric is a proxy:
 "was the held-out book in the top ten" stands in for "would a reader click, buy, or
 enjoy this". A recommendation the reader has never heard of scores zero whether it was a
 brilliant discovery or a mistake — which is precisely the outcome a long-tail recommender

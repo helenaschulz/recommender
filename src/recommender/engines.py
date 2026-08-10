@@ -111,9 +111,17 @@ class ItemItemCosine:
     """Configuration B: the published table's winner, served from the reader matrix.
 
     ``sim(i, j) = co(i, j) / (sqrt(support_i · support_j) + λ)`` — the formula in
-    ``models/item_item.py``, evaluated for one row at a time. The model truncates each
-    similarity row to its top 50 neighbours; that truncation cannot change a top-10 and is
-    therefore not reproduced here.
+    ``models/item_item.py``, evaluated for one row at a time.
+
+    **One documented divergence from that model: its top-50 row truncation is not reproduced
+    here.** For configuration B that is harmless — the top 10 of a full row and the top 10 of
+    its top 50 are the same ten items. For configuration C it is **not**: RRF reads this list
+    at depth 100 (:data:`DEFAULT_DEPTH`), so neighbours 51-100, which do not exist in the
+    fitted model L85 measured, do reach the fusion and can move the fused top 10. C is
+    therefore the *serving* variant of RRF rather than a re-run of L85's — the same caveat the
+    module docstring already makes about the candidate floor, for a second reason. L87, L88
+    and L89 were measured on this code, so the divergence is documented rather than removed:
+    changing the ranking now would silently move three published lines.
     """
 
     name = "item-item"

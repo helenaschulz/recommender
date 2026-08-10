@@ -166,9 +166,13 @@ way L42's 30 clusters and L79's 30 gallery slots were counted.
 
 **The second column is new in M23 and is defined here rather than borrowed, because L79's
 criterion cannot see this failure mode and it is the dominant one in this band.** A *text-match
-artefact* is a slot that shares a title word or the author's **first name** with the anchor,
-carries **at most one co-reader**, and is not a comparable read. It is reported separately and
-never folded into the first column, so the L79 comparison stays exact.
+artefact* is a slot that shares a title word or **a name token from the anchor author's name —
+first or last** with the anchor, carries **at most one co-reader**, and is not a comparable
+read. It is reported separately and never folded into the first column, so the L79 comparison
+stays exact. *(This definition first read "the author's **first** name". That is the dominant
+case but not all of it: two of the seventeen — C. S. **Lewis** against Sinclair **Lewis** —
+match on the surname. Corrected 2026-08-10 to describe what was actually counted. The count of
+17 is unchanged and no uncounted slot newly qualifies.)*
 
 All 17 belong to C, and they are the same mechanism seventeen times — TF-IDF matching on a
 name token that carries no meaning:
@@ -184,11 +188,17 @@ name token that carries no meaning:
 
 **Read against the accuracy column, this is the whole M23 finding in one table.** C is the
 configuration L85 ranks first on the item query, and on the band a lower floor would open it
-is the only one of the three that puts books with **zero shared readers** in front of a reader
-— because it matched *Christopher* Buckley to *Christopher* Pike. B returns no bad slot and no
-artefact at all, and where the anchor has a real neighbourhood it finds it (*Babbitt* for
-*Main Street*, *Black Lotus* for *The Samurai's Wife*, the whole *Incarnations of Immortality*
-sequence for *Being a Green Mother*).
+it puts books with **zero shared readers** in front of a reader **12 times in 80 slots, against
+A's 2 and B's 0** — because it matched *Christopher* Buckley to *Christopher* Pike. B returns no
+bad slot, no artefact and no zero-evidence slot at all, and where the anchor has a real
+neighbourhood it finds it (*Babbitt* for *Main Street*, *Black Lotus* for *The Samurai's Wife*,
+the whole *Incarnations of Immortality* sequence for *Being a Green Mother*).
+
+*(This paragraph first said C was **the only one** of the three to do it. That is false against
+the table directly above it: A returns two zero-co-reader slots — *The Bride Stripped Bare* for
+*Songlines*, *London Match* for *The Samurai's Wife*. Corrected 2026-08-10. The finding survives
+as a rate rather than a category — 15.0% against 2.5% against 0.0% — and the uniqueness that
+does hold belongs to **B**, which never does it.)*
 
 **In fairness to C, and recorded because the count is not the whole picture:** on *Beauty: A
 Retelling of the Story of Beauty and the Beast* C returns five Robin McKinley novels including
