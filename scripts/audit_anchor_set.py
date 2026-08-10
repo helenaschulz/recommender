@@ -204,7 +204,7 @@ def render_lists(engines: dict[str, DemoEngine], work_id: str, k: int) -> list[s
     answers = {label: engine.similar(work_id, k=k) for label, engine in engines.items()}
     for label, got in answers.items():
         TALLY[label] += [item.evidence.co_readers for item in got]
-    header = " | ".join(f"{label} · {engines[label].configuration.label} | co" for label in COLUMNS)
+    header = " | ".join(f"{label} · {engines[label].configuration.short_label} | co" for label in COLUMNS)
     lines = [
         "| # | " + header + " |",
         "|---|" + "---|---:|" * len(COLUMNS),
@@ -262,7 +262,7 @@ def main(argv: list[str] | None = None) -> int:
         f"**{len(ANCHOR_QUERIES) * len(COLUMNS) * args.k} slots** to read.",
         "",
         "Configurations: "
-        + " · ".join(f"**{label}** = {engines[label].configuration.label}" for label in COLUMNS)
+        + " · ".join(f"**{label}** = {engines[label].configuration.short_label}" for label in COLUMNS)
         + f". **Both sit at anchor floor {assets.anchor_floor}** and the candidate floor stays "
         f"{assets.similar_min_support} in both (L34), so the switch moves one variable.",
         "",
@@ -442,8 +442,8 @@ def main(argv: list[str] | None = None) -> int:
         "",
         "| configuration | bad slots | of | counted by | date |",
         "|---|--:|--:|---|---|",
-        f"| A · {engines['A'].configuration.label} | | {len(TALLY['A'])} | | |",
-        f"| B · {engines['B'].configuration.label} | | {len(TALLY['B'])} | | |",
+        f"| A · {engines['A'].configuration.short_label} | | {len(TALLY['A'])} | | |",
+        f"| B · {engines['B'].configuration.short_label} | | {len(TALLY['B'])} | | |",
         "",
         "## 6 · The evidence behind the slots, counted by the script",
         "",
@@ -459,7 +459,7 @@ def main(argv: list[str] | None = None) -> int:
         zero = sum(1 for c in counts if c == 0)
         median = counts[len(counts) // 2] if counts else 0
         lines.append(
-            f"| {label} · {engines[label].configuration.label} | {len(counts)} | {median} | "
+            f"| {label} · {engines[label].configuration.short_label} | {len(counts)} | {median} | "
             f"{thin} ({thin / max(len(counts), 1):.1%}) | {zero} | {counts[0] if counts else 0} |"
         )
     lines.append("")

@@ -2,7 +2,7 @@
 
 `python scripts/audit_anchor_set.py` — 2026-08-10. 20 anchors × 2 configurations × 10 slots = **400 slots** to read.
 
-Configurations: **A** = Matrix factorization · **B** = Shared readers. **Both sit at anchor floor 50** and the candidate floor stays 20 in both (L34), so the switch moves one variable.
+Configurations: **A** = Matrix factorization (ALS) · **B** = Item-based collaborative filtering. **Both sit at anchor floor 50** and the candidate floor stays 20 in both (L34), so the switch moves one variable.
 
 `co` is the number of the anchor's readers who also read that book — the number the app prints. The `score` column is deliberately **not** here: A's is a cosine between learned profiles and B's a shrunk cosine over shared readers, they are not comparable, and a table that put them side by side would invite exactly the comparison M23 decision 6 exists to prevent.
 
@@ -63,7 +63,7 @@ Every anchor below was reached by typing the title into the app's own search box
 
 typed *The Lovely Bones* · `the lovely bones: a novel|sebold` · **1,295 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | Lucky : A Memoir — *Alice Sebold* | 134 | Lucky : A Memoir — *Alice Sebold* | 134 |
 | 2 | The Nanny Diaries: A Novel — *Emma McLaughlin* | 204 | The Nanny Diaries: A Novel — *Emma McLaughlin* | 204 |
@@ -80,7 +80,7 @@ typed *The Lovely Bones* · `the lovely bones: a novel|sebold` · **1,295 reader
 
 typed *The Da Vinci Code* · `the da vinci code|brown` · **905 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | Angels & Demons — *Dan Brown* | 216 | Angels & Demons — *Dan Brown* | 216 |
 | 2 | Stupid White Men : ...And Other Sorry Excuses for the State of the Nation! — *Michael Moore* | 6 | The Lovely Bones: A Novel — *Alice Sebold* | 195 |
@@ -97,7 +97,7 @@ typed *The Da Vinci Code* · `the da vinci code|brown` · **905 readers**
 
 typed *Harry Potter and the Sorcerer's Stone* · `harry potter and the sorcerer's stone|rowling` · **832 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | Harry Potter and the Chamber of Secrets — *J. K. Rowling* | 343 | Harry Potter and the Chamber of Secrets — *J. K. Rowling* | 343 |
 | 2 | Harry Potter and the Prisoner of Azkaban — *J. K. Rowling* | 266 | Harry Potter and the Prisoner of Azkaban — *J. K. Rowling* | 266 |
@@ -114,7 +114,7 @@ typed *Harry Potter and the Sorcerer's Stone* · `harry potter and the sorcerer'
 
 typed *Bridget Jones's Diary* · `bridget jones's diary|fielding` · **772 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | Bridget Jones: The Edge of Reason — *Helen Fielding* | 145 | Bridget Jones: The Edge of Reason — *Helen Fielding* | 145 |
 | 2 | The Lost Boy — *Dave Pelzer* | 9 | Divine Secrets of the Ya-Ya Sisterhood: A Novel — *Rebecca Wells* | 146 |
@@ -131,7 +131,7 @@ typed *Bridget Jones's Diary* · `bridget jones's diary|fielding` · **772 reade
 
 typed *Girl with a Pearl Earring* · `girl with a pearl earring|chevalier` · **647 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | Falling Angels — *Tracy Chevalier* | 55 | The Secret Life of Bees — *Sue Monk Kidd* | 134 |
 | 2 | The Virgin Blue — *Tracy Chevalier* | 44 | The Red Tent — *Anita Diamant* | 119 |
@@ -148,7 +148,7 @@ typed *Girl with a Pearl Earring* · `girl with a pearl earring|chevalier` · **
 
 typed *Interview with the Vampire* · `interview with the vampire|rice` · **521 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | The Vampire Lestat — *ANNE RICE* | 169 | The Vampire Lestat — *ANNE RICE* | 169 |
 | 2 | The Queen of the Damned — *Anne Rice* | 133 | The Queen of the Damned — *Anne Rice* | 133 |
@@ -165,7 +165,7 @@ typed *Interview with the Vampire* · `interview with the vampire|rice` · **521
 
 typed *To Kill a Mockingbird* · `to kill a mockingbird|lee` · **495 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | Of Mice and Men — *John Steinbeck* | 42 | The Joy Luck Club — *Amy Tan* | 91 |
 | 2 | CRY THE BELOVED COUNTRY — *Alan Paton* | 15 | Wuthering Heights — *EMILY BRONTE* | 81 |
@@ -182,7 +182,7 @@ typed *To Kill a Mockingbird* · `to kill a mockingbird|lee` · **495 readers**
 
 typed *The Hobbit* · `the hobbit: the enchanting prelude to the lord of the rings|tolkien` · **281 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | The Return of the King — *J.R.R. TOLKIEN* | 68 | The Two Towers — *J.R.R. TOLKIEN* | 75 |
 | 2 | The Two Towers — *J.R.R. TOLKIEN* | 75 | The Return of the King — *J.R.R. TOLKIEN* | 68 |
@@ -199,7 +199,7 @@ typed *The Hobbit* · `the hobbit: the enchanting prelude to the lord of the rin
 
 typed *Dune* · `dune|herbert` · **257 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | Dune Messiah — *Frank Herbert* | 54 | Children of Dune — *Frank Herbert* | 53 |
 | 2 | Children of Dune — *Frank Herbert* | 53 | Dune Messiah — *Frank Herbert* | 54 |
@@ -216,7 +216,7 @@ typed *Dune* · `dune|herbert` · **257 readers**
 
 typed *Fight Club* · `fight club|palahniuk` · **102 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | Choke — *CHUCK PALAHNIUK* | 24 | Invisible Monsters — *Chuck Palahniuk* | 20 |
 | 2 | Invisible Monsters — *Chuck Palahniuk* | 20 | Choke — *CHUCK PALAHNIUK* | 24 |
@@ -233,7 +233,7 @@ typed *Fight Club* · `fight club|palahniuk` · **102 readers**
 
 typed *Guns, Germs, and Steel* · `secrets|steel` · **98 readers**  ·  ⚠ **not the book this query names**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | Fine Things — *Danielle Steel* | 29 | Changes — *Danielle Steel* | 29 |
 | 2 | Daddy — *DANIELLE STEEL* | 31 | The Ring — *Danielle Steel* | 24 |
@@ -250,7 +250,7 @@ typed *Guns, Germs, and Steel* · `secrets|steel` · **98 readers**  ·  ⚠ **n
 
 the anchor the set means by *Guns, Germs, and Steel*, reached by work id because the search box does not reach it · `guns, germs, and steel: the fates of human societies|diamond` · **67 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | The Summer Tree — *Guy Gavriel Kay* | 4 | Krakatoa : The Day the World Exploded: August 27, 1883 — *Simon Winchester* | 7 |
 | 2 | Microserfs — *Douglas Coupland* | 5 | The Coffee Trader : A Novel — *DAVID LISS* | 5 |
@@ -267,7 +267,7 @@ the anchor the set means by *Guns, Germs, and Steel*, reached by work id because
 
 typed *Life of Pi* · `life of pi|martel` · **658 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | The Piano Shop on the Left Bank: Discovering a Forgotten Passion in a Paris Atelier — *Thaddeus Carhart* | 3 | The Secret Life of Bees — *Sue Monk Kidd* | 135 |
 | 2 | The Curious Incident of the Dog in the Night-Time — *Mark Haddon* | 53 | Balzac and the Little Chinese Seamstress : A Novel — *DAI SIJIE* | 81 |
@@ -284,7 +284,7 @@ typed *Life of Pi* · `life of pi|martel` · **658 readers**
 
 typed *Tuesdays with Morrie* · `tuesdays with morrie: an old man, a young man, and life's greatest lesson|albom` · **492 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | The Five People You Meet in Heaven — *Mitch Albom* | 85 | The Five People You Meet in Heaven — *Mitch Albom* | 85 |
 | 2 | Time Flies — *BILL COSBY* | 19 | Midwives: A Novel — *Chris Bohjalian* | 70 |
@@ -301,7 +301,7 @@ typed *Tuesdays with Morrie* · `tuesdays with morrie: an old man, a young man, 
 
 typed *Angela's Ashes* · `angela's ashes (mmp): a memoir|mccourt` · **326 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | Tis : A Memoir — *Frank McCourt* | 43 | She's Come Undone — *Wally Lamb* | 76 |
 | 2 | The Cider House Rules — *John Irving* | 44 | Tis : A Memoir — *Frank McCourt* | 43 |
@@ -318,7 +318,7 @@ typed *Angela's Ashes* · `angela's ashes (mmp): a memoir|mccourt` · **326 read
 
 typed *Love in the Time of Cholera* · `love in the time of cholera|marquez` · **261 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | One Hundred Years of Solitude — *Gabriel Garcia Marquez* | 35 | Confessions of an Ugly Stepsister : A Novel — *Gregory Maguire* | 36 |
 | 2 | Chronicle of a Death Foretold — *GABRIEL GARCIA MARQUEZ* | 8 | Balzac and the Little Chinese Seamstress : A Novel — *DAI SIJIE* | 38 |
@@ -335,7 +335,7 @@ typed *Love in the Time of Cholera* · `love in the time of cholera|marquez` · 
 
 typed *One Hundred Years of Solitude* · `one hundred years of solitude|marquez` · **252 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | Love in the Time of Cholera — *Gabriel Garcia Marquez* | 35 | Balzac and the Little Chinese Seamstress : A Novel — *DAI SIJIE* | 37 |
 | 2 | White Noise — *Don DeLillo* | 9 | Love in the Time of Cholera — *Gabriel Garcia Marquez* | 35 |
@@ -352,7 +352,7 @@ typed *One Hundred Years of Solitude* · `one hundred years of solitude|marquez`
 
 typed *The Curious Incident of the Dog in the Night-Time* · `the curious incident of the dog in the night-time|haddon` · **204 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | The Little Friend — *Donna Tartt* | 21 | The Time Traveler's Wife — *Audrey Niffenegger* | 30 |
 | 2 | Brick Lane: A Novel — *Monica Ali* | 16 | Life of Pi — *Yann Martel* | 53 |
@@ -369,7 +369,7 @@ typed *The Curious Incident of the Dog in the Night-Time* · `the curious incide
 
 typed *Crime and Punishment* · `crime and punishment|dostoevsky` · **140 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | The Last Days of Socrates — *Plato* | 4 | Bleak House — *Charles Dickens* | 13 |
 | 2 | Madame Bovary — *Gustave Flaubert* | 20 | Brave New World — *Aldous Huxley* | 24 |
@@ -386,7 +386,7 @@ typed *Crime and Punishment* · `crime and punishment|dostoevsky` · **140 reade
 
 typed *War and Peace* · `peace like a river|enger` · **165 readers**  ·  ⚠ **not the book this query names**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | Empire Falls — *Richard Russo* | 38 | Empire Falls — *Richard Russo* | 38 |
 | 2 | Dreams Of My Russian Summers: A Novel — *Andrei Makine* | 7 | Miss Julia Speaks Her Mind : A Novel — *Ann B. Ross* | 23 |
@@ -403,7 +403,7 @@ typed *War and Peace* · `peace like a river|enger` · **165 readers**  ·  ⚠ 
 
 the anchor the set means by *War and Peace*, reached by work id because the search box does not reach it · `war and peace|tolstoy` · **100 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | The Brothers Karamazov — *FYODOR DOSTOEVSKY* | 6 | Anna Karenina — *Leo Tolstoy* | 17 |
 | 2 | Crime and Punishment — *Fyodor Dostoevsky* | 14 | The Woman in White — *Wilkie Collins* | 12 |
@@ -420,7 +420,7 @@ the anchor the set means by *War and Peace*, reached by work id because the sear
 
 typed *The Master and Margarita* · `the master and margarita|bulgakov` · **65 readers**
 
-| # | A · Matrix factorization | co | B · Shared readers | co |
+| # | A · Matrix factorization (ALS) | co | B · Item-based collaborative filtering | co |
 |---|---|---:|---|---:|
 | 1 | GARDEN OF EDEN — *Ernest Hemingway* | 6 | GARDEN OF EDEN — *Ernest Hemingway* | 6 |
 | 2 | Baltasar and Blimunda — *Jose Saramago* | 3 | Son of the Shadows — *Juliet Marillier* | 5 |
@@ -491,8 +491,8 @@ Filled in by hand after reading section 3, under **L79's criterion, inherited un
 
 | configuration | bad slots | of | counted by | date |
 |---|--:|--:|---|---|
-| A · Matrix factorization | **7** (4 unambiguous) | 220 | hand count | 2026-08-10 |
-| B · Shared readers | **0** | 220 | hand count | 2026-08-10 |
+| A · Matrix factorization (ALS) | **7** (4 unambiguous) | 220 | hand count | 2026-08-10 |
+| B · Item-based collaborative filtering | **0** | 220 | hand count | 2026-08-10 |
 
 **Every counted slot is named, so the count can be checked rather than believed.** All seven
 are A's; B produced none of the three classes in 220 slots.
@@ -521,15 +521,15 @@ the readers are different people. The engine that reasons about similarity in a 
 inherits the catalogue's duplicates; the engine that counts shared readers is blind to them.
 That is the same mechanism, pointed the other way, as B's weakness in section 7.
 
+
 ## 6 · The evidence behind the slots, counted by the script
 
 Not a judgment and therefore not the human's to make: these are L87's definitions applied to this anchor set, over every list in section 3.
 
 | configuration | slots | median co-readers | thin (<5 co-readers) | zero co-readers | weakest slot |
 |---|--:|--:|--:|--:|--:|
-| A · Matrix factorization | 220 | 15 | 42 (19.1%) | 0 | 1 |
-| B · Shared readers | 220 | 46 | 6 (2.7%) | 0 | 4 |
-
+| A · Matrix factorization (ALS) | 220 | 15 | 42 (19.1%) | 0 | 1 |
+| B · Item-based collaborative filtering | 220 | 46 | 6 (2.7%) | 0 | 4 |
 
 ## 7 · The verdict (hand-written, M23.10.3's gate)
 

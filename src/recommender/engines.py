@@ -277,9 +277,23 @@ class Configuration:
     key: str
     #: The :func:`build_source` name this configuration runs.
     engine: str
-    #: What the picker shows. Written out, never a house abbreviation — the M15.5 register
-    #: rule: a client does not know what "ALS" or "item-item" is.
+    #: **What the picker shows**, and it is the model followed by the mechanism in three words
+    #: (review,10.08.2026). The first draft labelled the two *Matrix factorization* and
+    #: *Shared readers*, which named a model on one side and a mechanism on the other — and the
+    #: accuracy table six lines above was by then marking "Item-based collaborative filtering ·
+    #: this demo", so one screen carried two names for one thing. That is the M17.8/M17.10
+    #: failure mode, twice removed from this app already.
+    #:
+    #: Written out, never a house abbreviation, per M15.5's register rule: a client does not
+    #: know what "ALS" or "item-item" is. The gloss after the dash is what stops the model name
+    #: being the only thing a non-specialist has to go on at the moment of choosing.
     label: str
+    #: The same configuration as a **column heading or a table row** — the model, nothing else.
+    #: A control label and an identifier have different jobs: the picker has to explain at the
+    #: point of choice, a table row has to be recognisable at a glance and match its neighbours.
+    #: The sidebar's accuracy table and ``docs/anchor_set_audit.md`` both read this field, so
+    #: the row the "· this demo" marker lands on cannot drift away from the picker beside it.
+    short_label: str
     #: Decision 6's label for the displayed number, in the legend under the list.
     score_label: str
     #: One sentence for the sidebar, in the same register as the rest of that copy.
@@ -308,7 +322,8 @@ CONFIGURATIONS: dict[str, Configuration] = {
     "A": Configuration(
         key="A",
         engine="als",
-        label="Matrix factorization",
+        label="Matrix factorization — learned profiles",
+        short_label="Matrix factorization (ALS)",
         score_label="cosine between the books' learned profiles",
         blurb=(
             "Every book gets a short profile learned from who read it. Two books are similar "
@@ -318,7 +333,8 @@ CONFIGURATIONS: dict[str, Configuration] = {
     "B": Configuration(
         key="B",
         engine="item-item",
-        label="Shared readers",
+        label="Item-based collaborative filtering — shared readers",
+        short_label="Item-based collaborative filtering",
         score_label="shared readers, weighted against how widely each book is read",
         blurb=(
             "Two books are similar when the same people read both — counted against how "

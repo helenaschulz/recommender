@@ -178,11 +178,27 @@ class TestConfigurations:
     def test_every_configuration_labels_its_own_number(self) -> None:
         """Decision 6: a configuration cannot arrive without a label for what it prints."""
         for config in CONFIGURATIONS.values():
-            assert config.score_label and config.label and config.blurb
+            assert config.score_label and config.label and config.short_label and config.blurb
 
     def test_the_two_labels_are_different_because_the_numbers_are(self) -> None:
         labels = [config.score_label for config in CONFIGURATIONS.values()]
         assert len(set(labels)) == len(labels)
+
+    def test_the_picker_and_the_table_row_name_the_same_model(self) -> None:
+        """The screen may not carry two names for one thing (review,10.08.2026).
+
+        For one afternoon it did: the picker read *Shared readers* while the accuracy-table
+        row it marked read *Item-based collaborative filtering*. The picker label now has to
+        **start with** the model name the table prints, so the two cannot drift apart again —
+        which is the whole reason the sidebar stopped hard-coding those rows.
+        """
+        for config in CONFIGURATIONS.values():
+            model = config.short_label.split(" (")[0]
+            assert config.label.startswith(model), f"{config.key}: {config.label!r} vs {model!r}"
+
+    def test_the_two_table_rows_are_distinct(self) -> None:
+        rows = [config.short_label for config in CONFIGURATIONS.values()]
+        assert len(set(rows)) == len(rows)
 
     def test_an_unknown_key_is_an_error_rather_than_a_default(self) -> None:
         with pytest.raises(ValueError, match="unknown configuration"):

@@ -132,6 +132,15 @@ STYLE = """
      markdown block separately, so `h3:first-of-type` matches all four of them. */
   .st-key-app-name h3 {font-size: 1.65rem; margin-bottom: 0.15rem;}
 
+  /* The model picker. Both options are a model name plus a three-word gloss, so the longer
+     one wraps in a 21rem sidebar — and Streamlit's row spacing assumes one line, which left
+     the wrapped second option running into the first. Give the rows a gap and let the label
+     text sit against the top of its button rather than centred on two lines. Scoped to the
+     keyed container so every other radio in the app keeps Streamlit's own spacing. */
+  .st-key-engine-picker [role="radiogroup"] {gap: 0.5rem;}
+  .st-key-engine-picker [role="radiogroup"] > label {align-items: flex-start; line-height: 1.35;}
+  .st-key-engine-picker [role="radiogroup"] > label > div:first-child {margin-top: 0.15rem;}
+
   /* One row of the result list. No card, no fill, no border — a hairline and the type
      hierarchy carry it. */
   .row {display: flex; gap: 14px; padding-top: 14px; border-top: 0.5px solid #e2ded7;}
@@ -380,21 +389,33 @@ def sidebar(engine: DemoEngine) -> None:
         #
         # Which row carries "this demo" follows the picker, for the reason above: the marker
         # is a statement about what is running, and a fixed one would be wrong half the time.
-        rows = [
-            ("A", "Matrix factorization (ALS)", "0.0545"),
-            ("B", "Item-based collaborative filtering", "0.0644"),
-        ]
-        marked = {label: (f"**{label} · this demo**", f"**{score}**") if k == key else (label, score)
-                  for k, label, score in rows}
+        #
+        # **The two switchable rows take their names from the configuration** (the project owner,
+        # 10.08.2026) rather than from string literals here. They were literals for one
+        # afternoon and that was already enough for the screen to disagree with itself: the
+        # picker said "Shared readers" while the row it marked said "Item-based collaborative
+        # filtering". One name per thing, from one place.
+        def row(config_key: str, score: str) -> str:
+            name = CONFIGURATIONS[config_key].short_label
+            return (
+                f"| **{name} · this demo** | **{score}** |"
+                if config_key == key
+                else f"| {name} | {score} |"
+            )
+
         st.markdown(
-            "| Approach | Hit rate @10 |\n|---|---:|\n"
-            f"| {marked['Item-based collaborative filtering'][0]} | "
-            f"{marked['Item-based collaborative filtering'][1]} |\n"
-            f"| {marked['Matrix factorization (ALS)'][0]} | {marked['Matrix factorization (ALS)'][1]} |\n"
-            "| Item-based CF, explicit ratings only | 0.0486 |\n"
-            "| Content-based, TF-IDF on title and author | 0.0405 |\n"
-            "| Popularity baseline | 0.0155 |\n"
-            "| Content-based, multilingual embeddings | 0.0141 |"
+            "\n".join(
+                [
+                    "| Approach | Hit rate @10 |",
+                    "|---|---:|",
+                    row("B", "0.0644"),
+                    row("A", "0.0545"),
+                    "| Item-based CF, explicit ratings only | 0.0486 |",
+                    "| Content-based, TF-IDF on title and author | 0.0405 |",
+                    "| Popularity baseline | 0.0155 |",
+                    "| Content-based, multilingual embeddings | 0.0141 |",
+                ]
+            )
         )
         st.caption(
             "Hit rate @10: how often a reader's held-out book turns up in their top ten. "
@@ -406,10 +427,14 @@ def sidebar(engine: DemoEngine) -> None:
         # `chosen_configuration` read at the top of this run — see there for the ordering.
         if SHOW_ENGINE_PICKER:
             with st.container(key="engine-picker"):
-                st.markdown("**What counts as similar**")
+                # "The model", not "What counts as similar" (review,10.08.2026). The heading
+                # asked *how* and the options now answer *which*, and a question whose answer
+                # is a different question reads as a mismatch. It also sits inside the sidebar
+                # section already called "The engine", so the two agree about what is on offer.
+                st.markdown("**The model**")
                 keys = list(CONFIGURATIONS)
                 st.radio(
-                    "What counts as similar",
+                    "The model",
                     keys,
                     key="configuration",
                     index=keys.index(DEFAULT_CONFIGURATION),
