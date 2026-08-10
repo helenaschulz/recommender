@@ -35,10 +35,25 @@ candidate floor (L34, 20 interactions) is applied to **both** halves before fusi
 the app's standing contract is that it never shows a book that thin — and 23.1 is a question
 about what a visitor sees. So this is the *serving* variant of RRF, and its numbers are not
 interchangeable with L85's.
+
+**Two of the three are configurations; all three stay measurable (M23.10).** The app offers
+**A** and **B** through :data:`CONFIGURATIONS`. **C is dropped and does not come back**, and
+the reason is written here rather than left to memory, because L85 ranks it *first* on the
+item query and that number will tempt someone to re-add it: 17 of C's 80 audited slots are
+text matches on a token of the anchor author's name (L89), so the rule that leads the metric
+is also the only one that puts a book with **zero** shared readers in front of a reader.
+:func:`build_source` keeps all three, because ``scripts/audit_floor_band.py`` and
+``scripts/analyze_anchor_support.py`` are the commands L87, L88 and L89 were measured with and
+a published measurement's command has to keep running. So: **the registry is what the app
+offers, and** :func:`build_source` **is what the audit scripts measure.** Those are different
+questions and conflating them is how a dropped configuration comes back by accident.
 """
 
 from __future__ import annotations
 
+import warnings
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 import numpy as np
@@ -46,6 +61,7 @@ import scipy.sparse as sp
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import normalize
 
+from recommender.answers import load_answers
 from recommender.models.content_tfidf import content_text
 from recommender.models.hybrid import RRF, combine_user_scored
 
@@ -228,7 +244,12 @@ class ReciprocalRankFusion:
 
 
 def build_source(name: str, assets, **kwargs) -> NeighbourSource:
-    """One of ``als`` / ``item-item`` / ``rrf`` over *assets*, with nothing fitted twice."""
+    """One of ``als`` / ``item-item`` / ``rrf`` over *assets*, with nothing fitted twice.
+
+    The **measurement** entry point, and it keeps all three engines: L87, L88 and L89 were
+    measured through it and a published line's command has to keep running. What the app
+    offers is :data:`CONFIGURATIONS`, which is two.
+    """
     if name == "als":
         return AlsFactors(np.asarray(assets.factors))
     if name == "item-item":
@@ -239,3 +260,121 @@ def build_source(name: str, assets, **kwargs) -> NeighbourSource:
             TfidfText(assets.item_ids, assets.books),
         )
     raise ValueError(f"unknown engine {name!r}; expected one of als, item-item, rrf")
+
+
+@dataclass(frozen=True)
+class Configuration:
+    """One position the demo can be switched to: an engine, and the words that go with it.
+
+    The words are part of the configuration rather than of the app because of M23 decision 6:
+    both configurations print a similarity, **both label which one it is**, and nothing on
+    screen invites comparing the two numbers across a switch. A's is an ALS factor cosine and
+    B's a shrunk cosine over shared readers; they are not comparable and the label is what
+    stops the number being read across. Keeping the label beside the engine means a new
+    configuration cannot arrive without one.
+    """
+
+    key: str
+    #: The :func:`build_source` name this configuration runs.
+    engine: str
+    #: What the picker shows. Written out, never a house abbreviation — the M15.5 register
+    #: rule: a client does not know what "ALS" or "item-item" is.
+    label: str
+    #: Decision 6's label for the displayed number, in the legend under the list.
+    score_label: str
+    #: One sentence for the sidebar, in the same register as the rest of that copy.
+    blurb: str
+    #: Does this configuration answer from a precomputed table (M23.10.1)?
+    #:
+    #: **A does not, and that is decision 7 rather than an oversight.** A already ships the
+    #: 155.6 MB factor matrix it answers from (L71); giving it a table would mean rebuilding
+    #: ``artifacts/app/*``, which is the one thing this milestone may not do — the rehearsed
+    #: eleven have to come back byte-identical, and the last rebuild moved the lookup between
+    #: two screenshots (M17.9). B is additive: a new 0.3 MB file beside the old assets.
+    table: bool = False
+
+
+#: What the app offers, in picker order. **A is the default and stays the default** (M23
+#: decision 2): if anything about B is unconvincing an hour before a demo it disappears
+#: with one flag in ``app/main.py`` and A is untouched.
+#:
+#: **Both sit at anchor floor 50** (decision 1, changed 10.08.2026 on the review question "can't
+#: both use the same threshold?"). At a common floor the switch moves **one** variable — the
+#: same anchor, the same 2,508 askable works, answered from a calibrated similarity instead of
+#: an anti-calibrated one (L87: 1.7% thin slots against 18.2%). The floor's own cost is a
+#: separate demonstration with no picker in it: type *The Kite Runner* and the app declines,
+#: under either configuration, because 39 readers is below 50.
+CONFIGURATIONS: dict[str, Configuration] = {
+    "A": Configuration(
+        key="A",
+        engine="als",
+        label="Matrix factorization",
+        score_label="cosine between the books' learned profiles",
+        blurb=(
+            "Every book gets a short profile learned from who read it. Two books are similar "
+            "when their profiles point the same way."
+        ),
+    ),
+    "B": Configuration(
+        key="B",
+        engine="item-item",
+        label="Shared readers",
+        score_label="shared readers, weighted against how widely each book is read",
+        blurb=(
+            "Two books are similar when the same people read both — counted against how "
+            "widely each is read, so a bestseller is not similar to everything."
+        ),
+        table=True,
+    ),
+}
+
+#: The one the demo runs unless somebody switches it.
+DEFAULT_CONFIGURATION = "A"
+
+
+def configuration(key: str | Configuration) -> Configuration:
+    """Look up a configuration by key, or pass one through. Unknown keys are an error."""
+    if isinstance(key, Configuration):
+        return key
+    try:
+        return CONFIGURATIONS[key]
+    except KeyError:
+        raise ValueError(
+            f"unknown configuration {key!r}; expected one of {', '.join(CONFIGURATIONS)}"
+        ) from None
+
+
+def build_configuration(
+    key: str | Configuration,
+    assets,
+    *,
+    table_dir: Path | None = None,
+    live: bool = False,
+) -> NeighbourSource:
+    """The source for one configuration, from its answer table where one exists.
+
+    **The table and the live source are the same ranking, and that is asserted rather than
+    claimed** — ``scripts/build_answer_table.py`` writes the table by asking the live source,
+    then re-reads it and compares every stored slot back against a live recomputation, and
+    reports the worst score deviation it found. So "table or live" is a provenance question,
+    not a behaviour question, which is what makes the fallback below safe.
+
+    The fallback exists for one scheduled reason: a missing or stale table an hour before a
+    demo must not be able to take the demo down. It **warns** rather than falling back
+    quietly — the live source is the truth the table is a cache of, so answering from it is
+    correct, but a serving path that silently stops using its asset is how a stale cache
+    survives a week. ``live=True`` forces the computation, which is what the build script and
+    the audit use.
+    """
+    config = configuration(key)
+    directory = table_dir or getattr(assets, "directory", None)
+    if config.table and not live and directory is not None:
+        try:
+            return load_answers(directory, config.engine, assets)
+        except (FileNotFoundError, RuntimeError) as error:
+            warnings.warn(
+                f"configuration {config.key} is answering from a live computation: {error}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+    return build_source(config.engine, assets)

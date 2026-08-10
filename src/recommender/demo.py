@@ -278,6 +278,21 @@ class Book:
     readers: int
 
 
+@dataclass(frozen=True)
+class Resolution:
+    """What one typed query resolves to: the books on offer, and the ones the floor is hiding.
+
+    :attr:`matches` is exactly :meth:`DemoEngine.find`'s list, produced by the same code —
+    **which book a query resolves to cannot move because this class exists.**
+    :attr:`below_floor` is the group the search box has silently dropped since M13: books the
+    query matches *better* than anything the demo can answer, which are not offered because
+    they sit under the anchor floor. Empty on almost every query. See :meth:`DemoEngine.resolve`.
+    """
+
+    matches: list[Book]
+    below_floor: list[Book]
+
+
 def reason_sentence(evidence: Evidence, anchor_title: str) -> str:
     """One sentence explaining a suggestion, from structured evidence only.
 
@@ -371,6 +386,14 @@ class DemoAssets:
     similar_min_support: int  # the L34 floor, applied to *candidates*
     encoder_model: str
     item_level: str = "work"
+    #: Where these arrays were read from, so anything built *beside* them (M23.10's answer
+    #: table) can be found without a second guess at the path.
+    directory: Path | None = None
+    #: The work key the ids were built with, straight from ``meta.json``. Carried because
+    #: L64 moved 0.5% of the works and with them a third of every neighbourhood (L67): a
+    #: cache keyed on the wrong one answers with the right numbers attached to the wrong
+    #: books, and this is the field that catches it.
+    work_key: str = ""
     #: The floor applied to the **anchor**, which is a different question from the floor
     #: applied to the candidates and was one number until M14.2 measured them apart.
     #: ``None`` means "the same as :attr:`similar_min_support`", i.e. the M13 behaviour.
@@ -421,24 +444,43 @@ def load_assets(directory: Path | None = None) -> DemoAssets:
         encoder_model=str(meta["encoder_model"]),
         item_level=str(meta.get("item_level", "work")),
         anchor_min_support=int(meta["anchor_min_support"]) if "anchor_min_support" in meta else None,
+        directory=directory,
+        work_key=str(meta.get("work_key", "")),
     )
 
 
 class DemoEngine:
-    """Free text in, ten explained books out. Holds no state beyond the assets."""
+    """Free text in, ten explained books out. Holds no state beyond the assets.
 
-    def __init__(self, assets: DemoAssets, *, encoder=None, source=None) -> None:
+    **The configuration is the one thing about this engine a visitor can change** (M23.10).
+    ``configuration="A"`` is the default and is what the rehearsed demo runs; ``"B"`` answers
+    the same anchor from shared readers instead of learned profiles. Everything downstream of
+    the ranking — the two floors, work dedup, the co-reader count, the thin-evidence tag, the
+    reason sentences — is shared, so *a switch changes the list and not the vocabulary*
+    (decision 6). ``source=`` stays available underneath it as the raw seam the audit scripts
+    and the tests use; passing both is an error rather than a precedence rule, because a
+    precedence rule is how two controls end up disagreeing about one variable.
+    """
+
+    def __init__(self, assets: DemoAssets, *, encoder=None, source=None, configuration=None) -> None:
         self.assets = assets
         self._index = assets.item_index
         self._lookup_index = {isbn: i for i, isbn in enumerate(assets.lookup_ids.tolist())}
         self._encoder = encoder
-        # M23's seam. `None` is configuration A, the engine that ships, and the default is
+        if source is not None and configuration is not None:
+            raise ValueError("pass either a configuration or a source, not both")
+        # M23's seam. The default is configuration A, the engine that ships, and it is
         # constructed here rather than defaulted in the signature so that no caller can get
         # a source built against a *different* assets object than the one this engine reads.
         if source is None:
-            from recommender.engines import AlsFactors
+            from recommender.engines import DEFAULT_CONFIGURATION, build_configuration
+            from recommender.engines import configuration as lookup
 
-            source = AlsFactors(assets.factors)
+            configuration = lookup(DEFAULT_CONFIGURATION if configuration is None else configuration)
+            source = build_configuration(configuration, assets)
+        #: The named position this engine is switched to, or ``None`` when a bare source was
+        #: handed in — in which case :attr:`score_label` falls back to the source's own.
+        self.configuration = configuration
         self.source = source
         # The candidate floor is the engine's decision, not the source's, so that switching
         # the engine cannot silently move a floor as well (M23 decision 6).
@@ -530,12 +572,31 @@ class DemoEngine:
         text = query.strip()
         if not text:
             return []
-        vector = self._encode(text)
+        return self._shortlist(self._floored(self._lookup_scores(text)), k, margin)
+
+    def _lookup_scores(self, text: str) -> np.ndarray:
+        """Raw cosine of *text* against every lookup row, no floor applied."""
+        return np.asarray(self.assets.lookup_vectors @ self._encode(text))
+
+    def _floored(self, scores: np.ndarray) -> np.ndarray:
+        """*scores* with everything below the **anchor** floor set to ``-inf``.
+
+        The anchor floor rather than the candidate one, because what :meth:`find` offers is an
+        anchor. Keeping the two in step is the rule that makes ``find`` coherent: never offer
+        a book, then refuse it.
+        """
+        return np.where(self.assets.lookup_support >= self.assets.anchor_floor, scores, -np.inf)
+
+    def _shortlist(self, scores: np.ndarray, k: int, margin: float | None) -> list[Book]:
+        """The three rules of :meth:`find`, applied to an already-masked score vector.
+
+        Split out in M23.10 so :meth:`resolve` can ask the *unmasked* question beside the
+        masked one from a single encode — the encoder call is the expensive part of a query
+        (M17.5) and running it twice would make the app's "Answered in N ms" mean two
+        different things again. Nothing in the body moved; ``find`` is the same three rules in
+        the same order it has had since M17.4.
+        """
         support = self.assets.lookup_support
-        scores = np.asarray(self.assets.lookup_vectors @ vector)
-        # The *anchor* floor, because what this method offers is an anchor. Keeping the two
-        # in step is the rule that makes `find` coherent: never offer a book, then refuse it.
-        scores = np.where(support >= self.assets.anchor_floor, scores, -np.inf)
         take = min(k * OVERSAMPLE, scores.size)
         best = np.argpartition(-scores, kth=take - 1)[:take]
         best = best[np.argsort(-scores[best], kind="stable")]
@@ -568,6 +629,69 @@ class DemoEngine:
                 break
         return found
 
+    def resolve(self, query: str, k: int = 5, *, margin: float | None = None) -> Resolution:
+        """What :meth:`find` returns, **plus what the anchor floor is hiding from it** —
+        M23 decision 5b, and the only reason this method exists beside ``find``.
+
+        The problem it fixes is one it was found by using the product rather than by reading a
+        table. *The Kite Runner* has 39 readers in this crawl, eleven short of the floor, so
+        ``find`` masks it out — and because 2,508 works clear the floor there is always
+        *something* left within the picker margin, so the query never comes back empty. It
+        comes back with **a different book**, silently, and the famous 2003 novel is simply not
+        there. A dead end that does not explain itself reads as a bug rather than as a
+        decision, and this one does not even read as a dead end.
+
+        **The rule, and it is deliberately the weakest one that does the job.** The best match
+        the floor removed has to beat the best match the floor left. Nothing more: no absolute
+        cosine bar, no tuned margin. That is not modesty, it is the failure modes:
+
+        - a false **positive** costs one extra labelled row in the picker, which is a book the
+          app then explains it cannot answer;
+        - a false **negative** costs nothing that exists today, because today the group is
+          hidden on every query.
+
+        Neither can change an answer, so a rule chosen from three examples is not being asked
+        to carry any weight — which is exactly what the earlier draft of this method got
+        wrong. It compared the two bests across a :data:`LOOKUP_TIE_MARGIN` and *declined the
+        query* when the below-floor side won, and two of the twenty audited anchors show why
+        that cannot ship: "The Purpose Driven Life" would have been refused although the app
+        answers it (the Rick Warren edition has 79 readers), and "The Kite Runner" would have
+        been refused while naming *The Kite Rider* — 7 readers, a different book — as the
+        reason. The lookup is not good enough to carry a refusal (L38), so it is not asked to.
+
+        **The group is ordered by readership**, unlike ``find``'s. It can be: every member is
+        unanswerable by construction, so the order decides which book is named first and
+        cannot decide anything else. It is the same argument :data:`LOOKUP_TIE_MARGIN` rests
+        on — among candidates a query matches comparably well, the book most readers mean is
+        the one meant — applied where it is free. On "The Kite Runner" it is what puts *The
+        Kite Runner* at 39 readers above *The Kite Rider* at 7.
+
+        **Engine-independent, and that is decision 1.** Both configurations sit at anchor floor
+        50, so which books the demo declines is a property of the floor and not of the engine.
+        That is why the floor gets its own demonstration with no picker in it.
+        """
+        text = query.strip()
+        if not text:
+            return Resolution(matches=[], below_floor=[])
+        scores = self._lookup_scores(text)
+        floored = self._floored(scores)
+        matches = self._shortlist(floored, k, margin)
+
+        support = self.assets.lookup_support
+        below = np.where(support < self.assets.anchor_floor, scores, -np.inf)
+        best_below = float(np.max(below))
+        best_above = float(np.max(floored))
+        if not np.isfinite(best_below) or best_below <= best_above:
+            return Resolution(matches=matches, below_floor=[])
+
+        # The same window `find` offers alternatives in (M17.4), applied to the group the
+        # floor removed: further than PICKER_MARGIN below the best reading of the query is
+        # not an alternative reading of it.
+        window = np.flatnonzero(below >= best_below - (PICKER_MARGIN if margin is None else margin))
+        hidden = [self.describe(str(self.assets.lookup_ids[row])) for row in window.tolist()]
+        hidden.sort(key=lambda book: -book.readers)
+        return Resolution(matches=matches, below_floor=hidden[:k])
+
     def _encode(self, text: str) -> np.ndarray:
         if self._encoder is None:
             from recommender.models.embeddings import sentence_transformer_encoder
@@ -575,6 +699,17 @@ class DemoEngine:
             self._encoder = sentence_transformer_encoder(self.assets.encoder_model)
         vector = np.asarray(self._encoder([text.lower()]), dtype=np.float32).ravel()
         return vector / (np.linalg.norm(vector) or 1.0)
+
+    @property
+    def score_label(self) -> str:
+        """What the number beside each row means, for the legend M23 decision 6 requires.
+
+        From the configuration when there is one, from the source otherwise. The two are not
+        comparable across a switch and the label is what stops them being read across.
+        """
+        if self.configuration is not None:
+            return self.configuration.score_label
+        return getattr(self.source, "score_label", "")
 
     # -- the answer ---------------------------------------------------------------
 

@@ -9,12 +9,25 @@ number and the eleven rehearsed anchors would drift with it.
 
 from __future__ import annotations
 
+import warnings
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 import scipy.sparse as sp
 
-from recommender.engines import AlsFactors, ItemItemCosine, ReciprocalRankFusion, TfidfText, build_source
+from recommender.engines import (
+    CONFIGURATIONS,
+    DEFAULT_CONFIGURATION,
+    AlsFactors,
+    ItemItemCosine,
+    ReciprocalRankFusion,
+    TfidfText,
+    build_configuration,
+    build_source,
+    configuration,
+)
 
 
 @pytest.fixture
@@ -132,6 +145,75 @@ class TestBuildSource:
     def test_an_unknown_engine_is_an_error_rather_than_a_default(self) -> None:
         with pytest.raises(ValueError, match="unknown engine"):
             build_source("word2vec", object())
+
+    def test_it_still_builds_all_three_because_three_are_published(self) -> None:
+        """L87, L88 and L89 were measured through this function on three engines.
+
+        The *registry* is two — C is dropped and does not come back — but a published line's
+        command has to keep running, and ``scripts/audit_floor_band.py`` is L89's command.
+        """
+        from tests.test_demo import _assets
+
+        assets = _assets()
+        assert {build_source(name, assets).name for name in ("als", "item-item", "rrf")} == {
+            "als",
+            "item-item",
+            "rrf",
+        }
+
+
+class TestConfigurations:
+    """What the app offers, which is deliberately not what :func:`build_source` builds."""
+
+    def test_there_are_two_and_c_is_not_one_of_them(self) -> None:
+        """M23.10: C is dropped and does not come back. L85 ranks it first and L89 says why."""
+        assert set(CONFIGURATIONS) == {"A", "B"}
+        assert all(config.engine != "rrf" for config in CONFIGURATIONS.values())
+
+    def test_the_default_is_a(self) -> None:
+        """Decision 2. The rehearsed engine is what the demo opens on."""
+        assert DEFAULT_CONFIGURATION == "A"
+        assert CONFIGURATIONS[DEFAULT_CONFIGURATION].engine == "als"
+
+    def test_every_configuration_labels_its_own_number(self) -> None:
+        """Decision 6: a configuration cannot arrive without a label for what it prints."""
+        for config in CONFIGURATIONS.values():
+            assert config.score_label and config.label and config.blurb
+
+    def test_the_two_labels_are_different_because_the_numbers_are(self) -> None:
+        labels = [config.score_label for config in CONFIGURATIONS.values()]
+        assert len(set(labels)) == len(labels)
+
+    def test_an_unknown_key_is_an_error_rather_than_a_default(self) -> None:
+        with pytest.raises(ValueError, match="unknown configuration"):
+            configuration("C")
+
+    def test_a_configuration_passes_through_itself(self) -> None:
+        assert configuration(CONFIGURATIONS["B"]) is CONFIGURATIONS["B"]
+
+    def test_a_answers_from_the_factors_and_never_looks_for_a_table(self) -> None:
+        """Decision 7: A ships its own 155.6 MB matrix, so giving it a table means a rebuild."""
+        from tests.test_demo import _assets
+
+        assert CONFIGURATIONS["A"].table is False
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # any fallback warning would fail this test
+            assert isinstance(build_configuration("A", _assets()), AlsFactors)
+
+    def test_b_falls_back_to_a_live_computation_and_says_so(self) -> None:
+        """A missing table an hour before a demo must not take the demo down — loudly."""
+        from tests.test_demo import _assets
+
+        with pytest.warns(RuntimeWarning, match="live computation"):
+            source = build_configuration("B", _assets(), table_dir=Path("/nonexistent"))
+        assert isinstance(source, ItemItemCosine)
+
+    def test_live_forces_the_computation_without_touching_the_disk(self) -> None:
+        from tests.test_demo import _assets
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            assert isinstance(build_configuration("B", _assets(), live=True), ItemItemCosine)
 
 
 class TestConfigurationAIsTheEngineThatShipped:
