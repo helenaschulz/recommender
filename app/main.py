@@ -324,10 +324,15 @@ def sidebar(engine: DemoEngine) -> None:
         # because there are two mechanisms and the copy has to say which one is running. What
         # stays here is what is true of both settings — otherwise the sidebar would claim
         # "profiles point in the same direction" while the shared-reader engine was answering.
+        #
+        # It was first *reworded* rather than cut, into "Those reading patterns are what one
+        # book is compared with another by" — a sentence with a stranded preposition that
+        # nobody would write, saying something the picker three blocks down now says properly.
+        # Cut on the copy read, 10.08.2026. The rule it illustrates: when a block loses
+        # its job, delete it; a rewrite that keeps the slot is how filler survives a review.
         st.markdown(
-            "Those reading patterns are what one book is compared with another by. Editions "
-            "of the same title are merged before anything is computed, so the results are "
-            "books rather than reprints."
+            "Editions of the same title are merged before anything is computed, so the "
+            "results are books rather than reprints."
         )
         st.markdown("### Where it stops")
         st.markdown(
@@ -365,23 +370,33 @@ def sidebar(engine: DemoEngine) -> None:
         # this screen has had it twice.
         key = engine.configuration.key if engine.configuration else DEFAULT_CONFIGURATION
         if key == "A":
+            # The dash pair became brackets on the copy read (10.08.2026), so that the
+            # two engine paragraphs punctuate an aside the same way. The words are M15.5's
+            # pinned copy as M20 corrected them and are otherwise untouched.
             st.markdown(
                 "This demo runs on matrix factorization. It comes second on the accuracy "
-                "table below. We also measured the question this demo actually asks — one "
-                "book in, similar books out — and on that one it is level with the approach "
+                "table below. We also measured the question this demo actually asks (one "
+                "book in, similar books out) and on that one it is level with the approach "
                 "that comes first. Those are two different questions, and a demo like this "
                 "one asks the latter."
             )
         else:
             # Deliberately not "and it is better". On the item query the two are level on one
-            # draw and this one is ahead on the other (L80, L81) — which is a reason to be
-            # able to show both, and not a reason to claim a winner on a sidebar.
+            # draw and this one is ahead on the other (L80, L81), which is a reason to be able
+            # to show both and not a reason to claim a winner on a sidebar.
+            #
+            # **Rewritten on the copy read, 10.08.2026**, and the three things she was
+            # reacting to are worth naming because they are the tells: "is *now* counting"
+            # narrated a state where A simply says what it runs on; "the table is *not the
+            # reason* to prefer either" defined by negation; and "*What separates them is* …"
+            # is a cleft sentence, which was the most conspicuous machine-written construction
+            # on the screen. Same four sentences, same claims, none of the three.
             st.markdown(
-                "This demo is now counting shared readers. It comes first on the accuracy "
-                "table below. On the question this demo actually asks — one book in, similar "
-                "books out — the two settings are level, so the table is not the reason to "
-                "prefer either. What separates them is how much reading each result rests "
-                "on, and that number is beside every row."
+                "This demo counts shared readers. It comes first on the accuracy table "
+                "below. On the question this demo actually asks (one book in, similar books "
+                "out) the two settings are level, so the table does not decide between them. "
+                "They differ in how much reading is behind each result, and that number sits "
+                "beside every row."
             )
         # The table keeps its published form and numbers (L52-L57); only the labels change,
         # from house abbreviations to written-out names. It stays expanded, because showing
@@ -531,8 +546,11 @@ def main() -> None:
     options = {f"{m.title} — {m.author}": m.isbn for m in matches}
     options.update(
         {
+            # "below the N we ask for", the same words the refusal one click later uses.
+            # It read "below the N this demo answers" for an afternoon, which is one rule
+            # stated two ways a second apart (the copy read, 10.08.2026).
             f"{b.title} — {b.author}  ·  {b.readers:,} readers, "
-            f"below the {engine.assets.anchor_floor} this demo answers": b.isbn
+            f"below the {engine.assets.anchor_floor} we ask for": b.isbn
             for b in below_floor
         }
     )
@@ -577,8 +595,11 @@ def main() -> None:
     # is the whole fix, and it is deliberately not accompanied by a "these are not comparable"
     # caveat — that answers a question no reader has asked yet (the M15.5 register
     # rule), and it belongs in the talk track.
+    #
+    # A colon rather than a dash, because what follows is a definition of the word before it
+    # rather than an aside (the copy read, 10.08.2026).
     st.markdown(
-        f'<div class="legend">Sorted by similarity — {html.escape(engine.score_label)}. '
+        f'<div class="legend">Sorted by similarity: {html.escape(engine.score_label)}. '
         f"The bar shows each book compared with the top of this list, and the number is its "
         f"actual score. The readers behind it follow. “Thin evidence” marks a book fewer "
         f"than {THIN_EVIDENCE_SHARE:.0%} of this book's readers also read.</div>",

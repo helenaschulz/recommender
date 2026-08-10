@@ -295,6 +295,14 @@ class Configuration:
     #: the row the "· this demo" marker lands on cannot drift away from the picker beside it.
     short_label: str
     #: Decision 6's label for the displayed number, in the legend under the list.
+    #:
+    #: **Plain language, and that is the register rule rather than a preference** (the project owner's
+    #: copy read, 10.08.2026). A's read "cosine between the books' learned profiles" for an
+    #: afternoon, which put the one piece of undefined mathematics on this project's most
+    #: client-facing screen — the same screen M15.5 cleared of ledger codes, and where the project owner
+    #: then cut three more captions for answering questions nobody had asked. B's label was
+    #: already plain; A's now is. The *source* classes keep their technical labels, because
+    #: those are read by the audit scripts and never by a visitor.
     score_label: str
     #: One sentence for the sidebar, in the same register as the rest of that copy.
     blurb: str
@@ -324,7 +332,7 @@ CONFIGURATIONS: dict[str, Configuration] = {
         engine="als",
         label="Matrix factorization — learned profiles",
         short_label="Matrix factorization (ALS)",
-        score_label="cosine between the books' learned profiles",
+        score_label="how closely two books' profiles line up",
         blurb=(
             "Every book gets a short profile learned from who read it. Two books are similar "
             "when their profiles point the same way."
@@ -337,8 +345,9 @@ CONFIGURATIONS: dict[str, Configuration] = {
         short_label="Item-based collaborative filtering",
         score_label="shared readers, weighted against how widely each book is read",
         blurb=(
-            "Two books are similar when the same people read both — counted against how "
-            "widely each is read, so a bestseller is not similar to everything."
+            "Two books are similar when the same people read both. That count is weighed "
+            "against how widely each book is read, so a bestseller does not come out "
+            "similar to everything."
         ),
         table=True,
     ),
