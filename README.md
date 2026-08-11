@@ -2,13 +2,9 @@
 
 A personal research project: build a book recommender end to end on the
 [Book-Crossing dataset](https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset)
-— explore the data, try the natural modelling approaches, evaluate them honestly, and
+— explore the data, try the natural modelling approaches, evaluate them, and
 end in an interface where you paste a book and get recommendations back, with an
 explanation of *why* those books.
-
-Optimized for a clear, honest, demoable story and for learning something — not for
-shipping a product. Offline metrics are treated as a proxy; a live A/B test would be
-the real proof.
 
 The work runs in three stages:
 
@@ -20,8 +16,7 @@ The work runs in three stages:
    [`notebooks/02_models.ipynb`](notebooks/02_models.ipynb), the write-up
    [`docs/model_selection.md`](docs/model_selection.md) and the ledger
    [`docs/RESULTS.md`](docs/RESULTS.md).
-3. **Interface and productionization** — paste a book, get recommendations with an
-   explanation; plus how such a system would scale and stay fresh on a data platform.
+3. **Interface** — paste a book, get 10 recommendations with an explanation.
 
 ## Getting the data
 
@@ -99,7 +94,7 @@ python scripts/build_app_assets.py
 python scripts/build_answer_table.py
 ```
 
-Then start it — cold start under 9 seconds, no network, no fitting:
+Then start it — cold start under 9 seconds:
 
 ```bash
 streamlit run app/main.py
@@ -115,8 +110,8 @@ moves exactly one variable: the model. The switch costs nothing measurable — c
 measurement). A single flag in `app/main.py` (`SHOW_ENGINE_PICKER`) rolls back to A-only.
 
 The reason sentences come from structured evidence only — co-reader counts, shared author,
-shared series, similarity — never from a language model. Screenshots of the three anchor
-flows are in [`docs/img/`](docs/img/); `python scripts/measure_app_latency.py`
+similarity. Screenshots of the four anchor flows and the two lookup queries are in
+[`docs/img/`](docs/img/); `python scripts/measure_app_latency.py`
 (per configuration via `--configuration A|B`) and `python scripts/audit_app_lookup.py`
 reproduce the latency and lookup-audit ledger lines (L61/L91 and L62).
 
@@ -163,10 +158,6 @@ shipped pair: 240 and then 440 hand-read recommendation slots (L89 and L90, the
 floor-band and anchor-set audits in [`docs/`](docs/)), where B produced zero bad slots
 and A stayed within one to seven of 220, with thinner evidence per slot.
 
-The productionization write-up follows; its sizing evidence is already measured — the
-demo's 890 MB of serving assets, of which the recommender itself is 17.5% (L71), against
-a 1.5 MB precomputed answer table for the whole product (L72).
-
 The published table is keyed by **work** rather than by ISBN — merging editions before
 training is the largest single accuracy gain in the project, and it is a data-preparation
 change rather than a model one. The ISBN-keyed table is kept beside it as the journey
@@ -174,9 +165,6 @@ record, and the reason the two differ far more for the text models than for the
 collaborative ones is measured rather than asserted (ledger L58).
 
 ## References
-
-The sources this project leans on, in full in
-[`docs/dataset_findings.md`](docs/dataset_findings.md):
 
 - Ziegler et al., WWW 2005 — [Improving Recommendation Lists Through Topic Diversification](https://doi.org/10.1145/1060745.1060754),
   the paper the Book-Crossing dataset comes from.

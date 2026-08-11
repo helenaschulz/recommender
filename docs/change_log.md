@@ -148,27 +148,3 @@ for A, 0 of 220 for B.** The switch costs nothing measurable — a 0.22 MB answe
 in 21.8 s, cold start 8.8 s / 8.5 s, and the rehearsed engine byte-identical on all 110
 rehearsed slots. One constant reverts to a single engine.
 → **L90–L91**
-
-## 2026-08-11 · Documentation
-
-The ledger stopped pretending to be a table: 71 of its 91 entries are now readable blocks
-rather than table cells of up to 4,717 characters, verified by a numeral-level comparison
-so that nothing was lost in the move. [`SUMMARY.md`](SUMMARY.md) was added as a two-page
-entry point, and [`model_selection.md`](model_selection.md) was brought up to date — it had
-ended its narrative four milestones early and still described a single-engine demo.
-
----
-
-## Milestones that were planned and not built
-
-**M16 · The engine switcher** — retired, superseded by M23. It had proposed a switcher over
-engine-plus-floor configurations as two independent choices; L81 and L85 had by then shown
-the floor and the engine to be **one** decision, which made the original design misleading
-rather than merely incomplete.
-
-**Deliberately not built at all**, each for a measured reason rather than a preference:
-user-based CF (there is no user identity at query time), deep scoring models (the evidence on
-this dataset favours neighbourhood methods, and the popularity-bias literature flags the
-MF-family here), sequence models (no timestamps exist), demographic features (62% of users
-never rated anything and Age runs to 244), and an LLM as the recommender itself. See
-[`model_selection.md`](model_selection.md) §7.

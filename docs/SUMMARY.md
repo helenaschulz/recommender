@@ -2,7 +2,7 @@
 
 The full evidence is in [`RESULTS.md`](RESULTS.md) — 91 numbered lines, every one recording
 how it was measured. This page is the argument those lines support, with the ID to check each
-claim against. Where the two disagree, the ledger wins.
+claim against.
 
 ## The product question
 
@@ -95,12 +95,12 @@ they fill roughly a third of a reader's list with another edition of a book they
 Two engines behind a picker, **A** (ALS item factors) as default and **B** (item-item with a
 shrunk cosine) beside it, both at the same anchor floor of 50 so the switch moves exactly one
 variable: the model. Reasons come from structured evidence only — co-reader counts, shared
-author, similarity — never from a language model.
+author, similarity.
 
 The pair is backed by two hand audits rather than by a metric: **240 slots** read by hand in
-the band the floor would open (L89) and **440 slots** across twenty anchors in the band the app
+the band the floor would open (L89) and **440 slots** across 20 anchors in the band the app
 serves (L90), where B produced **0 bad slots in 220** against A's 7. A is default because it is
-the rehearsed engine, not because it won anything, and one constant removes the picker.
+the rehearsed engine, not because it won anything.
 
 Cost: cold start **8.8 s** (A) / 8.5 s (B), warm query 21/22 ms, no network and no fitting at
 query time (L91). The demo ships **890 MB** of assets, of which the recommender itself is
@@ -111,8 +111,6 @@ server is required.
 
 ## What this is not
 
-- **Offline metrics are a proxy.** HitRate@10 on a leave-one-out split is not user
-  satisfaction. A live A/B test is the only real proof, and nothing here substitutes for it.
 - **One dataset, one draw.** The numbers are seed 42's unless stated; L86 bounds how much that
   matters, it does not remove it.
 - **The split's resolution is about ±0.002–0.004** (L74). Differences smaller than that are
@@ -120,7 +118,7 @@ server is required.
 - **Translations and alternate titles still defeat the work key** (L47, L59). It is the known
   ceiling on the edition clustering and the first thing an external work identifier would fix.
 - **Two of twenty famous titles do not resolve to the book they name** (L90) — a published,
-  audited property of the lookup tie rule, not a hidden defect.
+  audited property of the lookup tie rule.
 
 ## Where to check
 
