@@ -15,7 +15,7 @@ item-to-item neighbourhood is *reproducible* given the data and *not robust* to 
 change in the data.
 
 **Why it matters more than it looks.** Everything the demo shows is a top-10 from this
-surface, and the case argues from those ten books. "Reproducible" and "robust" are different
+surface, and the project argues from those ten books. "Reproducible" and "robust" are different
 claims, and only the first one was ever checked. A reviewer asking "how confident are you in
 these ten books" deserves the second number too. It is also an argument for the Part 3
 architecture: a nightly re-fit changes the item universe by more than 0.5% on its own, so

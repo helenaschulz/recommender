@@ -7,7 +7,7 @@
 #
 # So the faces are the ones already on the machine, named in a fallback chain rather than
 # downloaded:
-#   - headings: a serif stack. On the presentation Mac this resolves to Iowan Old Style,
+#   - headings: a serif stack. On this Mac this resolves to Iowan Old Style,
 #     then Palatino, then Georgia, then the generic serif. Any of the four is fine; the
 #     point is a serif against the sans, not a specific designer's face.
 #   - body: the system UI sans, which is what the OS already renders text in.
@@ -38,7 +38,7 @@ borderColor = "#e2ded7"
 showWidgetBorder = true
 
 [client]
-toolbarMode = "minimal"           # no "Deploy" button in front of a client
+toolbarMode = "minimal"           # no "Deploy" button in the demo
 
 [browser]
 gatherUsageStats = false

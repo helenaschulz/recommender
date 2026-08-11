@@ -376,9 +376,9 @@ enjoy this". A recommendation the reader has never heard of scores zero whether 
 brilliant discovery or a mistake — which is precisely the outcome a long-tail recommender
 exists to produce.
 
-**A live A/B test is the only thing that settles the real question**, and that stays true
+**Only real reader behaviour settles the real question**, and that stays true
 however favourable the offline table looks. What the offline work buys is the right to
-choose which two or three candidates go into that test, and the confidence that they were
+choose which two or three candidates are worth putting in front of readers, and the confidence that they were
 not chosen by accident.
 
 ## 9 · Open questions, and how the closed ones closed

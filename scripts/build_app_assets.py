@@ -16,7 +16,7 @@ a reviewer to wonder about: nothing produced by this script may ever be quoted a
 before fitting, which is where the project's largest single accuracy gain came from — and,
 more visibly for a demo, what turns item-item's *Harry Potter* neighbourhood from two
 obscure books into the four sequels in order (L53). Serving the demo on the ISBN basis while
-the case argues for works would have been an odd thing to demonstrate. It also
+the project argues for works would have been an odd thing to demonstrate. It also
 makes serving-time deduplication (L45) unnecessary here: the collapse already happened.
 
 What lands on disk, and why each piece is needed:
@@ -32,8 +32,8 @@ What lands on disk, and why each piece is needed:
 - ``books.parquet`` — one row per work: the title, author, year, series and cover URL of
   its most-interacted edition.
 
-The sentence encoder is also warmed here (one throwaway query), so the first real query in
-front of an audience does not trigger a model download.
+The sentence encoder is also warmed here (one throwaway query), so the first real query does
+not trigger a model download.
 """
 
 from __future__ import annotations

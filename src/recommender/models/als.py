@@ -20,8 +20,8 @@ away 62.3% of the rows; this uses all of them and still lets the grades speak.
 
 Note what this does *not* claim: a low rating is not treated as a negative signal. ALS
 has no way to express dislike, only strength of positive evidence, and pretending
-otherwise would be the kind of quiet modelling error that survives right up until the
-A/B test.
+otherwise would be the kind of quiet modelling error that survives right up until real
+readers see the results.
 """
 
 from __future__ import annotations

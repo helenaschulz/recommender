@@ -36,10 +36,10 @@ M13.2 dropped one on the grounds that each engine needs its own similarity artef
 cost the cold start this app is built around. With the anchor floor at 50 only 2,508 works are
 reachable as anchors at all, so B's artefact is a precomputed top-10 table of 25,080 rows and
 0.22 MB (L91), written *beside* the shipped assets and never over them. It is also the Part 3
-Gold-table serving pattern, built instead of drawn on a slide.
+Gold-table serving pattern, built instead of sketched.
 
 **Ledger codes appear in this file and never on the screen** (M15, pinned decision 1). They
-are precise to us and are internal jargon to a client, and jargon in a demo reads as
+are precise to us and are internal jargon to a visitor, and jargon in a demo reads as
 unfinished rather than as rigorous. Comments are where they help.
 
 **The ranking on screen is exactly the ranking the ledger measures.** M15 and M17 change how
@@ -55,7 +55,7 @@ quantity that was nowhere to be seen and one that *was* on screen — shared rea
 visibly contradicting the order. L63 is a claim about comparing *two anchors*; the app shows
 one list at a time, and within it the cosine is exactly the sort key. The bar is scaled to
 the top of its own list for the same reason the caveat exists, and the caveat is a sentence
-in the talk track.
+in the write-up.
 
 **The one selection rule this file's engine gained is the picker's, and it is M17.4's.**
 ``find`` now returns only candidates within ``demo.PICKER_MARGIN`` of the best match, so the
@@ -286,10 +286,9 @@ def chosen_configuration() -> str:
 def sidebar(engine: DemoEngine) -> None:
     """The pinned M15.5 copy.
 
-    **Register, which is the decision behind every line.** This is a demo shown to a client
-    two weeks into an engagement, not a defence to an examiner. A client does not read a
-    methodology essay before the first result, does not know what a ledger code is, and does
-    not need the mechanism unless they ask. So: no internal codes, no argument the screen
+    **Register, which is the decision behind every line.** This is a product surface, not a
+    methods paper. A visitor does not read an essay before the first result, does not know
+    what a ledger code is, and does not need the mechanism unless they ask. So: no internal codes, no argument the screen
     has not earned yet, plain nouns, and the model names written out. The substance stays —
     the floor, the refusal, the evidence, the table where this engine loses — in fewer words.
     """
@@ -343,7 +342,7 @@ def sidebar(engine: DemoEngine) -> None:
         # ledger has used since L65 — so the screen, the write-up and the ledger say one
         # thing. It is the first house term this app has ever printed, which is why the
         # sentence defines it before it uses it: on this screen the anchor is simply the book
-        # you typed, and six words of definition are cheaper than a client silently not
+        # you typed, and six words of definition are cheaper than a visitor silently not
         # knowing what a floor is under.
         #
         # The number is read off the assets rather than typed, the same rule as `corpus_line`:
@@ -508,7 +507,7 @@ def main() -> None:
                 st.session_state["pinned_isbn"] = isbn
             # The reader count belongs on the button. Without it a thinly read anchor looks
             # like a broken app; with it, the calibration story (L63) is visible in the
-            # product rather than only asserted on a slide.
+            # product rather than only asserted.
             column.caption(f"{engine.describe(isbn).readers:,} readers")
 
     # M15.7 offered "harry potter stein" as a clickable example here; it was cut on

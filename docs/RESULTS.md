@@ -131,8 +131,7 @@ the finding.
 
 **What none of these numbers prove.** Every row is one offline dataset, one split, one
 proxy for a question the metric cannot answer: whether a reader would click. The ranking
-is evidence about the models; it is not evidence about the product. A live A/B test is
-the only thing that settles that, and it stays true no matter how favourable this table
+is evidence about the models; it is not evidence about the product. Only real reader behaviour settles that, and it stays true no matter how favourable this table
 looks.
 
 ### The ISBN-level table — the journey record, kept on purpose
@@ -161,7 +160,7 @@ One command, one split, one run: `python scripts/run_model.py --all --gallery` (
 All rows use the **L19** split (13,581 eligible users, seed 42) and identical metrics, on
 the **ISBN** item basis. Command: `python scripts/run_model.py <name>`. The work-level
 rows that superseded these as the published table are L52–L57; these stay because the
-reasoning that produced the model choice happened here, and because every "read out loud"
+reasoning that produced the model choice happened here, and because every "in plain terms"
 paragraph below is still the argument, only re-based.
 
 | ID | Model | HitRate@10 | Coverage@10 | Novelty@10 | Parameters | Measured |
@@ -174,7 +173,7 @@ paragraph below is still the argument, only re-based.
 | L35 | **content embeddings** (multilingual) | 0.0109 | **23.911%** | **18.42** | `paraphrase-multilingual-MiniLM-L12-v2`, 384 dims, all 271,360 books embedded from title+author, profile vectors centered, score = mean cosine | 2026-08-04 |
 | L30 | **content TF-IDF** (coverage layer) | 0.0228 | **16.616%** | 17.63 | char_wb 3–5-grams over title+author, min_df=3, 221,869 features, all 271,360 catalogue books vectorized, score = mean cosine to the user's train items | 2026-08-04 |
 
-**L22 read out loud.** 197 of 13,581 users got their held-out book in a top-10 that was
+**L22 in plain terms.** 197 of 13,581 users got their held-out book in a top-10 that was
 essentially the same list for everybody. That is 491× better than ranking at random, and
 it is exactly what ledger L9 predicts: when the top 1% of books hold 25.1% of all
 interactions, guessing "bestseller" is a genuinely strong bet, and any model that cannot
@@ -194,7 +193,7 @@ The strongest signal in the raw popularity ranking is a marketing campaign, not 
 reading preference — and the 7th entry is an ISBN with no catalogue metadata, so the
 baseline recommends a book it cannot even name.
 
-**L24 read out loud.** Item-item beats the baseline **3.8× on accuracy and 477× on
+**L24 in plain terms.** Item-item beats the baseline **3.8× on accuracy and 477× on
 coverage** at the same time, which is the outcome that matters: it is not trading reach
 for hit rate, it is better at both. In absolute terms it captures 6.4% of the L20
 ceiling. It recommends 24,597 distinct catalogue books where the baseline manages 51.
@@ -216,7 +215,7 @@ counter-current: explicit-only scores *higher* on coverage (10.7% vs 9.1%) and n
 binarized signal wins where it counts and loses where it does not, and both directions
 are in the row.
 
-**L30 read out loud.** The content layer does what it was built for and fails where it
+**L30 in plain terms.** The content layer does what it was built for and fails where it
 was expected to. It reaches **16.6% of the catalogue — 45,090 distinct books**, nearly
 twice item-item's 24,597 and 880× the baseline's 51, and it is the only model that can
 score a book nobody has touched. It also beats the baseline on accuracy (0.0228 vs
@@ -234,7 +233,7 @@ they overlap on only 7,451. Together they touch **62,236 books — 22.9% of the 
 including the ones with no row in `Books.csv`, while the TF-IDF figure beside them counted
 only catalogue books. Two denominators, one sentence.)*
 
-**L33 read out loud — and this row is a "no" that the project is better for having.** ALS
+**L33 in plain terms — and this row is a "no" that the project is better for having.** ALS
 loses to item-item on all three metrics at once: less accurate (0.0451 vs 0.0546), and
 its coverage is an order of magnitude worse (0.835% vs 9.064%, 2,267 distinct catalogue books). It
 is also the most popularity-biased model in the table: **95.7% of its recommendations
@@ -256,7 +255,7 @@ and it is the one model with a first-class Spark implementation, which makes the
 productionization step a port rather than a rewrite. Recommending it as the *scoring core*
 on this evidence would be wrong; dropping it from the ladder would be wrong too.
 
-**L35 read out loud.** The embedding layer is the coverage extreme of the ladder:
+**L35 in plain terms.** The embedding layer is the coverage extreme of the ladder:
 **23.9% of the catalogue — 64,886 distinct books, 54,494 distinct works** — and the
 highest novelty in the table, at the lowest accuracy, below even the popularity baseline.
 That is the honest shape of a pretrained-embedding layer: it is a *coverage and
@@ -291,7 +290,7 @@ decision to take before the next full run
 Da Vinci Code* → *Angels & Demons*, *Digital Fortress*, *Deception Point* — all Dan Brown
 
 **L34 · Half of this row is superseded, 2026-08-09.** The *floor* half is confirmed and
-enlarged by **L82** — on 13,580 anchors it is worth +0.0177, the largest effect in the case.
+enlarged by **L82** — on 13,580 anchors it is worth +0.0177, the largest effect in the project.
 The *"best neighbourhoods of any model here"* half was three anchors read by eye, and **L80
 retires it**: after the M12 re-base item-item returns the same Harry Potter list, and the item
 query cannot separate the two (p = 0.47). The claim was quoted in six documents for four
@@ -315,10 +314,10 @@ last-name token. Plus one extension — see L41.
 | L40 | **The catalogue is 13% smaller than its ISBN count** | 271,360 ISBNs → **235,824 works**; 24,392 works hold more than one ISBN, covering **59,928 ISBNs (22.1%)** | Clustering on the key above. Largest cluster: *Little Women* / Alcott, 53 ISBNs. **This supersedes L15**, which used an exact title+author string and found 40,675 duplicated ISBNs; this key finds **47% more**, because an exact author string cannot see the spelling variants | 2026-08-08 |
 | L41 | **The pinned key does not merge Dostoevsky with Dostoyevsky; one narrow extension does** | **223 clusters** change; duplicated ISBNs 59,582 → **59,928 (+346, 0.6%)** | The pinned key is title + surname token, which absorbs Fyodor/Fedor/Feodor/Fyodor M. but not a surname respelled. Extension: within an *identical* normalized title, surnames within one edit and ≥6 characters merge, canonical = the most frequent spelling. `cluster_works(merge_author_variants=False)` reproduces the pinned key exactly, which is how this row is measured | 2026-08-08 |
 | L42 | **Sample validation: 0 wrong merges in 30, 1 in the 20 that test the extension** | random sample **0/30**; transliteration sample **1/20** | 30 seeded-random multi-ISBN clusters (seed 42) inspected by hand in [`edition_clusters_sample.md`](edition_clusters_sample.md). Because the extension touches only 223 of 24,392 clusters, a uniform draw cannot audit it, so 20 of *those* were drawn separately. The one error: Anne Hampson and Georgia Hampton each wrote a *Desire*; `hampson`/`hampton` is one edit at length 7. Cost of removing it — a floor of 8 — is also losing Rendell/Rendall, Elliott/Elliot, Searls/Searles and Higgins/Higgns, so it stays and is reported | 2026-08-08 |
-| L43 | *Negative result of the standard recipe:* **min-5 filtering silently deletes editions of books that clear the threshold** | **23,429 ISBNs** carrying **49,649 interactions** sit below min-5 while belonging to a work that clears it | Per-ISBN interaction counts against per-work totals over all 1,149,780 interactions. *Crime and Punishment* is the case in one line: 21 ISBNs, 141 interactions, strongest edition 40, **13 editions below 5 carrying 27 interactions**. Filtering at ISBN level throws away **19.1%** of that novel's evidence and calls what is left a book with 40 readers | 2026-08-08 |
+| L43 | *Negative result of the standard recipe:* **min-5 filtering silently deletes editions of books that clear the threshold** | **23,429 ISBNs** carrying **49,649 interactions** sit below min-5 while belonging to a work that clears it | Per-ISBN interaction counts against per-work totals over all 1,149,780 interactions. *Crime and Punishment* is the example in one line: 21 ISBNs, 141 interactions, strongest edition 40, **13 editions below 5 carrying 27 interactions**. Filtering at ISBN level throws away **19.1%** of that novel's evidence and calls what is left a book with 40 readers | 2026-08-08 |
 | L44 | **Clustering lifts the structural ceiling (L20) slightly, and item-item's accuracy a lot more** | ceiling 84.81% → **86.66%**; item-item HitRate **0.0546 → 0.0644 (+18%)** | Same split mechanics on work ids: per-user leave-one-out, seed 42, relevance ≥8, **13,580 eligible users** (one user loses eligibility when their graded editions collapse). Coverage@10 8.190% is measured against 235,824 works, not 271,360 ISBNs — the two coverage cells are **not** comparable. Share of the achievable ceiling captured: 6.44% → **7.43%**. Runtime 31s | 2026-08-08 |
 
-**L44 read out loud — the one number in this milestone that changes a recommendation.**
+**L44 in plain terms — the one number in this milestone that changes a recommendation.**
 Merging editions before training buys **+18% relative on HitRate from a data-prep change,
 with no model change at all**. For scale, the whole gap between the best and second-best
 model in the comparison table — item-item 0.0546 against ALS 0.0451 — is 21%. The
@@ -367,7 +366,7 @@ different works. Measured rather than argued: `python scripts/analyze_editions.p
 reissues of the *same* book (*Twilight Magic (Harlequin American Romance, No 16504)* vs *(No.
 504)*), where merging is correct
 
-**L48 read out loud.** The residue splits in two, and only half of it is an error. Textbook
+**L48 in plain terms.** The residue splits in two, and only half of it is an error. Textbook
 and handbook revisions — *MLA Handbook* 5th and 6th, *Programming Perl* 2nd and 3rd,
 *Business* 5th and 6th — arguably *should* merge: a reader asking for *Programming Perl*
 wants the book, not an edition. Annual and serial guides should not: *Lonely Planet
@@ -401,7 +400,7 @@ so the two bases coincide (45,090 and 64,886 either way). ALS was: 2,267 catalog
 total. Per-work coverage against the 235,824-work denominator: item-item **9.92%**, TF-IDF
 **14.21%**, embeddings **23.11%**, ALS **0.88%**
 
-**L45 read out loud.** The headline is that this is **free**. Four in five TF-IDF users
+**L45 in plain terms.** The headline is that this is **free**. Four in five TF-IDF users
 were being shown a book they already had; removing those slots does not cost accuracy, it
 *buys* 21% of it, because a wasted slot gets refilled with a real candidate. Item-item and
 ALS barely move, which is the expected shape — collaborative similarity already separates
@@ -421,7 +420,7 @@ French, Spanish, Italian and German editions. Those are the same work under diff
 |---|---|---|---|---|
 | L47 | *Negative result:* **dedup cleans the collaborative surfaces completely and the content surfaces only partly** | Same-work neighbours surviving dedup, out of 30 gallery slots per model: item-item **0/30**, ALS **0/30**, TF-IDF **7/30**, embeddings **9/30** | Hand count over the deduped 3-anchor gallery (3 anchors × top-10), the same method as L29/L34/L39. A slot counts as a survivor if it is the anchor's own text under a different title: a translation (*Desde Mi Cielo*, *Harry Potter und der Stein der Weisen*), a subtitle variant (*The Lovely Bones* vs the anchor's *The Lovely Bones: A Novel*), an alternate regional title (*Philosopher's Stone*), a dual-language title (*El Codigo Da Vinci / The Da Vinci Code*), or a re-credit to the illustrator (*Mary Grandpre*). Sequels and books *about* the anchor do not count — they are legitimately similar. Worst single case: embeddings on *Harry Potter*, **7 of 10** | 2026-08-08 |
 
-**L47 read out loud — this is the honest ceiling on what M11 achieved.** Edition
+**L47 in plain terms — this is the honest ceiling on what M11 achieved.** Edition
 clustering solved the problem it could solve: ISBNs of a work that share a title. It
 cannot solve the problem underneath, which is that *Harry Potter and the Philosopher's
 Stone*, *Harry Potter a l'ecole des sorciers* and *Harry Potter und der Stein der Weisen*
@@ -476,7 +475,7 @@ accuracy, now by 9% rather than 25%", which claimed a difference the sample cann
 ISBN level (L35) the same comparison was 0.0109 against 0.0145, z ≈ 2.7, and *did* clear the
 bar; the re-base moved embeddings up into the noise band, it did not move the baseline
 
-**L53 read out loud.** Item-item beats the baseline **4.2× on accuracy and 302× on
+**L53 in plain terms.** Item-item beats the baseline **4.2× on accuracy and 302× on
 coverage** at once, and captures 7.43% of the achievable ceiling against the baseline's
 1.79%. Both ratios are *better* than the ISBN-level pair (3.8× / 477× — the coverage ratio
 falls because the baseline's own reach grew from 51 items to 64 when its top list stopped
@@ -533,7 +532,7 @@ and come from `decompose_work_level_lift.py`, which computes all six.
 | content embeddings | 0.0109 | 0.0115 | 0.0112 | 0.0141 | +5.4% | +22.4% | +29.1% | 11.3% |
 | **content TF-IDF** | **0.0228** | **0.0250** | **0.0245** | **0.0405** | **+9.4%** | **+62.3%** | **+77.4%** | **39.1%** |
 
-**L58 read out loud — and it corrects the branch's own first explanation.** The gate note
+**L58 in plain terms — and it corrects the branch's own first explanation.** The gate note
 argued that the lift was monotone in the duplicate-slot rate because the re-base "removes a
 defect that was suppressing the text models specifically". The *total* column is indeed
 monotone in that rate, in exact order across all six models. But the decomposition shows the
@@ -583,7 +582,7 @@ layer sits. The hybrid argument gets stronger, not weaker.
 |---|---|---|---|---|
 | L60 | **The two model classes reach mostly *different* books — the hybrid argument as an overlap rather than as two coverage percentages** | item-item **19,313 works (8.19%)**, TF-IDF **39,632 (16.81%)**, overlap only **6,794**, union **52,151 (22.11%)**; adding the embedding model takes the union to **93,992 works (39.86%)** | Distinct recommended items present in the work catalogue, over 235,824, taken from the same run that produced L53/L56/L57 — `notebooks/02_models.ipynb` §3. Same counting basis as L46 (a recommendation we cannot name does not count), now on the work universe. The ISBN-level analogue was 24,597 / 45,090, overlap 7,451, union 62,236 (22.9%) | 2026-08-08 |
 
-**L60 read out loud.** The overlap is the number that carries the hybrid argument, and it is
+**L60 in plain terms.** The overlap is the number that carries the hybrid argument, and it is
 small: of the 52,151 works the two classes reach between them, only **13% are reached by
 both**. Two models with 8.2% and 16.8% coverage could in principle be nested; measured, they
 are nearly disjoint. That is why the recommendation is item-item *with* a content layer
@@ -592,7 +591,7 @@ to the idea that hybrids sound thorough. The union percentage barely moves from 
 basis (22.11% vs 22.9%), so this argument, like the ceilings in L50, is invariant to the
 re-base.
 
-**L59 read out loud.** Compare with L47, which measured the same thing after serving-time
+**L59 in plain terms.** Compare with L47, which measured the same thing after serving-time
 dedup on the ISBN basis: item-item 0/30, ALS 0/30, TF-IDF 7/30, embeddings 9/30. **The
 collaborative surfaces were already clean and stayed clean; TF-IDF did not move at all;
 embeddings improved by three slots.** Doing the merge in data prep rather than at serving
@@ -640,7 +639,7 @@ match, prefer the one with more readers. A margin rather than an additive popula
 because an additive weight can promote a *worse* text match when the readership ratio is large
 enough, and a margin cannot by construction
 
-**L62 read out loud, including what it does not claim.** Rule 1 is a serving rule with an
+**L62 in plain terms, including what it does not claim.** Rule 1 is a serving rule with an
 argument behind it: offering an anchor whose neighbourhood the model would refuse to produce
 is a dead end dressed up as a result. Rule 2 is a **user-interface** decision — a reader
 typing a title means the book most readers mean — chosen on **nine queries**, which is a
@@ -713,7 +712,7 @@ about *this anchor's* audience and can only be that. An absolute rule was the fi
 and was dropped for the reason recorded in `display.py`: on the *Da Vinci Code* list "< 5
 shared readers" fires on nothing, including the rank-2 row that started the discussion.
 
-**L63 read out loud, because it is the line the write-up should carry.** A cosine of 0.49
+**L63 in plain terms, because it is the line the write-up should carry.** A cosine of 0.49
 against a 25-reader anchor and 0.49 against a 700-reader anchor are the same number meaning
 different things. That is why the raw similarity no longer appears in the app's reason
 sentences (M14.6) — showing it invites exactly the comparison it cannot support — and why
@@ -848,12 +847,12 @@ retrain cost" has an answer that traces line by line.
 | ID | Claim | Number | How measured | Measured |
 |---|---|---|---|---|
 | L71 | **The demo ships 890 MB and the recommender is 17.5% of it — the rest is the search box and a padded id column** | assets **890.0 MB**: free-text lookup (encoder vectors 234,626 × 384 float32, plus ids and support) **372.2 MB / 41.8%**, the item id column **328.3 MB / 36.9%**, the ALS factor matrix that actually answers the query **155.6 MB / 17.5%**, the reader matrix **3.0 MB**, catalogue parquet **28.4 MB**. Continued below the table | Byte sizes of every file in `artifacts/app/` as the demo loads them, plus shapes and dtypes; the dictionary figure sums the utf-8 length of all 304,001 ids. **This is a finding about the demo's asset builder, not about the method** — it is a serving-layer packing choice and no published number depends on it. It is the concrete answer to "what is the model artefact": 155.6 MB of float32, and it would be 155.6 MB on any platform | 2026-08-09 |
-| L72 | **A precomputed answer table for the whole product is 1.5 MB — 591× smaller than what the demo ships** | **2,508 askable anchors** (support ≥ 50, the L65 floor) × top-10 = **25,080 rows / 0.30 MB** per engine, **125,400 rows / 1.5 MB** for the five-engine shortlist, at 12 bytes a row (int32 anchor, int32 item, float32 score). For contrast: item-item at 50 neighbours per item is 15,200,050 entries / **121.6 MB**, and the dense similarity matrix nobody ever builds is 92,416,608,001 cells / **370 GB** | Derived arithmetic on measured inputs (`n_items` = 304,001 and the anchor support vector from the shipped `meta.json` and `item_support.npy`; 50 neighbours from L53, 128 factors from L55). Every MB here is 10⁶ bytes, the same convention as L71. *(Corrected 2026-08-09 by M18.5's sweep: this line first said 2,532 anchors, which is `support ≥ 50` over all 304,001 item rows, **24 of them ids the app has no catalogue row for and therefore cannot name**. "Askable" is L65's word and L65's filter — an anchor a visitor cannot type is not askable — and the nameable count is 2,508, which is what L65's floor table already published and what the paragraph below always quoted at floor 20. The design conclusion is untouched: 1.5 MB either way.)* **This is the number that decides the serving design**: at 1.5 MB the answer table fits in any cache, a key-value store is sufficient and neither a vector database nor a live model server is required for the shipped use case. They become required exactly when the anchor floor comes down or personalization arrives, and that is the trade to state on the slide rather than the technology | 2026-08-09 |
+| L72 | **A precomputed answer table for the whole product is 1.5 MB — 591× smaller than what the demo ships** | **2,508 askable anchors** (support ≥ 50, the L65 floor) × top-10 = **25,080 rows / 0.30 MB** per engine, **125,400 rows / 1.5 MB** for the five-engine shortlist, at 12 bytes a row (int32 anchor, int32 item, float32 score). For contrast: item-item at 50 neighbours per item is 15,200,050 entries / **121.6 MB**, and the dense similarity matrix nobody ever builds is 92,416,608,001 cells / **370 GB** | Derived arithmetic on measured inputs (`n_items` = 304,001 and the anchor support vector from the shipped `meta.json` and `item_support.npy`; 50 neighbours from L53, 128 factors from L55). Every MB here is 10⁶ bytes, the same convention as L71. *(Corrected 2026-08-09 by M18.5's sweep: this line first said 2,532 anchors, which is `support ≥ 50` over all 304,001 item rows, **24 of them ids the app has no catalogue row for and therefore cannot name**. "Askable" is L65's word and L65's filter — an anchor a visitor cannot type is not askable — and the nameable count is 2,508, which is what L65's floor table already published and what the paragraph below always quoted at floor 20. The design conclusion is untouched: 1.5 MB either way.)* **This is the number that decides the serving design**: at 1.5 MB the answer table fits in any cache, a key-value store is sufficient and neither a vector database nor a live model server is required for the shipped use case. They become required exactly when the anchor floor comes down or personalization arrives, and that is the trade to state rather than the technology | 2026-08-09 |
 
 **L71.** The id column is stored as fixed-width `<U270`, i.e. 1,080 bytes per id whatever the
 id's length; the same ids as int32 codes plus a utf-8 dictionary are **11.4 MB, 96.5% smaller**
 
-**L71 and L72 read out loud, and it is one argument.** The demo is 890 MB because it carries
+**L71 and L72 in plain terms, and it is one argument.** The demo is 890 MB because it carries
 a sentence encoder's output so a human can type a title, and because ids were written out as
 padded Unicode. **The recommender is 155.6 MB, and the answers it produces are 1.5 MB.**
 Those three numbers in that order are the whole productionization story: the expensive part
@@ -884,12 +883,12 @@ question and the answer should be an addition, not a shrug. Single node, Apple S
 | **all six models, fit + evaluate + gallery** | **~8 min** | primary table header |
 | build the demo's serving assets | 223 s | L61 |
 
-**Read out loud: a full retrain of everything is eight minutes on a laptop.** That is the
+**In plain terms: a full retrain of everything is eight minutes on a laptop.** That is the
 number that decides the retraining cadence, and it decides it in an unusual direction —
 compute is not the constraint, so the cadence should be set by how fast the *catalogue and
 the interactions* change, not by what the training costs. **This dataset cannot tell us how
-fast that is (L18: there are no timestamps)**, which makes it a discovery question for the
-client rather than a parameter to assert on a slide. Daily is defensible and cheap;
+fast that is (L18: there are no timestamps)**, which makes it a question to answer from a
+live catalogue rather than a parameter to assert without evidence. Daily is defensible and cheap;
 justifying it from this data is not possible, and saying so is the stronger answer.
 
 *Note on 2,508, and on the 2,532 this line first said.* The two numbers are the same filter
@@ -1013,7 +1012,7 @@ So a multi-seed run scores **the same 13,580 users** every time and the runs dif
 which book each of them had withheld — which is precisely the variance to be measured, with
 nothing else moving underneath it. Every
 number in this ledger is therefore conditional on one draw, and that sentence belongs in the
-talk track next to the interval, not instead of it.
+sentence next to the interval, not instead of it.
 
 ## The hybrid, measured at last (milestone M19)
 
@@ -1074,7 +1073,7 @@ whose loose title the reader already owned, and of RRF's 312 only **11**. What t
 actually do is **redistribute**: by held-out support, fusion is +33/−0 at zero, +30/−4 at 1–4,
 +64/−33 at 5–49 and **+48/−75 at 50+**; RRF is **+137/−178** in that last stratum
 
-**Read out loud, because this is the paragraph that goes on the slide.** The hybrid works,
+**In plain terms, and this is the paragraph the write-up should carry.** The hybrid works,
 and it does not work the way we have been saying it does. The version this ledger has
 recommended since M10 — collaborative first, content filling what it cannot reach — is
 **real, statistically distinguishable and tiny**: nine readers out of 13,580, every one of
@@ -1238,7 +1237,7 @@ design. Twice now, a rule that wins the aggregate wins it where the product does
 M19.** L79 hand-counted the three-anchor gallery — which *is* this item-to-item surface — at
 **cascade 0 bad slots of 30, fusion 11 of 30, RRF 13 of 30**: RRF answers *The Lovely Bones*
 with *The Lovely Bones*, *Desde Mi Cielo* and *In meinem Himmel*. So the rule that now leads the
-predictive column is the same rule with the worst-looking lists in the case. M20 said "best
+predictive column is the same rule with the worst-looking lists in the project. M20 said "best
 neighbourhoods" was always a claim about both halves; for RRF the two halves now disagree as
 sharply as they ever have in this project.
 
@@ -1283,7 +1282,7 @@ seed 42 alone.*
 | ID | Claim | Number | How measured | Measured |
 |---|---|---|---|---|
 | L84 | **The embedding cache cannot detect the drift it exists to detect: it checks 0.22% of the catalogue and missed a real change on four seeds out of four** | Changing the seed moves the canonical title of **76–80 works** per draw (**0.032–0.034%** of 235,824). Across the sweep that is 313 drift *events* on **167 distinct works** (**0.0708%**) — the overlap is the point: the works that flip are the ones whose two best editions have near-equal support, so the same ones flip on almost every draw (*About a Boy* on all four, *A Fortunate Life* and *A Man Called Intrepid* on two each). Continued below the table | `python scripts/measure_seed_sensitivity.py --drift-only`, diffing the full text array with no model in the loop — never the fingerprint, which is the thing under test. **This is a stale cache *hit*, not a miss, and that is the dangerous direction:** a plain multi-seed run scores each seed with the *first* seed's vectors and reports it as a measurement. Blast radius and the decision not to fix it are below the table | 2026-08-09 |
-| L86 | **The ordering survives all five draws. Three near-ties do not, and one of them is the pair the case leans on** | **Sign: all eight comparisons against item-item keep their sign on every draw — no row of the table ever changes place.** Levels (min–max, sd over 5 draws): RRF **0.0672–0.0687** (sd 0.0006), fusion α=0.5 0.0644–0.0660 (0.0006), cascade 0.0606–0.0650 (0.0016), **item-item 0.0599–0.0644** (0.0017), **ALS 0.0545–0.0585** (0.0016), explicit-only 0.0459–0.0501 (0.0016), TF-IDF 0.0385–0.0412 (0.0010), popularity 0.0133–0.0155 (0.0010), embeddings 0.0133–0.0142 (0.0003). So the published cell is the **top of the range** for item-item and the **bottom** for ALS. Continued below the table | `python scripts/measure_seed_sensitivity.py`. Seeds **42, 44, 45, 46, 47**; **43 skipped deliberately** because it names the inner validation split in L51/L77, and two draws sharing a number is how a reader concludes a sweep tuned on its own test set. **Asserted, not assumed:** all five draws score the *same* 13,580 readers — pinned by `tests/test_split.py::test_eligibility_is_seed_independent`, and the script exits non-zero if it fails, which is what makes these a paired sample rather than five unrelated experiments. Continued below the table | 2026-08-10 |
+| L86 | **The ordering survives all five draws. Three near-ties do not, and one of them is the pair the project leans on** | **Sign: all eight comparisons against item-item keep their sign on every draw — no row of the table ever changes place.** Levels (min–max, sd over 5 draws): RRF **0.0672–0.0687** (sd 0.0006), fusion α=0.5 0.0644–0.0660 (0.0006), cascade 0.0606–0.0650 (0.0016), **item-item 0.0599–0.0644** (0.0017), **ALS 0.0545–0.0585** (0.0016), explicit-only 0.0459–0.0501 (0.0016), TF-IDF 0.0385–0.0412 (0.0010), popularity 0.0133–0.0155 (0.0010), embeddings 0.0133–0.0142 (0.0003). So the published cell is the **top of the range** for item-item and the **bottom** for ALS. Continued below the table | `python scripts/measure_seed_sensitivity.py`. Seeds **42, 44, 45, 46, 47**; **43 skipped deliberately** because it names the inner validation split in L51/L77, and two draws sharing a number is how a reader concludes a sweep tuned on its own test set. **Asserted, not assumed:** all five draws score the *same* 13,580 readers — pinned by `tests/test_split.py::test_eligibility_is_seed_independent`, and the script exits non-zero if it fails, which is what makes these a paired sample rather than five unrelated experiments. Continued below the table | 2026-08-10 |
 
 **L84.** The cause is that `work_level_catalog` picks each work's text from its
 **most-interacted edition counted on train only**, and a single withheld book flips that argmax
@@ -1585,12 +1584,12 @@ weakest is a book **three of 658 readers** share, at **rank 1** of *Life of Pi*.
   There and Back Again* (merge) from *Bridget Jones: The Edge of Reason* (do not).
 - ~~**The app and the published table now use different work keys** (L64, a deliberate decision).
   The difference is priced — item-item +0.8%, denominator −0.5% — and recorded in
-  `artifacts/app/meta.json`, but it is a divergence and a slide has to be able to say so.~~
+  `artifacts/app/meta.json`, but it is a divergence and the write-up has to be able to say so.~~
   **Closed 2026-08-09: it does not go in the write-up.** The divergence stays exactly
   where it is — priced in L64, stamped into `artifacts/app/meta.json`, and explained here —
   and it is answered if it is asked, not volunteered. Recorded as a decision rather than
   deleted, so nobody re-opens it: at +0.8% on one row, seven users of 13,580 and well inside
-  the ±0.0021 standard error, it is not a finding, and a slide spent on it would buy
+  the ±0.0021 standard error, it is not a finding, and a paragraph spent on it would buy
   precision nobody asked for at the cost of the minute that carries the argument.
 - **L67 has no counterpart for the other models.** Neighbourhood stability was measured for
   the ALS surface the app serves, because that is where it was noticed. Whether item-item's
@@ -1602,5 +1601,5 @@ weakest is a book **three of 658 readers** share, at **rank 1** of *Life of Pi*.
 **Honesty note that travels with every number above.** These are offline,
 single-dataset measurements on a 2004 crawl. They describe the data, and later they will
 describe model behaviour on a held-out slice of it. They are a proxy for whether
-recommendations are *good* — a live A/B test is the only real proof, and that stays true
+recommendations are *good* — only real reader behaviour is proof, and that stays true
 however favourable the offline table looks.

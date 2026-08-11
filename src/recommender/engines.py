@@ -284,7 +284,7 @@ class Configuration:
     #: this demo", so one screen carried two names for one thing. That is the M17.8/M17.10
     #: failure mode, twice removed from this app already.
     #:
-    #: Written out, never a house abbreviation, per M15.5's register rule: a client does not
+    #: Written out, never a house abbreviation, per M15.5's register rule: a visitor does not
     #: know what "ALS" or "item-item" is. The gloss after the dash is what stops the model name
     #: being the only thing a non-specialist has to go on at the moment of choosing.
     label: str
@@ -299,7 +299,7 @@ class Configuration:
     #: **Plain language, and that is the register rule rather than a preference** (copy
     #: read, 10.08.2026). A's read "cosine between the books' learned profiles" for an
     #: afternoon, which put the one piece of undefined mathematics on this project's most
-    #: client-facing screen — the same screen M15.5 cleared of ledger codes, and where three
+    #: visitor-facing screen — the same screen M15.5 cleared of ledger codes, and where three
     #: more captions were then cut for answering questions nobody had asked. B's label was
     #: already plain; A's now is. The *source* classes keep their technical labels, because
     #: those are read by the audit scripts and never by a visitor.

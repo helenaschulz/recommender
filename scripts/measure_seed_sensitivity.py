@@ -16,7 +16,7 @@ test is the **ordering**, not the level.
 
 **The headline is the paired per-seed delta, not the spread of levels.** Five levels tell you
 the number wobbles; five deltas tell you whether the ordering wobbles, which is the only thing
-the case leans on. The three margins that could plausibly move, reported first: ALS against
+the project leans on. The three margins that could plausibly move, reported first: ALS against
 item-item (0.0099 apart, the narrowest pair L74 still calls distinguishable), the M19 fusion
 rules against item-item (+0.0046, barely above L74's stated resolution), and embeddings
 against popularity (published as *not* distinguishable, p = 0.342 — a seed that makes it

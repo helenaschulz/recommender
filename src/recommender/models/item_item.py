@@ -1,4 +1,4 @@
-"""Item-item collaborative filtering — the core hypothesis of this PoC.
+"""Item-item collaborative filtering — the core hypothesis of this project.
 
 The product takes a book and returns similar books, with no user identity at query time.
 Item-item CF answers exactly that question natively: the model *is* a table of book
