@@ -35,7 +35,10 @@ import numpy as np
 ITEM_ITEM_NEIGHBOURS = 50  # L53 / L25
 ALS_FACTORS = 128  # L55
 TOP_N = 10  # every published metric is @10
-ENGINES = 5  # the M16 switcher shortlist: item-item, ALS, TF-IDF, embeddings, popularity
+#: The five-engine shortlist L72 sizes: item-item, ALS, TF-IDF, embeddings, popularity.
+#: It is a sizing bound for the whole product, not a description of the shipped app —
+#: that offers two configurations (M23.10). The five stay because L72 is published on them.
+ENGINES = 5
 
 
 def project_root() -> Path:
