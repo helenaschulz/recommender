@@ -1,8 +1,9 @@
 # How the recommender was chosen, and what would be built
 
-Written after the model comparison run of 2026-08-04 and re-based onto the work-keyed table
-of 2026-08-08 (milestone M12, §11). Every number traces to a line in
-[`RESULTS.md`](RESULTS.md); nothing here is from memory.
+Written after the model comparison run of 2026-08-04, re-based onto the work-keyed table of
+2026-08-08 (milestone M12, §11), and carried through to the two-engine demo of 2026-08-10
+(M23.10, §13). Every number traces to a line in [`RESULTS.md`](RESULTS.md); nothing here is
+from memory. For the argument without the workings, see [`SUMMARY.md`](SUMMARY.md).
 
 **One thing to know before reading any number below.** The item is a **work**, not an ISBN:
 *Crime and Punishment* is one item, not the 21 editions Book-Crossing ships it as. The
@@ -140,10 +141,6 @@ among the real models and last on coverage too, so it buys nothing in either dir
 only marks the zero point. There is no single best model, so "which model" is the wrong
 question — "which model for which job" is the right one.
 
-*(Corrected 2026-08-09, together with the same sentence in `RESULTS.md`. It previously read
-"almost exactly the reverse … with ALS the only exception", which the table above
-contradicts: the baseline is displaced by four places and item-item by three.)*
-
 **One row is a tie, not a loss.** Content embeddings at 0.0141 against the baseline's 0.0155
 is **19 users out of 13,580**, z ≈ 1.0 — inside sampling noise, so the two are not
 distinguishable and the row must be read as "matches the baseline on accuracy while reaching
@@ -209,9 +206,7 @@ per-ISBN filtering deletes 23,429 editions of works that clear the threshold.)
 
 **Dense embeddings needed a fix that is invisible unless you look for it** (L36). Before
 the fix the model scored **0.0036** on the validation split against **0.0095** after it —
-worse than the popularity baseline either way. *(This sentence previously quoted 0.0042 as
-the first run's score. That number has no line in `RESULTS.md` and could not be traced to a
-run, so it was replaced by L36's measured pair on 2026-08-09.)* The cause: averaging a
+worse than the popularity baseline either way. The cause: averaging a
 user's book vectors produces almost the same vector for every user (mean cosine to the
 global profile centroid 0.883). Sentence embeddings share a large common direction and
 averaging amplifies it. Centering the item vectors drops that to 0.193 and, on
@@ -314,23 +309,18 @@ from parameter-free RRF at all (162/158, p = 0.867), so it bought nothing.
 in those words: it expected coverage to move a lot and accuracy barely, and no rule did both.
 What it got right is the part that matters for the architecture — the extra *reachable*
 ceiling is mostly unrankable, and the hybrid's real accuracy gains come from somewhere the
-prediction never considered. *(M18.5's sweep read this pointer as dangling and recorded
-that "§9 never had a sixth item". That was wrong: item 6 was added on 09.08. and lost to a
-concurrent edit of this file. It is restored, and this note stays as the record of a
-correction that itself needed correcting.)* What L73 already says about the shape of
-that prediction: the works only a content layer can reach are the works with no interaction
-evidence, and there TF-IDF scores 0.0304 against every collaborative model's 0.0000 — a real
-number, and a small one.
+prediction never considered. L73 says the same thing from the other side: the works only a
+content layer can reach are the works with no interaction evidence, and there TF-IDF scores
+0.0304 against every collaborative model's 0.0000 — a real number, and a small one.
 
 **ALS kept in the plan for what the metrics do not show.** Free personalization from the
 same fit, item-to-item neighbourhoods that hold up where its HitRate does not (M20: level
 with item-item on the item query, L80, and an advantage on thin anchors, L81), and the only
 model that ports to Spark without a rewrite — which makes productionization a port rather than
-a second project. *This paragraph read "the best item-to-item neighbourhoods of any model here"
-until M20 measured it and no superlative survived. A second superlative went the same way on
-2026-08-10: the thin-anchor advantage was called* the only one *until **L85 (M22)** measured RRF
-and fusion on the same anchors and found both ahead of item-item in the 1-4 band as well — ALS's
-advantage there is real and it is no longer unique.*
+a second project. Two superlatives have been removed from this paragraph by measurement: it
+claimed the *best* neighbourhoods of any model until L80 found them level with item-item, and
+it called the thin-anchor advantage the *only* one until L85 found RRF and fusion ahead of
+item-item in the 1–4 band too. ALS's advantage there is real; it is not unique.
 
 **None of this is expensive to run, and that is measured too.** The model artefact is
 **155.6 MB** of float32 factors, the precomputed answer table for the whole product is
@@ -380,8 +370,7 @@ rates differ by a factor of seven between the lowest and highest support stratum
 matters a great deal which stratum the drawn book landed in. Several seeds would measure it,
 and **M21 did: five draws (seeds 42, 44, 45, 46, 47), ledger L86.** The ordering holds on all
 five — no row changes place — but the near-ties move, and the published cell sits at the
-favourable end of its range. *(This sentence read "it has not been done" until 2026-08-10; M21's
-own follow-up corrected four other places and missed this one.)* And every metric is a proxy:
+favourable end of its range. And every metric is a proxy:
 "was the held-out book in the top ten" stands in for "would a reader click, buy, or
 enjoy this". A recommendation the reader has never heard of scores zero whether it was a
 brilliant discovery or a mistake — which is precisely the outcome a long-tail recommender
@@ -392,29 +381,27 @@ however favourable the offline table looks. What the offline work buys is the ri
 choose which two or three candidates go into that test, and the confidence that they were
 not chosen by accident.
 
-## 9 · Open questions
+## 9 · Open questions, and how the closed ones closed
 
-1. ~~**Edition clustering: serving-layer dedup, or a data-prep fix?**~~ ~~The remaining
-   decision is whether the whole comparison table moves to work level.~~ **Both answered.**
-   They do different jobs (§10), and the table did move (§11, M12). Serving dedup stays in
-   the serving layer for the app, because the app's engine is fitted on the full
-   interaction matrix and still has to collapse editions on the way to the screen.
-2. ~~**Which model should drive the app?**~~ **Answered: ALS**, and §12 gives the reason.
-   Item-item has the best numbers; ALS's neighbourhoods were judged better by eye (L34), and
-   the app is an item-to-item surface. The demo shows ALS *and* the table where it loses,
-   which is a better account than either number alone. **Re-opened and re-answered by
-   measurement, M20:** on the item query the two are **not distinguishable** (L80), and in
-   the band the app serves item-item is nominally ahead (L81). The answer stands as
-   *defensible*; it no longer stands as *evidenced*, and the difference is a call to
-   take before the next build.
-3. ~~**Re-tune item-item for the similarity endpoint?**~~ **Answered, and the answer was
-   "no re-tuning was needed".** L29 proposed a higher λ or a co-occurrence floor for the
+1. **Edition clustering: serving-layer dedup, or a data-prep fix? — both, and they do
+   different jobs.** §10 has the comparison; the table itself moved to work level in §11.
+   Serving dedup stays in the serving layer for the app, because the app's engine is fitted
+   on the full interaction matrix and still has to collapse editions on the way to the screen.
+2. **Which model should drive the app? — answered three times, and the third answer is the
+   one that ships.** First ALS, on neighbourhoods judged better by eye (L34). Then M20
+   measured the item query and found the two **not distinguishable** (L80), with item-item
+   nominally ahead in the band the app serves (L81) — which retired the *evidenced* claim and
+   left only a defensible one. M23.10 stopped trying to pick: **both ship, behind a picker, at
+   the same anchor floor**, so the visitor moves one variable and the project does not have to
+   assert a winner it cannot demonstrate (§13).
+3. **Re-tune item-item for the similarity endpoint? — no re-tuning was needed.**
+   L29 proposed a higher λ or a co-occurrence floor for the
    Harry Potter neighbourhood. On the work basis the same model with the same λ returns
    *Chamber of Secrets* at 0.477 (§6, L53): the anchor was under-*evidenced*, not
    under-damped, and the fix was data prep. The legitimate residue — tuning the similarity
    endpoint on its own validation objective rather than on HitRate — is still unbuilt, but
    it is now a refinement rather than a defect.
-4. **Confidence intervals.** ~~Still none measured.~~ **Measured 09.08.2026, L74**: 95%
+4. **Confidence intervals — measured, L74.** 95%
    Wilson intervals on all six cells, running **±0.002 to ±0.004**, plus the paired McNemar
    this item proposed. §8 carries the derived standard error that preceded it, and the
    measurement agreed with it: every pair in the table is distinguishable except embeddings
@@ -431,29 +418,22 @@ not chosen by accident.
    and sharper than the worry was. ALS against item-item is separable on four draws of five,
    and the p = 2.7e-06 quoted above is seed 42's.
 
-   *(Correction, 2026-08-09, and it is the reason the paragraph above exists. This item was
-   first rewritten to dismiss the multi-seed idea, on the grounds that "re-seeding changes
-   which users are eligible, so the runs would not be comparable". **That is false.**
-   Eligibility in `split.py` is `≥5 explicit ratings and ≥1 rating ≥8` — a deterministic
-   property of the data, computed by an `intersect1d` with no seed anywhere near it. The seed
-   enters at exactly one line, `rng.integers`, choosing the held-out item. The eligible set is
-   therefore **identical across seeds**, multi-seed runs are perfectly comparable, and they
-   measure a second source of variance rather than a spurious one. The two measurements
-   answer different questions and the project wants both: McNemar for "is this difference
-   bigger than user-sampling noise" — done, L74 — and seeds for "does the conclusion survive
-   a different draw" — **done 10.08.2026, L86: the conclusion survives, the ordering holds on
-   five draws, and three near-ties change verdict between them**.)*
-5. **The hybrid recommended in §7 has never been measured** (restored 09.08.2026 — this item
-   was added, lost to a concurrent edit, and then recorded by the sweep as never having
-   existed). It is argued from two *bounds*, the union ceiling (L50) and the near-disjoint
-   reach (L60), and no combination rule has been run end to end. Milestone M19 measures
-   three: cascade/backfill, score fusion tuned on the inner split, and RRF as the
-   parameter-free reference. **The prediction, on record before the run:** coverage moves a
-   lot, HitRate barely — because the works only a content layer can reach are the works with
-   no interaction evidence, where L73 measures TF-IDF at 0.0304 against every collaborative
-   model's 0.0000. A real number, and a small one. **And L74 sets the bar it has to clear:**
-   the intervals are ±0.002 to ±0.004, so a hybrid that moves HitRate by less than about
-   0.004 has not been shown to move it at all.
+   **Why multi-seed runs are comparable at all**, since the obvious objection is that
+   re-seeding changes which users are eligible: it does not. Eligibility in `split.py` is
+   `≥5 explicit ratings and ≥1 rating ≥8`, a deterministic property of the data computed by
+   an `intersect1d` with no seed near it. The seed enters at exactly one line, `rng.integers`,
+   choosing the held-out item. The eligible set is **identical across seeds**, so the two
+   measurements answer different questions and the project wants both: McNemar for "is this
+   difference bigger than user-sampling noise" (L74), seeds for "does the conclusion survive
+   a different draw" (L86).
+5. **The hybrid was argued from bounds for four milestones, and M19 measured it.** It had
+   rested on the union ceiling (L50) and the near-disjoint reach (L60), neither of which is a
+   HitRate. Three rules were run with the prediction on record beforehand; §7 carries the
+   result. What stays open is narrower and is worth keeping in view: the fusion rules'
+   duplicate problem is L47's edition/translation ceiling arriving in a new place, so fixing
+   that clustering is the first thing to re-measure fusion against; and the cascade's support
+   floor was measured at 0, 5 and 20 with nothing in between, so the point where the trade
+   turns negative is still unmeasured.
 6. **Cross-lingual lookup is weak** (L38) — `"herr der ringe"` finds nothing. Title+author
    is too thin for a multilingual encoder to bridge. This is the concrete, now-measured
    argument for an LLM metadata-enrichment layer.
@@ -495,10 +475,10 @@ be ruled out before believing it: the structural ceiling moves only 84.81% → 8
 is not an easier target; the held-out work cannot leak in through a second edition,
 because `to_work_level` collapses each (user, work) pair before the split; and only 0.38%
 of ISBN-level holdouts were a second edition of something the user already had, so the old
-number was not being flattered either. ~~It is also a *lower bound* — λ and the
-neighbourhood size are still the ones tuned on the ISBN-level split.~~ **That caveat is
-retired: the sweep was re-run at work level in M12 and re-selected the same λ=10 and 50
-neighbours (L51), so the +18% is not a lower bound for that reason.**
+number was not being flattered either. The +18% was first published as a *lower bound*,
+because λ and the neighbourhood size were still the ones tuned on the ISBN-level split; the
+sweep was then re-run at work level in M12 and re-selected the same λ=10 and 50 neighbours
+(L51), so the caveat is retired and the figure stands on its own.
 
 **Why the standard recipe makes this worse.** The usual min-5 filter is applied per ISBN,
 so it deletes **23,429 editions carrying 49,649 interactions that belong to works which
@@ -550,8 +530,8 @@ involves an LLM.
 - **Ship the serving dedup.** It costs nothing, it fixes the most visible defect in the
   demo, and it is switchable so the comparison table stays interpretable.
 - **Work-level clustering belongs in data prep, not just at serving.** +18% on the one
-  model measured both ways is too large to leave on the table. ~~The open decision is
-  whether the whole comparison table re-bases to works.~~ **Decided: it did. §11.**
+  model measured both ways was too large to leave on the table, so the whole comparison
+  table re-based to works. §11 is what that cost to check.
 - **A content model still cannot be the app's similarity engine.** §6 said edition
   clustering was the precondition. It was necessary and it was not sufficient.
 
@@ -661,13 +641,11 @@ passed it.
   still answer *Sorcerer's Stone* with *Philosopher's Stone*, the Italian and French
   editions, and the Welsh one — 7 of 30 gallery slots for TF-IDF, 6 of 30 for embeddings.
   Only more text per book or an external work identifier fixes that.
-- ~~**L27 and L28 have no work-level ledger line.**~~ **Closed 09.08.2026 by M18.2: they
-  are L73**, both strata, all six models, grouped from the same per-user hit vectors as L74.
-  The state this item described — `notebooks/02_models.ipynb` §2.1 holding the popularity
-  strata with no ledger line behind them — is what L73 closes. **What the work-level version
-  adds:** the content models are the only ones that score at all where the held-out work has
-  no train interactions (TF-IDF 0.0304, embeddings 0.0138, every collaborative model exactly
-  0.0000), which is the hybrid argument as a measurement rather than as a ceiling.
+- **The work-level strata are measured** (L73, M18.2): both of them, all six models, grouped
+  from the same per-user hit vectors as L74. What the work-level version adds is the hybrid
+  argument as a measurement rather than as a ceiling — the content models are the only ones
+  that score at all where the held-out work has no train interactions (TF-IDF 0.0304,
+  embeddings 0.0138, every collaborative model exactly 0.0000).
 - **Still one split, still offline.** §8 applies unchanged, and re-basing does not make an
   offline proxy any less of a proxy.
 
@@ -676,11 +654,13 @@ passed it.
 `streamlit run app/main.py`: paste a book, get ten similar books, each with one sentence of
 reason drawn from countable evidence — **co-reader count and shared author** — beside the
 similarity, shown as a bar scaled to the top of that list plus the absolute number. No
-language model anywhere in the hot path. It starts in **10.6 s** and
-answers in **20 ms** (L69 — L61 measured 9.4 s / 21 ms before the M15 surface rebuild;
-L69 is the shipped app), with no network and no fitting at query time.
+language model anywhere in the hot path. It starts in **8.8 s** and answers in **21 ms**
+(L91; L69 measured 10.6 s / 20 ms for the single-engine app that preceded the picker, and
+L61 9.4 s / 21 ms before the M15 surface rebuild), with no network and no fitting at query
+time.
 
-**It runs on ALS, which loses §4.** That is the point rather than an oversight. §6 measured
+**Its default engine is ALS, which loses §4** — and since M23.10 the other engine is one
+click away rather than one branch away (§13). That is the point rather than an oversight. §6 measured
 the divergence: HitRate@10 scores how well a model ranks a held-out book in a *user's*
 history, and the app asks a different question — given this one book, what is like it. ALS
 is second of six on the first (L55), and on the second — measured in M20 on 13,580 anchors —
@@ -726,3 +706,97 @@ under every rule. Title+author is three to five words, and no amount of serving 
 that into enough signal for a multilingual encoder to bridge. It is the same wall as §10's
 gallery and L59's count, now hit from a third direction — and the third independent
 argument for the metadata-enrichment layer.
+
+## 13 · The demo's own question, and the floor underneath it (M14–M23.10)
+
+§12 describes an app that runs one engine. It now offers two, and the four milestones
+between those states changed what this document can claim — not by moving a cell in §4, but
+by measuring the question §1 said the table could not answer.
+
+### The score is not comparable across anchors
+
+Reading eleven anchors instead of a table found what no cell shows: **the similarity score
+means different things for a well-read book and a thinly-read one** (L63). A cosine of 0.49
+is an excellent neighbour under one anchor and noise under another, because the number of
+readers behind it differs by two orders of magnitude. That is a property of the surface, not
+a bug, and it has one consequence the product cannot avoid: a demo that answers for every
+book will sometimes answer confidently from four shared readers.
+
+So the floor became **two** numbers (L65). A **candidate floor of 20** keeps noise
+directions out of the neighbourhood — L34's original finding. An **anchor floor of 50**
+decides which books the app will answer for at all: 2,508 works, 26.6% of all interactions.
+Below it the app declines rather than inventing ten titles, and *The Kite Runner* at 39
+readers (L90) is the pinned demonstration of that refusal.
+
+### The item query, measured
+
+M20 gave the product's question its own metric — **AnchorHitRate@10**: hold out a reader's
+book, ask what is similar to one book they kept, check whether the held-out one comes back.
+Over the same 13,580 anchors: **ALS 0.0308, item-item 0.0297, and the two cannot be told
+apart** (L80, 169/155, p = 0.47). M22 added the fusion rules and they win the aggregate —
+**RRF 0.0371, score fusion 0.0355** (L85) — but the win does not survive the band the app
+serves: against item-item above the anchor floor they go **41/42, p = 1.000**. Every point
+is bought below 50 readers, where the demo does not answer.
+
+This is the same shape twice, so it is worth naming: **every engine this project has
+measured is separated below the floor and indistinguishable above it.**
+
+### The floor is worth more than the model
+
+M23 put a number on that. Running ALS with and without L34's candidate floor: **0.0308
+against 0.0130**, a difference of **+0.0177** at p = 2.5e-41 — larger than any difference
+between two models anywhere in this project (L82). Without the floor ALS scores *below the
+popularity baseline*. The support floor is not a hygiene detail; on this data it is the
+single most consequential setting in the serving path, and it is a data-shape decision
+rather than a modelling one — which makes it a sibling of §11's re-base, not a footnote.
+
+The band a lower floor would open (20–49 readers, 1,860 anchors) cannot settle the engine
+question either way: at ~3% hit rates it holds 23 and 13 discordant readers across two
+draws, so it can only fail to separate (L88). Reported as underpowered rather than resolved
+by taking the friendlier draw.
+
+### Every number is conditional on one draw
+
+M21 re-drew the split five times (seeds 42, 44, 45, 46, 47). **The ordering holds on all
+five — no row of §4 changes place** — and three near-ties change their significance verdict
+between draws (L86). §8's caveat is therefore bounded rather than removed: the table's
+*shape* is robust, its *margins* are not, and the published cell sits at the favourable end
+of its range.
+
+### Two engines, one floor, and a hand read behind both
+
+M23.10 ships **A** (ALS item factors) and **B** (item-item, shrunk cosine) behind a sidebar
+picker, both at anchor floor 50, so the click moves exactly one variable: the model. A is
+default because it is the rehearsed engine, not because it won anything, and one constant in
+`app/main.py` removes the picker.
+
+The pair is backed by reading, not by a metric — because §6's lesson is that a metric cannot
+see whether a neighbourhood is sensible:
+
+- **240 slots** in the band a lower floor would open, three configurations, every one read by
+  hand (L89). It killed the third configuration: a text-blended engine that answered
+  *Thank You for Smoking* by Christopher **Buckley** with two Christopher **Pike** novels at
+  zero shared readers — 17 of 80 slots were that failure.
+- **440 slots** across twenty anchors in the band the app serves (L90). **A: 7 bad slots of
+  220. B: 0 of 220.** A's four unambiguous failures are one defect — the same book returned
+  twice under two work keys a leading article apart, which B cannot make structurally,
+  because two halves of a split work share almost no readers.
+
+That second audit also found something that is not about engines at all (L90): **10,737
+groups covering 23,091 works are one book under two work keys**, and 194 of them are
+silenced at the floor — each half below 50 while the sum clears it. Merging them would add
+7.7% to the askable catalogue without touching the floor or the model. It is L47's wall
+again, measured from a third side.
+
+**What the switch costs: nothing on a stopwatch** (L91). B's whole answer table is 25,080
+rows / 0.22 MB, built in 21.8 s, and A comes back byte-identical on all 110 rehearsed slots
+through both entry points. Cold start 8.8 s (A) / 8.5 s (B), warm query 21/22 ms, assets
+unchanged at 890 MB because the table is additive.
+
+### What this changes in §7
+
+**Nothing in the model recommendation, and one thing in the order of work.** Item-item CF
+plus a content layer is still what would be built. But the first lever to reach for is not a
+model at all: it is the support floor, and after that the work key. Both are data-shape
+decisions, both were worth more than any model swap measured here, and both are cheaper to
+change than a training pipeline.
