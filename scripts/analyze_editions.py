@@ -272,7 +272,7 @@ def validation_sample(catalog, works, *, size: int = SAMPLE_SIZE, seed: int = SA
     ]
     for n, work in enumerate(picked, start=1):
         isbns = sorted(by_work[work], key=lambda i: -int(per_isbn_inter.get(i, 0)))
-        lines.append(f"## {n}. `{work}` — {len(isbns)} ISBNs")
+        lines.append(f"## {n}. `{work}`, {len(isbns)} ISBNs")
         lines.append("")
         lines.append("| ISBN | Title | Author | Year | Publisher | interactions |")
         lines.append("|---|---|---|---|---|---:|")
@@ -318,7 +318,7 @@ def variant_sample(catalog, works, *, size: int = 20, seed: int = SAMPLE_SEED) -
     for n, work in enumerate(picked, start=1):
         members = works.work_of_isbn[works.work_of_isbn == work].index
         isbns = sorted(members, key=lambda i: -int(per_isbn_inter.get(i, 0)))
-        lines.append(f"## V{n}. `{work}` — {len(isbns)} ISBNs")
+        lines.append(f"## V{n}. `{work}`, {len(isbns)} ISBNs")
         lines.append("")
         lines.append("| ISBN | Title | Author | Year | interactions |")
         lines.append("|---|---|---|---|---:|")

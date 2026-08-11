@@ -356,7 +356,7 @@ def cluster_works(
     work_of_isbn = pd.Series(work_ids, index=pd.Index(isbns, name="ISBN"), dtype=object)
     series_of_isbn = pd.Series(series.to_numpy(), index=pd.Index(isbns, name="ISBN"), dtype=object)
     labels = (
-        books.assign(_work=work_ids, _label=books["Book-Title"].astype(str) + " — " + books["Book-Author"].astype(str))
+        books.assign(_work=work_ids, _label=books["Book-Title"].astype(str) + " by " + books["Book-Author"].astype(str))
         .drop_duplicates("_work")
         .set_index("_work")["_label"]
     )

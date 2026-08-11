@@ -216,7 +216,7 @@ def render_lists(engines: dict[str, DemoEngine], work_id: str, k: int) -> list[s
             if rank < len(got):
                 item = got[rank]
                 title = split_series(item.title)[0].replace("|", "\\|")
-                cells += [f"{title} — *{item.author}*", f"{item.evidence.co_readers:,}"]
+                cells += [f"{title} by *{item.author}*", f"{item.evidence.co_readers:,}"]
             else:
                 cells += ["—", "—"]
         lines.append(f"| {rank + 1} | " + " | ".join(cells) + " |")
@@ -292,7 +292,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
         alternatives = ", ".join(f"{b.title} ({b.readers:,})" for b in row["alternatives"]) or "—"
         lines.append(
-            f"| {number} | {query} | {split_series(book.title)[0]} — *{book.author}* | "
+            f"| {number} | {query} | {split_series(book.title)[0]} by *{book.author}* | "
             f"{book.readers:,} | {'✓' if row['landed'] else '**✗**'} | {alternatives} |"
         )
     lines.append("")
@@ -310,11 +310,11 @@ def main(argv: list[str] | None = None) -> int:
     for row in off_set:
         book = row["book"]
         hidden = row["below_floor"]
-        landed = f"{split_series(book.title)[0]} — *{book.author}*" if book else "**nothing**"
+        landed = f"{split_series(book.title)[0]} by *{book.author}*" if book else "**nothing**"
         landed_readers = f"{book.readers:,}" if book else "—"
         hidden_text = (
-            " · ".join(f"{split_series(b.title)[0]} — *{b.author}* ({b.readers:,})" for b in hidden)
-            or "— *nothing: the floor removes nothing this query ranks higher*"
+            " · ".join(f"{split_series(b.title)[0]} by *{b.author}* ({b.readers:,})" for b in hidden)
+            or "*nothing: the floor removes nothing this query ranks higher*"
         )
         lines.append(f"| {row['query']} | {landed} | {landed_readers} | {hidden_text} |")
     lines.append("")
@@ -340,7 +340,7 @@ def main(argv: list[str] | None = None) -> int:
         query = str(row["query"])
         if book is not None:
             lines += [
-                f"### {number}. {split_series(book.title)[0]} — {book.author}",
+                f"### {number}. {split_series(book.title)[0]} by {book.author}",
                 "",
                 f"typed *{query}* · `{book.isbn}` · **{book.readers:,} readers**"
                 + ("" if row["landed"] else "  ·  ⚠ **not the book this query names**"),
@@ -353,7 +353,7 @@ def main(argv: list[str] | None = None) -> int:
         intended = str(row["intended"])
         wanted = engines["A"].describe(intended)
         lines += [
-            f"### {number}b. {split_series(wanted.title)[0]} — {wanted.author}",
+            f"### {number}b. {split_series(wanted.title)[0]} by {wanted.author}",
             "",
             f"the anchor the set means by *{query}*, reached by work id because the search box "
             f"does not reach it · `{intended}` · **{wanted.readers:,} readers**",

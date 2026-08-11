@@ -1,27 +1,27 @@
-# Book Recommender — research project on the Book-Crossing dataset
+# Book Recommender: a research project on the Book-Crossing dataset
 
 A personal research project: build a book recommender end to end on the
-[Book-Crossing dataset](https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset)
-— explore the data, try the natural modelling approaches, evaluate them, and
-end in an interface where you paste a book and get recommendations back, with an
-explanation of *why* those books.
+[Book-Crossing dataset](https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset).
+Explore the data, try the natural modelling approaches, evaluate them, and end in an
+interface where you paste a book and get recommendations back, with an explanation of
+*why* those books.
 
 The work runs in three stages:
 
-1. **Data understanding** — what this dataset actually is, and which modelling decisions
+1. **Data understanding.** What this dataset actually is, and which modelling decisions
    it forces. See [`docs/dataset_findings.md`](docs/dataset_findings.md) and
    [`notebooks/01_eda.ipynb`](notebooks/01_eda.ipynb).
-2. **Modelling and evaluation** — a ladder of candidate models on one pinned split, each
+2. **Modelling and evaluation.** A ladder of candidate models on one pinned split, each
    measured on accuracy, catalogue coverage and novelty. See
    [`notebooks/02_models.ipynb`](notebooks/02_models.ipynb), the write-up
    [`docs/model_selection.md`](docs/model_selection.md) and the ledger
    [`docs/RESULTS.md`](docs/RESULTS.md).
-3. **Interface** — paste a book, get 10 recommendations with an explanation.
+3. **Interface.** Paste a book, get 10 recommendations with an explanation.
 
 ## Getting the data
 
 The raw CSVs are **not** in this repo (they are large, and licensed by their source).
-Download them from Kaggle — dataset `arashnic/book-recommendation-dataset` — and place
+Download them from Kaggle (dataset `arashnic/book-recommendation-dataset`) and place
 the three files in `data/`:
 
 ```
@@ -36,7 +36,7 @@ With the [Kaggle CLI](https://github.com/Kaggle/kaggle-api):
 kaggle datasets download -d arashnic/book-recommendation-dataset -p data --unzip
 ```
 
-All files are comma-separated. Note that `Ratings.csv` has **no timestamp column** — this
+All files are comma-separated. Note that `Ratings.csv` has **no timestamp column**. This
 shapes how evaluation splits are done (see [`docs/dataset_findings.md`](docs/dataset_findings.md)).
 
 ## Environment setup
@@ -47,7 +47,7 @@ Python 3.11, in a virtual environment:
 python3.11 -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]"
 ```
 
-To run the notebooks in this environment, register its Jupyter kernel once — otherwise
+To run the notebooks in this environment, register its Jupyter kernel once. Otherwise
 `jupyter` may silently execute them against a different interpreter:
 
 ```bash
@@ -55,7 +55,7 @@ python -m ipykernel install --user --name recommender --display-name "Python 3.1
 ```
 
 Then: `pytest` for the test suite, `ruff check .` for lint, and the model runner to
-reproduce the **primary** comparison table. The item is a *work*, not an ISBN — editions of
+reproduce the **primary** comparison table. The item is a *work*, not an ISBN: editions of
 the same book are merged before the split (see `docs/RESULTS.md` L49):
 
 ```bash
@@ -94,7 +94,7 @@ python scripts/build_app_assets.py
 python scripts/build_answer_table.py
 ```
 
-Then start it — cold start under 9 seconds:
+Then start it. Cold start is under 9 seconds:
 
 ```bash
 streamlit run app/main.py
@@ -105,11 +105,11 @@ default, is ALS item factors over the work-keyed matrix. Configuration B is the 
 table's accuracy winner, item-item collaborative filtering with a shrunk cosine, answering
 from the precomputed answer table above. Both run on the same support floors (candidate
 floor 20 per ledger L34, the line showing ALS needs one; anchor floor 50), so the picker
-moves exactly one variable: the model. The switch costs nothing measurable — cold start
+moves exactly one variable: the model. The switch costs nothing measurable: cold start
 8.8 s (A) / 8.5 s (B), warm query 21/22 ms, assets unchanged (L91, the switch-cost
 measurement). A single flag in `app/main.py` (`SHOW_ENGINE_PICKER`) rolls back to A-only.
 
-The reason sentences come from structured evidence only — co-reader counts, shared author,
+The reason sentences come from structured evidence only: co-reader counts, shared author,
 similarity. Screenshots of the four anchor flows and the two lookup queries are in
 [`docs/img/`](docs/img/); `python scripts/measure_app_latency.py`
 (per configuration via `--configuration A|B`) and `python scripts/audit_app_lookup.py`
@@ -119,22 +119,22 @@ reproduce the latency and lookup-audit ledger lines (L61/L91 and L62).
 
 | Path | What lives there |
 |---|---|
-| `data/` | The raw Book-Crossing CSVs (not committed — see above). |
+| `data/` | The raw Book-Crossing CSVs (not committed, see above). |
 | `notebooks/` | The journey: `01_eda.ipynb` (data understanding), `02_models.ipynb` (model comparison). |
-| `docs/` | [`SUMMARY.md`](docs/SUMMARY.md) — the argument in two pages, and the place to start — then [`RESULTS.md`](docs/RESULTS.md), the measurement ledger, and [`change_log.md`](docs/change_log.md), what was built in the order it was built, plus [`dataset_findings.md`](docs/dataset_findings.md), the model-selection write-up [`model_selection.md`](docs/model_selection.md), the two hand audits [`floor_band_audit.md`](docs/floor_band_audit.md) and [`anchor_set_audit.md`](docs/anchor_set_audit.md), the hand-read samples [`edition_clusters_sample.md`](docs/edition_clusters_sample.md) and [`work_key_punctuation_sample.md`](docs/work_key_punctuation_sample.md), and figures under `docs/img/`. |
-| `app/` | The Streamlit demo (`main.py`) — widgets only; its engines are `recommender.demo` and `recommender.engines`. |
+| `docs/` | [`SUMMARY.md`](docs/SUMMARY.md), the argument in two pages and the place to start; then [`RESULTS.md`](docs/RESULTS.md), the measurement ledger; and [`change_log.md`](docs/change_log.md), what was built in the order it was built, plus [`dataset_findings.md`](docs/dataset_findings.md), the model-selection write-up [`model_selection.md`](docs/model_selection.md), the two hand audits [`floor_band_audit.md`](docs/floor_band_audit.md) and [`anchor_set_audit.md`](docs/anchor_set_audit.md), the hand-read samples [`edition_clusters_sample.md`](docs/edition_clusters_sample.md) and [`work_key_punctuation_sample.md`](docs/work_key_punctuation_sample.md), and figures under `docs/img/`. |
+| `app/` | The Streamlit demo (`main.py`), widgets only; its engines are `recommender.demo` and `recommender.engines`. |
 | `src/recommender/` | One module per responsibility: `data.py` / `split.py` (prep and the pinned split), `models/` (the six candidates plus the hybrid rules), `eval.py` / `benchmark.py` (metrics and the one place the evaluation universe is assembled), `gallery.py`, `serving.py` / `display.py` (work-level dedup, and presentation rules that must not reorder anything), `demo.py` / `engines.py` / `answers.py` (the demo's engine, its selectable configurations, and the precomputed answer table). |
-| `scripts/` | Entry points, grouped: `run_model.py` and `tune_*.py` (the comparison table), `measure_significance.py` / `measure_seed_sensitivity.py` (its statistical checks), `measure_hybrid.py` and `measure_anchor_hitrate.py` (the hybrid rules and the item-query metric), `analyze_editions.py` / `analyze_dedup.py` / `decompose_work_level_lift.py` / `analyze_work_key_punctuation.py` (the edition-clustering work), `audit_floor_band.py` / `audit_anchor_set.py` / `recut_anchor_bands.py` (the hand audits and the band the floor decision turns on), `build_app_assets.py` / `build_answer_table.py` / `verify_configuration_a.py` / `measure_app_latency.py` / `audit_app_lookup.py` / `capture_app_screenshots.py` (the demo), `run_demo_anchors.py` and the `analyze_*.py` reads that interrogate its output — anchor support, hit strata, recurrence, truncation, picker margin, surface stability — and `measure_serving_footprint.py` (the Part 3 sizing numbers). |
-| `tests/` | Offline, deterministic tests — no network, no model downloads. |
+| `scripts/` | Entry points, grouped: `run_model.py` and `tune_*.py` (the comparison table), `measure_significance.py` / `measure_seed_sensitivity.py` (its statistical checks), `measure_hybrid.py` and `measure_anchor_hitrate.py` (the hybrid rules and the item-query metric), `analyze_editions.py` / `analyze_dedup.py` / `decompose_work_level_lift.py` / `analyze_work_key_punctuation.py` (the edition-clustering work), `audit_floor_band.py` / `audit_anchor_set.py` / `recut_anchor_bands.py` (the hand audits and the band the floor decision turns on), `build_app_assets.py` / `build_answer_table.py` / `verify_configuration_a.py` / `measure_app_latency.py` / `audit_app_lookup.py` / `capture_app_screenshots.py` (the demo), `run_demo_anchors.py` and the `analyze_*.py` reads that interrogate its output (anchor support, hit strata, recurrence, truncation, picker margin, surface stability), and `measure_serving_footprint.py` (the Part 3 sizing numbers). |
+| `tests/` | Offline, deterministic tests, with no network and no model downloads. |
 
 [`docs/RESULTS.md`](docs/RESULTS.md) is the measurement ledger: every headline number used
 anywhere in this project traces to a line there, including the negative results.
 
 ## Status
 
-Data understanding, the model comparison and the interface are done. Six models —
-popularity baseline, item-item CF (plus an explicit-only ablation), ALS, content TF-IDF
-and multilingual sentence embeddings — are fitted on one pinned leave-one-out split and
+Data understanding, the model comparison and the interface are done. Six models
+(popularity baseline, item-item CF plus an explicit-only ablation, ALS, content TF-IDF
+and multilingual sentence embeddings) are fitted on one pinned leave-one-out split and
 measured on HitRate@10, Coverage@10 and Novelty@10; the table and every negative result
 behind it are in [`docs/RESULTS.md`](docs/RESULTS.md), and the reasoning behind the choice
 is written up in [`docs/model_selection.md`](docs/model_selection.md).
@@ -158,7 +158,7 @@ shipped pair: 240 and then 440 hand-read recommendation slots (L89 and L90, the
 floor-band and anchor-set audits in [`docs/`](docs/)), where B produced zero bad slots
 and A stayed within one to seven of 220, with thinner evidence per slot.
 
-The published table is keyed by **work** rather than by ISBN — merging editions before
+The published table is keyed by **work** rather than by ISBN. Merging editions before
 training is the largest single accuracy gain in the project, and it is a data-preparation
 change rather than a model one. The ISBN-keyed table is kept beside it as the journey
 record, and the reason the two differ far more for the text models than for the
@@ -166,19 +166,19 @@ collaborative ones is measured rather than asserted (ledger L58).
 
 ## References
 
-- Ziegler et al., WWW 2005 — [Improving Recommendation Lists Through Topic Diversification](https://doi.org/10.1145/1060745.1060754),
+- Ziegler et al., WWW 2005. [Improving Recommendation Lists Through Topic Diversification](https://doi.org/10.1145/1060745.1060754),
   the paper the Book-Crossing dataset comes from.
-- Naghiaei, Rahmani, Deldjoo, 2022 — [The Unfairness of Popularity Bias in Book Recommendation](https://arxiv.org/abs/2202.13446),
+- Naghiaei, Rahmani, Deldjoo, 2022. [The Unfairness of Popularity Bias in Book Recommendation](https://arxiv.org/abs/2202.13446),
   the popularity-bias benchmark on this dataset.
-- Hu, Koren, Volinsky, ICDM 2008 — [Collaborative Filtering for Implicit Feedback Datasets](https://doi.org/10.1109/ICDM.2008.22),
+- Hu, Koren, Volinsky, ICDM 2008. [Collaborative Filtering for Implicit Feedback Datasets](https://doi.org/10.1109/ICDM.2008.22),
   the weighted-MF formulation behind the ALS model, used via [`implicit`](https://github.com/benfred/implicit).
-- Steck, WWW 2019 — [Embarrassingly Shallow Autoencoders for Sparse Data](https://arxiv.org/abs/1905.03375) (EASE).
+- Steck, WWW 2019. [Embarrassingly Shallow Autoencoders for Sparse Data](https://arxiv.org/abs/1905.03375) (EASE).
 - [`paraphrase-multilingual-MiniLM-L12-v2`](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2)
-  — the sentence-embedding model used for the content layer.
+  is the sentence-embedding model used for the content layer.
 
 ## License
 
-The code and documentation in this repository are released under the MIT License — see
+The code and documentation in this repository are released under the MIT License, see
 [`LICENSE`](LICENSE). The Book-Crossing data is **not** covered by it: it is not part of
 this repo and stays under the terms of its own source (see
 [Getting the data](#getting-the-data)).

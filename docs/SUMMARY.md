@@ -1,6 +1,6 @@
 # The argument in two pages
 
-The full evidence is in [`RESULTS.md`](RESULTS.md) — 91 numbered lines, every one recording
+The full evidence is in [`RESULTS.md`](RESULTS.md): 91 numbered lines, every one recording
 how it was measured. This page is the argument those lines support, with the ID to check each
 claim against.
 
@@ -16,14 +16,14 @@ usually scores.
 Book-Crossing is 1,149,780 ratings over 271,360 books and 278,858 users, and three properties
 decide the modelling before any model is chosen:
 
-- **62.3% of the interactions carry no grade** (L4) — a rating of 0 marks that someone touched
+- **62.3% of the interactions carry no grade** (L4). A rating of 0 marks that someone touched
   the book, not that they liked it. The matrix is implicit far more than it is explicit.
 - **It is extremely sparse and extremely long-tailed**: density 0.0032% (L6), 57.9% of books
   rated exactly once (L7). After the standard min-5 filter, collaborative filtering can reach
-  **5.3% of the catalogue** (L12) — which is the quantified argument for a content layer, not
+  **5.3% of the catalogue** (L12), which is the quantified argument for a content layer, not
   a cold-start footnote.
 - **The same book appears under many ISBNs.** 59,928 ISBNs collapse into shared works (L40),
-  and the catalogue's own title strings are the only key available — there is no work id.
+  and the catalogue's own title strings are the only key available; there is no work id.
 
 There are also **no timestamps** (L18), so a chronological split is impossible and the
 evaluation has to be leave-one-out per user.
@@ -31,7 +31,7 @@ evaluation has to be leave-one-out per user.
 ## How it was evaluated
 
 One split, pinned once and never re-drawn for a result: per-user leave-one-out, seed 42, a
-held-out book counting as relevant at a rating ≥8, over **13,581 eligible users** (L19) — or
+held-out book counting as relevant at a rating ≥8, over **13,581 eligible users** (L19), or
 13,580 once editions are merged into works, because one user's graded editions collapse into a
 single book (L44). Three metrics, because accuracy alone would pick a bestseller list:
 **HitRate@10**,
@@ -57,7 +57,7 @@ Six models, one split, item = *work* rather than ISBN:
 Accuracy and coverage run in opposite directions down that table, which is the trade the
 product has to choose a point on rather than a ranking to read off. Every pairwise comparison
 carries a 95% Wilson interval and a paired McNemar test; the intervals run **±0.002 to
-±0.004**, and one comparison fails to separate — embeddings against the popularity baseline,
+±0.004**, and one comparison fails to separate: embeddings against the popularity baseline,
 p = 0.342, published as a tie (L74). The ordering survives **five independent split draws**,
 though three near-ties change their verdict between draws (L86).
 
@@ -73,19 +73,19 @@ rather than asserted (L58).
 HitRate@10 scores how well a model ranks a held-out book in a *user's* history. The app asks
 what is similar to *one book*. Measured on its own metric over the same 13,580 anchors, ALS
 (0.0308) and item-item (0.0297) are **not distinguishable** (L80), and the fusion rules that
-win the aggregate — RRF 0.0371, score fusion 0.0355 (L85) — buy every point of their win
+win the aggregate, RRF at 0.0371 and score fusion at 0.0355 (L85), buy every point of their win
 **below the support floor the app refuses to serve**.
 
 **3 · The support floor is worth more than the model choice.** ALS scores 0.0308 with a floor
-of 20 interactions and **0.0130 without it** — below the popularity baseline — a difference of
+of 20 interactions and **0.0130 without it**, below the popularity baseline, a difference of
 +0.0177 at p = 2.5e-41, **larger than any difference between two models in this project**
-(L82). In the band the app actually serves, the engines go 41/42 at p = 1.000 — statistically
-indistinguishable (L85) — and the band a lower floor would open is too underpowered to settle
+(L82). In the band the app actually serves, the engines go 41/42 at p = 1.000, which is statistically
+indistinguishable (L85), and the band a lower floor would open is too underpowered to settle
 the question either way (L88). The floor's price is reach: raising the anchor floor to 50
 leaves 2,508 askable works, 26.6% of all interactions (L65).
 
 **4 · The hybrid is real and modest.** The rule this project recommended for four milestones
-before measuring it is worth **nine users out of 13,580** — HitRate 0.0644 → 0.0650, 9 wins,
+before measuring it is worth **nine users out of 13,580**: HitRate 0.0644 to 0.0650, 9 wins,
 0 losses, p = 0.0039 (L76). The two higher-scoring fusion rules were rejected on a hand read:
 they fill roughly a third of a reader's list with another edition of a book they already own
 (L79).
@@ -94,7 +94,7 @@ they fill roughly a third of a reader's list with another edition of a book they
 
 Two engines behind a picker, **A** (ALS item factors) as default and **B** (item-item with a
 shrunk cosine) beside it, both at the same anchor floor of 50 so the switch moves exactly one
-variable: the model. Reasons come from structured evidence only — co-reader counts, shared
+variable: the model. Reasons come from structured evidence only: co-reader counts, shared
 author, similarity.
 
 The pair is backed by two hand audits rather than by a metric: **240 slots** read by hand in
@@ -104,7 +104,7 @@ the rehearsed engine, not because it won anything.
 
 Cost: cold start **8.8 s** (A) / 8.5 s (B), warm query 21/22 ms, no network and no fitting at
 query time (L91). The demo ships **890 MB** of assets, of which the recommender itself is
-**17.5%** — the rest is the free-text search box (L71). For the whole product a precomputed
+**17.5%**, and the rest is the free-text search box (L71). For the whole product a precomputed
 answer table is **1.5 MB** (L72), which is the number that decides the serving architecture:
 at that size a key-value store is sufficient and neither a vector database nor a live model
 server is required.
@@ -117,7 +117,7 @@ server is required.
   not findings, and are not reported as findings.
 - **Translations and alternate titles still defeat the work key** (L47, L59). It is the known
   ceiling on the edition clustering and the first thing an external work identifier would fix.
-- **Two of twenty famous titles do not resolve to the book they name** (L90) — a published,
+- **Two of twenty famous titles do not resolve to the book they name** (L90), a published,
   audited property of the lookup tie rule.
 
 ## Where to check

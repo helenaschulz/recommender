@@ -22,7 +22,7 @@ timestamps would be split temporally instead.
 | Implicit zeros in `Ratings.csv` | 716,109 of 1,149,780 (62.3%) |
 | Explicit ratings | 433,671 (37.7%), mean 7.6, strongly left-skewed (mode 8) |
 | Matrix density (all interactions) | 0.0032% |
-| Books with exactly 1 rating | 57.9% (explicit-only: 69.7%) — both in ledger L7 |
+| Books with exactly 1 rating | 57.9% (explicit-only: 69.7%), both in ledger L7 |
 | Books with fewer than 5 ratings | 87.1% |
 | Users with exactly 1 rating | 56.2% |
 | Top 1% of books | 25.1% of all interactions |
@@ -30,7 +30,7 @@ timestamps would be split temporally instead.
 | Users in `Users.csv` without a single rating | 173,575 (62%) |
 | `Age` missing | 39.7%; outliers from 0 to 244 (0.74% implausible) |
 | `Year-Of-Publication` | 4,618 zeros, 23 later than 2006, 3 non-numeric (broken rows) |
-| Edition duplicates (same title+author, several ISBNs) | 17,554 works, 40,675 ISBNs — **a lower bound, superseded: L40 measures 24,392 works over 59,928 ISBNs (22.1%)** |
+| Edition duplicates (same title+author, several ISBNs) | 17,554 works, 40,675 ISBNs, **a lower bound, superseded: L40 measures 24,392 works over 59,928 ISBNs (22.1%)** |
 | After the typical filter (explicit, user ≥5, book ≥5) | 152,280 ratings, 13,305 users, 14,513 books, density 0.079% |
 
 Three consequences follow:
@@ -65,7 +65,7 @@ from practically every public notebook.**
   algorithms on Book-Crossing. **WMF (implicit ALS) and VAECF** give the best balance of
   accuracy and fairness; **MostPop, BPR and NeuMF amplify popularity bias** the most. More
   accurate models tend to be less fair towards niche readers. This is the direct
-  justification for reporting coverage and novelty alongside Precision@K — and a
+  justification for reporting coverage and novelty alongside Precision@K, and a
   bookseller earns on the long tail (cross-sell), not on the hundredth Harry Potter sale.
 - Consensus across many papers: on extremely sparse explicit data, simple methods
   (item-KNN, well-regularized matrix factorization, linear models such as SLIM and EASE)
@@ -88,7 +88,7 @@ The model ladder from the earlier notes holds. Refinements:
    *are* item embeddings, and similarity is a dot product. So ALS serves the same use case
    (similar books) AND gives personalization for free later, plus the Spark/Databricks
    bridge for the productionization story. That unifies the model ladder.
-4. **Mention EASE as a cheap, strong candidate** — a closed-form linear item-item model,
+4. **Mention EASE as a cheap, strong candidate.** A closed-form linear item-item model,
    one matrix inversion, close to state of the art on sparse data (Steck 2019,
    ["Embarrassingly Shallow Autoencoders for Sparse Data"](https://arxiv.org/abs/1905.03375)).
    Worth naming even if it only appears as "we would test this next".
@@ -106,18 +106,18 @@ The model ladder from the earlier notes holds. Refinements:
 
 ## 5. Sources
 
-- Kaggle: [`arashnic/book-recommendation-dataset`](https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset) —
+- Kaggle: [`arashnic/book-recommendation-dataset`](https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset):
   the dataset page, and its [code tab](https://www.kaggle.com/datasets/arashnic/book-recommendation-dataset/code)
   for the representative community notebooks described in section 3.
 - Ziegler, McNee, Konstan, Lausen (WWW 2005): ["Improving Recommendation Lists Through
-  Topic Diversification"](https://doi.org/10.1145/1060745.1060754) — the original
+  Topic Diversification"](https://doi.org/10.1145/1060745.1060754): the original
   Book-Crossing paper (provenance, dataset sizes).
 - Naghiaei, Rahmani, Deldjoo (2022): ["The Unfairness of Popularity Bias in Book
-  Recommendation"](https://arxiv.org/abs/2202.13446) — the popularity-bias benchmark on
+  Recommendation"](https://arxiv.org/abs/2202.13446): the popularity-bias benchmark on
   Book-Crossing.
 - Hu, Koren, Volinsky (ICDM 2008): ["Collaborative Filtering for Implicit Feedback
-  Datasets"](https://doi.org/10.1109/ICDM.2008.22) — the weighted matrix factorization
+  Datasets"](https://doi.org/10.1109/ICDM.2008.22): the weighted matrix factorization
   (implicit ALS) formulation used here via the
   [`implicit`](https://github.com/benfred/implicit) library.
 - Steck (WWW 2019): ["Embarrassingly Shallow Autoencoders for Sparse
-  Data"](https://arxiv.org/abs/1905.03375) — EASE.
+  Data"](https://arxiv.org/abs/1905.03375): EASE.

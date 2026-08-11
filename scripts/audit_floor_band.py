@@ -103,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
         anchor_id = str(assets.item_ids[row])
         meta = engines["A"].describe(anchor_id)
         lines += [
-            f"## {meta.title} — {meta.author}",
+            f"## {meta.title} by {meta.author}",
             "",
             f"`{anchor_id}` · **{int(support[row]):,} readers**",
             "",
@@ -118,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
                 if rank < len(got):
                     s = got[rank]
                     title = s.title.replace("|", "\\|")
-                    cells += [f"{title} — *{s.author}*", f"{s.evidence.co_readers:,}"]
+                    cells += [f"{title} by *{s.author}*", f"{s.evidence.co_readers:,}"]
                 else:
                     cells += ["—", "—"]
             lines.append(f"| {rank + 1} | " + " | ".join(cells) + " |")
