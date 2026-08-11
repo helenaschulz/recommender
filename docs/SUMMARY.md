@@ -97,7 +97,7 @@ shrunk cosine) beside it, both at the same anchor floor of 50 so the switch move
 variable: the model. Reasons come from structured evidence only: co-reader counts, shared
 author, similarity.
 
-The pair is backed by two hand audits rather than by a metric: **240 slots** read by hand in
+The pair is backed by two hand audits rather than by a metric: **240 slots** read and judged by the AI assistant in
 the band the floor would open (L89) and **440 slots** across 20 anchors in the band the app
 serves (L90), where B produced **0 bad slots in 220** against A's 7. A is default because it is
 the rehearsed engine, not because it won anything.
@@ -119,6 +119,10 @@ server is required.
   ceiling on the edition clustering and the first thing an external work identifier would fix.
 - **Two of twenty famous titles do not resolve to the book they name** (L90), a published,
   audited property of the lookup tie rule.
+- **The hand counts were made by the AI assistant that produced the lists** (L42, L79, L89,
+  L90), not by an independent human reviewer. Weaker than an independent read; stronger than a
+  script grading itself. Every counted slot is named in the audit documents so the count can be
+  re-checked.
 
 ## Where to check
 

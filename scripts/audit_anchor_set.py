@@ -20,7 +20,7 @@ lands on the larger half. Addressing anchors by id would step over exactly the d
 was chosen to surface.
 
 **It also prints the numbers M23.10.7 needs, so they stop being numbers from a session.** The
-milestone's anchor table carries reader counts read off the shipped assets by hand; this
+milestone's anchor table carries reader counts read off the shipped assets manually; this
 script prints them from the assets, with the split-work analysis beside them, so the ledger
 line can cite a command. That is the M16 correction's standing rule: numbers without a command
 do not enter this ledger.

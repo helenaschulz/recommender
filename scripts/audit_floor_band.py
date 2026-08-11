@@ -127,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
     lines += [
         "## The count",
         "",
-        "Filled in by hand after reading the table above. Empty until someone has actually "
+        "Filled in after reading the table above. Empty until someone has actually "
         "read it — a count written by the script that produced the lists would be the thing "
         "this audit exists to avoid.",
         "",

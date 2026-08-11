@@ -66,7 +66,7 @@ account of the choice.
 **M11 · Edition clustering, measured before deciding.** The catalogue is **235,824 works
 behind 271,360 ISBNs**; the earlier estimate had undercounted the duplication by 47%.
 Clustering *before* training is worth **+18%** on item-item, the largest single accuracy
-gain in the project, and it is data preparation, not modelling. 30 clusters read by hand,
+gain in the project, and it is data preparation, not modelling. 30 clusters read and judged by the AI assistant,
 **0 wrong merges**; the one-character surname extension was audited separately and its single
 error is reported rather than tuned away.
 → **L40–L48**
@@ -83,7 +83,7 @@ each, no language model in the hot path. The free-text lookup needed two serving
 both are audited rather than asserted.
 → **L61–L62**
 
-**M14 · Reading the demo's output instead of a table.** Eleven anchors read by hand found what
+**M14 · Reading the demo's output instead of a table.** Eleven anchors read and judged by the AI assistant found what
 no cell shows: **the similarity score is not comparable across anchors**. The floor therefore
 became two numbers: anchor floor 50 and candidate floor 20. A truncation rule was measured,
 wired in, and reverted on seeing it run: a list that ends at four reads as a broken app.
@@ -136,14 +136,14 @@ actually serves. Every point of the win is bought below the anchor floor.
 → **L85**
 
 **M23 · The floor and the engine are one decision.** Tier 1 delivered three selectable
-configurations; **Tier 2 was stopped by its own gate**. 240 slots read by hand in the band a
+configurations; **Tier 2 was stopped by its own gate**. 240 slots read and judged by the AI assistant in the band a
 lower floor would open killed the text-blended configuration: 17 of its 80 slots were
 text-match artefacts, answering an author's name with a different author of the same first
 name at zero shared readers.
 → **L87–L89**
 
 **M23.10 · Two engines, one floor.** ALS (default) and item-item ship behind a picker at the
-same anchor floor, so the click moves one variable. **440 slots read by hand: 7 bad of 220
+same anchor floor, so the click moves one variable. **440 slots read and judged by the AI assistant: 7 bad of 220
 for A, 0 of 220 for B.** The switch costs nothing measurable: a 0.22 MB answer table built
 in 21.8 s, cold start 8.8 s / 8.5 s, and the rehearsed engine byte-identical on all 110
 rehearsed slots. One constant reverts to a single engine.

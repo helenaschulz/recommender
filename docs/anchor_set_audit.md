@@ -487,7 +487,7 @@ Seeded from the twenty works the set names plus the keys M23.10.7 cites, so a sp
 
 ## 5 · The count
 
-Filled in by hand after reading section 3, under **L79's criterion, inherited unchanged** so this count and L89's are comparable: a slot is bad when it is the anchor itself under another edition, title or translation; a companion or *about* book rather than a comparable read; or a duplicate of another slot in the same list. Empty until someone has read it — a count written by the script that produced the lists is the thing this audit exists to avoid.
+Filled in by the AI assistant after reading section 3, under **L79's criterion, inherited unchanged** so this count and L89's are comparable: a slot is bad when it is the anchor itself under another edition, title or translation; a companion or *about* book rather than a comparable read; or a duplicate of another slot in the same list. Empty until someone has read it — a count written by the script that produced the lists is the thing this audit exists to avoid.
 
 | configuration | bad slots | of | date |
 |---|--:|--:|---|

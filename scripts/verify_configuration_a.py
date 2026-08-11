@@ -24,7 +24,7 @@ Then it does it again through the **new** constructor argument, ``configuration=
 "the default did not move" and "the named configuration is the default" are two checks rather
 than one assumption.
 
-Eleven anchors x ten slots = **110 slots**, which is the comparison M23's Tier 1 ran by hand
+Eleven anchors x ten slots = **110 slots**, which is the comparison M23's Tier 1 ran manually
 and this script makes reproducible. It exits non-zero on any difference and prints the slot.
 """
 

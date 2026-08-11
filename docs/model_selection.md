@@ -457,7 +457,7 @@ this key finds **47% more**, because an exact author string cannot see that "Fyo
 Dostoevsky", "Fedor Dostoevsky" and "Fyodor M. Dostoevsky" are one person. L15 was a
 lower bound, and is now labelled as one.
 
-**Validated by hand, not asserted.** 30 seeded-random multi-ISBN clusters were inspected
+**Validated by review, not asserted.** 30 seeded-random multi-ISBN clusters were inspected
 one by one in [`edition_clusters_sample.md`](edition_clusters_sample.md): **0 wrong
 merges**. One extension to the key — merging surnames that differ by a single character
 under an identical title, which is what finally joins *Dostoevsky* to *Dostoyevsky* —

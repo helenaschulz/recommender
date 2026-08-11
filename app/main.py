@@ -16,7 +16,7 @@ candidates, L65 for anchors — so the control moves the engine and nothing else
 **What the click shows.** The same anchor, from the same 2,508 askable works, answered by a
 calibrated similarity instead of an anti-calibrated one. L87 measured the difference in the
 evidence behind a shown slot — 1.7% thin slots against 18.2% at this floor — and
-``docs/anchor_set_audit.md`` is twenty anchors of it read by hand: A's median slot rests on 15
+``docs/anchor_set_audit.md`` is twenty anchors of it read and judged by the AI assistant: A's median slot rests on 15
 shared readers and B's on 46. What the click does **not** show is the floor. That is a separate
 finding with a separate demonstration and no picker in it: type *The Kite Runner* and the demo
 declines, because 39 readers is under 50, and it declines identically on both settings.

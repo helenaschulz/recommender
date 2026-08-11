@@ -10,7 +10,7 @@ which is a presentation cost, not a metric one — no published number is measur
 path.
 
 **The margin is derived here rather than chosen**, because a round number picked from three
-hand-read queries is exactly how a demo starts lying. The derivation needs a label for
+eyeballed queries is exactly how a demo starts lying. The derivation needs a label for
 "would a person accept this candidate as a reading of that query", and it gets one without a
 human: take a work the engine can actually answer for, **use its own title as the query**,
 and call a returned candidate *on-target* when its title contains the query's title or the
