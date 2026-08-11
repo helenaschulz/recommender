@@ -46,7 +46,7 @@ ANCHORS: dict[str, str] = {
     "0316666343": "The Lovely Bones",
 }
 
-#: The demo app's buttons, in presentation order (M14.8, the decision). Label -> work
+#: The demo app's buttons, in presentation order (M14.8). Label -> work
 #: id. It lives here rather than in ``app/main.py`` because two other things need the same
 #: list — ``scripts/capture_app_screenshots.py`` drives these buttons by label, and it
 #: silently timed out the first time the labels changed in only one of the two places.
@@ -59,7 +59,7 @@ ANCHORS: dict[str, str] = {
 #:
 #: Labels are display text only: a button pins the work id beside it and never goes through
 #: :meth:`recommender.demo.DemoEngine.find`, so no button can fail for a lookup reason.
-#: The Harry Potter button carries its **full title** (review,08.08.2026, reversing the
+#: The Harry Potter button carries its **full title** (08.08.2026, reversing the
 #: short label M14.8 specified): the buttons are the first thing on screen and a truncated
 #: title reads as a different book, which is a worse cost than a wrapped line.
 DEMO_BUTTONS: dict[str, str] = {

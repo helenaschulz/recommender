@@ -3,9 +3,9 @@
     python scripts/analyze_recurrence.py
     python scripts/analyze_recurrence.py --anchors 500 --seed 42
 
-"How do you know this isn't a popularity ranking with extra steps" is the question the
-reviewer will ask, and until now the answer was an anecdote: across the eleven anchors the project owner
-read, exactly one title recurred (*The Secret Life of Bees*, under *The Lovely Bones* and
+"How do you know this isn't a popularity ranking with extra steps" is the question a
+reviewer will ask, and until now the answer was an anecdote: across the eleven anchors read
+by hand, exactly one title recurred (*The Secret Life of Bees*, under *The Lovely Bones* and
 *Girl with a Pearl Earring* — two book-club literary novels, which is a reason rather than
 a coincidence). Eleven anchors is not a measurement. This generalises it.
 

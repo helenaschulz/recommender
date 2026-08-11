@@ -185,7 +185,7 @@ class TestConfigurations:
         assert len(set(labels)) == len(labels)
 
     def test_the_picker_and_the_table_row_name_the_same_model(self) -> None:
-        """The screen may not carry two names for one thing (review,10.08.2026).
+        """The screen may not carry two names for one thing (10.08.2026).
 
         For one afternoon it did: the picker read *Shared readers* while the accuracy-table
         row it marked read *Item-based collaborative filtering*. The picker label now has to
@@ -217,7 +217,7 @@ class TestConfigurations:
             assert isinstance(build_configuration("A", _assets()), AlsFactors)
 
     def test_b_falls_back_to_a_live_computation_and_says_so(self) -> None:
-        """A missing table an hour before a demo must not take the demo down — loudly."""
+        """A missing table shortly before a demo must not take it down — loudly."""
         from tests.test_demo import _assets
 
         with pytest.warns(RuntimeWarning, match="live computation"):

@@ -14,7 +14,7 @@ happened already.
 normalization over the same ``Books.csv`` and reports the difference, because the work key
 is the basis of the published M12 table: merging more ISBNs moves ``n_works``, and
 ``n_works`` is the denominator of every Coverage@10 cell in it. That is the M12 procedure —
-measure the key change alone, then let a decision on whether the table is re-based or the
+measure the key change alone, then decide whether the table is re-based or the
 fix stays on the serving path.
 
 What it prints:

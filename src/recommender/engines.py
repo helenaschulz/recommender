@@ -278,7 +278,7 @@ class Configuration:
     #: The :func:`build_source` name this configuration runs.
     engine: str
     #: **What the picker shows**, and it is the model followed by the mechanism in three words
-    #: (review,10.08.2026). The first draft labelled the two *Matrix factorization* and
+    #: (10.08.2026). The first draft labelled the two *Matrix factorization* and
     #: *Shared readers*, which named a model on one side and a mechanism on the other — and the
     #: accuracy table six lines above was by then marking "Item-based collaborative filtering ·
     #: this demo", so one screen carried two names for one thing. That is the M17.8/M17.10
@@ -296,11 +296,11 @@ class Configuration:
     short_label: str
     #: Decision 6's label for the displayed number, in the legend under the list.
     #:
-    #: **Plain language, and that is the register rule rather than a preference** (the project owner's
-    #: copy read, 10.08.2026). A's read "cosine between the books' learned profiles" for an
+    #: **Plain language, and that is the register rule rather than a preference** (copy
+    #: read, 10.08.2026). A's read "cosine between the books' learned profiles" for an
     #: afternoon, which put the one piece of undefined mathematics on this project's most
-    #: client-facing screen — the same screen M15.5 cleared of ledger codes, and where the project owner
-    #: then cut three more captions for answering questions nobody had asked. B's label was
+    #: client-facing screen — the same screen M15.5 cleared of ledger codes, and where three
+    #: more captions were then cut for answering questions nobody had asked. B's label was
     #: already plain; A's now is. The *source* classes keep their technical labels, because
     #: those are read by the audit scripts and never by a visitor.
     score_label: str
@@ -317,11 +317,11 @@ class Configuration:
 
 
 #: What the app offers, in picker order. **A is the default and stays the default** (M23
-#: decision 2): if anything about B is unconvincing an hour before a demo it disappears
+#: decision 2): if anything about B is unconvincing shortly before a demo it disappears
 #: with one flag in ``app/main.py`` and A is untouched.
 #:
-#: **Both sit at anchor floor 50** (decision 1, changed 10.08.2026 on the review question "can't
-#: both use the same threshold?"). At a common floor the switch moves **one** variable — the
+#: **Both sit at anchor floor 50** (decision 1, changed 10.08.2026 on the review question
+#: "can't both use the same threshold?"). At a common floor the switch moves **one** variable — the
 #: same anchor, the same 2,508 askable works, answered from a calibrated similarity instead of
 #: an anti-calibrated one (L87: 1.7% thin slots against 18.2%). The floor's own cost is a
 #: separate demonstration with no picker in it: type *The Kite Runner* and the app declines,
@@ -384,7 +384,7 @@ def build_configuration(
     reports the worst score deviation it found. So "table or live" is a provenance question,
     not a behaviour question, which is what makes the fallback below safe.
 
-    The fallback exists for one scheduled reason: a missing or stale table an hour before a
+    The fallback exists for one operational reason: a missing or stale table shortly before a
     demo must not be able to take the demo down. It **warns** rather than falling back
     quietly — the live source is the truth the table is a cache of, so answering from it is
     correct, but a serving path that silently stops using its asset is how a stale cache

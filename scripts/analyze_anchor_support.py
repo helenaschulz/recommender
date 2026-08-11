@@ -246,7 +246,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{label:<40} {readers:>8,}   {marks}")
     print(
         "\nA floor is not only a statistic: it is the list of books the demo can still be asked "
-        "about in front of a user."
+        "about at all."
     )
     print(f"\ntotal {time.perf_counter() - started:.0f}s")
     return 0

@@ -15,9 +15,9 @@ the similarity off the screen entirely. What was left was a ranking with nothing
 to justify it and one visible counter-argument — on *The Little Prince*, rank 1 showed 16
 shared readers, rank 2 showed 17. The incomparability L63 measures is a claim *across*
 anchors; within one list the cosine is exactly the sort key, and the app only ever shows one
-list. The cross-anchor caveat is a sentence in the talk track, not a reason to hide the sort
+list. The cross-anchor caveat is a sentence in the write-up, not a reason to hide the sort
 key. The divider went for the sharper version of the same point: see the git history of
-``divider_after`` for the argument, and M17.3 in `the milestone notes`.
+``divider_after`` for the argument (M17.3).
 """
 
 from __future__ import annotations

@@ -41,7 +41,7 @@ from recommender.data import split_series
 from recommender.demo import LOOKUP_TIE_MARGIN, OVERSAMPLE, DemoEngine, load_assets
 from recommender.gallery import DEMO_ANCHORS
 
-#: The queries a person actually types in front of the reviewer: the three from M14.9, plus the
+#: The queries a person actually types in a live demo: the three from M14.9, plus the
 #: one that prompted M17. Reported individually, because a distribution cannot show that
 #: *A Little Princess* stopped being offered.
 LIVE_QUERIES = ["Harry Potter", "Girl with a Pearl Earring", "Guns Germs Steel", "little prince"]

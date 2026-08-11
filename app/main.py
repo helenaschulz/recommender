@@ -102,7 +102,7 @@ except ModuleNotFoundError as error:  # pragma: no cover - the wrong-interpreter
 #: does most of the work.
 STYLE = """
 <style>
-  /* Full width, by decided on seeing it run (08.08.2026), reversing M15.2's
+  /* Full width, decided on seeing it run (08.08.2026), reversing M15.2's
      46rem measure. M15.2's argument was typographic — body text at 1920px runs long — and
      the DoD item about a ~90-character measure goes with it; the deviation is recorded
      with the milestone rather than quietly dropped. What keeps it readable at full
@@ -168,8 +168,8 @@ STYLE = """
 #: **The one flag** (M23 decision 2). Set it to ``False`` and the picker is gone, the sidebar
 #: is what it was, and the demo runs :data:`~recommender.engines.DEFAULT_CONFIGURATION` — which
 #: is A, the rehearsed engine, byte for byte. It is a constant rather than an environment
-#: variable on purpose: flipping it is a diff, and an hour before a demo the thing worth having
-#: is a record of what was changed, not a shell that remembers.
+#: variable on purpose: flipping it is a diff, and shortly before a live demo the thing worth
+#: having is a record of what was changed, not a shell that remembers.
 SHOW_ENGINE_PICKER = True
 
 
@@ -294,17 +294,17 @@ def sidebar(engine: DemoEngine) -> None:
     the floor, the refusal, the evidence, the table where this engine loses — in fewer words.
     """
     with st.sidebar:
-        # "Book Recommender" rather than the pinned copy's "What this is" (the project owner,
+        # "Book Recommender" rather than the pinned copy's "What this is" (copy read,
         # 09.08.2026): the sidebar's first line is the only place the thing gets named, and
         # a section label is not a name.
         with st.container(key="app-name"):
             st.markdown("### Book Recommender")
-        # M15.6's provenance line, moved here from under the page title (review,09.08.).
+        # M15.6's provenance line, moved here from under the page title (09.08.).
         # Its rule is unchanged and is the reason it is a function rather than a string:
         # exactly one place in the app states the corpus size, and it is counted off the
         # assets at runtime.
         #
-        # Body text, not a caption (review,09.08.): the two differed only in size, 13.1px
+        # Body text, not a caption (09.08.): the two differed only in size, 13.1px
         # against 15px, and at caption size it read as a footnote to the name above it
         # rather than as the first thing the app tells you.
         #
@@ -330,7 +330,7 @@ def sidebar(engine: DemoEngine) -> None:
         # nobody would write, saying something the picker three blocks down now says properly.
         # Cut on the copy read, 10.08.2026. The rule it illustrates: when a block loses
         # its job, delete it; a rewrite that keeps the slot is how filler survives a review.
-        # The evidence sentence moved up here from "Where it stops" (review,10.08.2026).
+        # The evidence sentence moved up here from "Where it stops" (copy read, 10.08.2026).
         # It describes how the app works, not where it stops, and under the old heading it
         # was the third sentence of a block that was supposed to state one rule.
         st.markdown(
@@ -338,9 +338,9 @@ def sidebar(engine: DemoEngine) -> None:
             "results are books rather than reprints. Every result names the readers behind "
             "it, so you can see how much it rests on."
         )
-        # **"The anchor floor", the agreed word (10.08.2026), replacing "Where it stops".** She
+        # **"The anchor floor" (10.08.2026), replacing "Where it stops".** The copy read
         # asked for the functionality named rather than described, and this is the name the
-        # ledger has used since L65 — so the screen, the talk track and the ledger say one
+        # ledger has used since L65 — so the screen, the write-up and the ledger say one
         # thing. It is the first house term this app has ever printed, which is why the
         # sentence defines it before it uses it: on this screen the anchor is simply the book
         # you typed, and six words of definition are cheaper than a client silently not
@@ -357,7 +357,7 @@ def sidebar(engine: DemoEngine) -> None:
             "instead."
         )
         st.markdown("### The engine")
-        # "second", not "third" (review,09.08.): the sentence said third and the table
+        # "second", not "third" (09.08.): the sentence said third and the table
         # underneath it said second, on the same screen. The ordinal is a leftover from M13,
         # where it was read off the ISBN-level ledger table — that one carries the work-level
         # item-item row as a pointer *next to* the ISBN-level one, so two item-item rows sat
@@ -375,9 +375,9 @@ def sidebar(engine: DemoEngine) -> None:
         # and the only one on this screen with no number behind it. M20 measured it: on the
         # item query ALS and item-item are not distinguishable (L80, 169/155, p = 0.47).
         # The replacement says what was measured and keeps the reason the engine is here.
-        # This is a deviation from M15.5's pinned copy, recorded with M20,
-        # and it is open to reverse — but a superlative that a run of our own contradicts
-        # is the one thing this demo cannot leave on screen.
+        # This is a deviation from M15.5's pinned copy, recorded with M20 and reversible —
+        # but a superlative that a run of our own contradicts is the one thing this demo
+        # cannot leave on screen.
         #
         # **M23.10 made this copy switch with the picker**, because under the other setting
         # every clause of it was false: the demo would be running item-based collaborative
@@ -401,7 +401,7 @@ def sidebar(engine: DemoEngine) -> None:
             # draw and this one is ahead on the other (L80, L81), which is a reason to be able
             # to show both and not a reason to claim a winner on a sidebar.
             #
-            # **Rewritten on the copy read, 10.08.2026**, and the three things she was
+            # **Rewritten on the copy read, 10.08.2026**, and the three things it was
             # reacting to are worth naming because they are the tells: "is *now* counting"
             # narrated a state where A simply says what it runs on; "the table is *not the
             # reason* to prefer either" defined by negation; and "*What separates them is* …"
@@ -421,8 +421,8 @@ def sidebar(engine: DemoEngine) -> None:
         # Which row carries "this demo" follows the picker, for the reason above: the marker
         # is a statement about what is running, and a fixed one would be wrong half the time.
         #
-        # **The two switchable rows take their names from the configuration** (the project owner,
-        # 10.08.2026) rather than from string literals here. They were literals for one
+        # **The two switchable rows take their names from the configuration**
+        # (10.08.2026) rather than from string literals here. They were literals for one
         # afternoon and that was already enough for the screen to disagree with itself: the
         # picker said "Shared readers" while the row it marked said "Item-based collaborative
         # filtering". One name per thing, from one place.
@@ -458,7 +458,7 @@ def sidebar(engine: DemoEngine) -> None:
         # `chosen_configuration` read at the top of this run — see there for the ordering.
         if SHOW_ENGINE_PICKER:
             with st.container(key="engine-picker"):
-                # "The model", not "What counts as similar" (review,10.08.2026). The heading
+                # "The model", not "What counts as similar" (10.08.2026). The heading
                 # asked *how* and the options now answer *which*, and a question whose answer
                 # is a different question reads as a mismatch. It also sits inside the sidebar
                 # section already called "The engine", so the two agree about what is on offer.
@@ -564,7 +564,7 @@ def main() -> None:
         {
             # "below the N we ask for", the same words the refusal one click later uses.
             # It read "below the N this demo answers" for an afternoon, which is one rule
-            # stated two ways a second apart (the copy read, 10.08.2026).
+            # stated two ways a second apart (copy read, 10.08.2026).
             f"{b.title} — {b.author}  ·  {b.readers:,} readers, "
             f"below the {engine.assets.anchor_floor} we ask for": b.isbn
             for b in below_floor
@@ -610,10 +610,10 @@ def main() -> None:
     # a reader who switches to compare 0.51 with 0.11 and conclude the wrong thing. The label
     # is the whole fix, and it is deliberately not accompanied by a "these are not comparable"
     # caveat — that answers a question no reader has asked yet (the M15.5 register
-    # rule), and it belongs in the talk track.
+    # rule), and it belongs in the accompanying write-up.
     #
     # A colon rather than a dash, because what follows is a definition of the word before it
-    # rather than an aside (the copy read, 10.08.2026).
+    # rather than an aside (copy read, 10.08.2026).
     st.markdown(
         f'<div class="legend">Sorted by similarity: {html.escape(engine.score_label)}. '
         f"The bar shows each book compared with the top of this list, and the number is its "

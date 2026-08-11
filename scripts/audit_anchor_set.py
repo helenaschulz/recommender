@@ -52,7 +52,7 @@ from recommender.models.embeddings import sentence_transformer_encoder
 
 OUT = Path("docs/anchor_set_audit.md")
 
-#: The twenty, exactly as the milestone's table in M23.10 lists them and in its order — the rehearsed
+#: The twenty, exactly as the M23.10 table lists them and in its order — the rehearsed
 #: eleven first, then the nine added on 10.08. The key is written as a **visitor would type
 #: it**, because that is what the gate is testing; the value is the work the milestone's table
 #: means by it.
@@ -60,7 +60,7 @@ OUT = Path("docs/anchor_set_audit.md")
 #: **The two are checked against each other rather than assumed equal**, and the check earns
 #: its keep: two of the twenty do not resolve to the book they name. Where they differ, both
 #: anchors are read — the one a visitor lands on, because that is what the gate is for, and the
-#: one the set intended, because that is the book the set chose to be able to judge.
+#: one the set intended, because that is the book the set was chosen to be able to judge.
 ANCHOR_QUERIES: dict[str, str] = {
     "The Lovely Bones": "the lovely bones: a novel|sebold",
     "The Da Vinci Code": "the da vinci code|brown",

@@ -16,7 +16,7 @@ a reviewer to wonder about: nothing produced by this script may ever be quoted a
 before fitting, which is where the project's largest single accuracy gain came from — and,
 more visibly for a demo, what turns item-item's *Harry Potter* neighbourhood from two
 obscure books into the four sequels in order (L53). Serving the demo on the ISBN basis while
-the case argues for works would have been an odd thing to put in front of an audience. It also
+the case argues for works would have been an odd thing to demonstrate. It also
 makes serving-time deduplication (L45) unnecessary here: the collapse already happened.
 
 What lands on disk, and why each piece is needed:
@@ -80,11 +80,11 @@ def main(argv: list[str] | None = None) -> int:
     # the right thing for a product and would be leakage in an evaluation.
     #
     # **The serving key carries the M14.4 punctuation fix; the published table does not.**
-    # the decision, on the priced options: the fix merges 1,198 works with 0 wrong
+    # Decided on the priced options: the fix merges 1,198 works with 0 wrong
     # merges in a 30-cluster audit, and the demo is where it is visible -- without it
     # "Bridget Jones's Diary" answers with the same book at ranks 1 and 2. Re-basing the
-    # whole M12 table for +0.8% on one row was not worth the day it would cost with the
-    # write-up unwritten. The divergence is deliberate, priced in ledger L64, and recorded in
+    # whole M12 table for +0.8% on one row was not worth the day it would cost at that
+    # point. The divergence is deliberate, priced in ledger L64, and recorded in
     # meta.json so nobody has to infer it from a work count.
     works = raw.works if args.isbn_work_key else cluster_works(raw.books, normalize_punctuation=True)
     catalog = work_level_catalog(raw, works)

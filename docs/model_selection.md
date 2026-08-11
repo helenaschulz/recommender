@@ -405,7 +405,7 @@ not chosen by accident.
    which is a better account than either number alone. **Re-opened and re-answered by
    measurement, M20:** on the item query the two are **not distinguishable** (L80), and in
    the band the app serves item-item is nominally ahead (L81). The answer stands as
-   *defensible*; it no longer stands as *evidenced*, and the difference is the call to
+   *defensible*; it no longer stands as *evidenced*, and the difference is a call to
    take before the next build.
 3. ~~**Re-tune item-item for the similarity endpoint?**~~ **Answered, and the answer was
    "no re-tuning was needed".** L29 proposed a higher λ or a co-occurrence floor for the

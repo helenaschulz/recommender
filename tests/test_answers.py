@@ -6,7 +6,8 @@ fails. So the load-bearing tests here are the staleness ones: every field of the
 proved to stop a load, including the content hash, which is the only one that can see a
 rebuild that kept the shape.
 
-Offline and deterministic, per the test policy: the table is written from hand-built arrays into
+Offline and deterministic, per the project's test policy: the table is written from
+hand-built arrays into
 ``tmp_path`` and read straight back. No data files and no assets.
 """
 

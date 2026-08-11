@@ -3,7 +3,7 @@
 Everything the Streamlit layer needs lives here, so ``app/main.py`` stays a thin sheet of
 widgets and every rule below is testable offline. Three properties are non-negotiable,
 because the app is a **demo, not a product**, and a demo has to be boring to operate in
-front of a reviewer:
+front of an audience:
 
 1. **No fitting at query time.** ALS takes 90 seconds to fit; nothing that slow may sit
    between a keystroke and a result. ``scripts/build_app_assets.py`` fits once and writes
@@ -62,9 +62,9 @@ ASSETS_SUBDIR = "artifacts/app"
 #: with a sentence instead of a shape mismatch three frames later.
 ASSET_VERSION = 3
 
-#: Tail cutoff, **off by default: it was reverted on 08.08.2026 after seeing it run.**
+#: Tail cutoff, **off by default: reverted on 08.08.2026 after seeing it run.**
 #: Ten results are what the demo shows; a list that ends at four reads as a broken app in
-#: front of a reviewer, whatever the ledger says about the tail. Set it to 0.55 (or pass
+#: a live demo, whatever the ledger says about the tail. Set it to 0.55 (or pass
 #: ``tau=`` per call) to get the behaviour M14.5 measured. The measurement stands as ledger
 #: **L68** and is worth saying out loud — "ten slots are a layout choice, not a claim that
 #: ten good neighbours exist" — it simply is not wired into the product.
@@ -633,7 +633,7 @@ class DemoEngine:
         """What :meth:`find` returns, **plus what the anchor floor is hiding from it** —
         M23 decision 5b, and the only reason this method exists beside ``find``.
 
-        The problem it fixes is one it was found by using the product rather than by reading a
+        The problem it fixes was found by using the product rather than by reading a
         table. *The Kite Runner* has 39 readers in this crawl, eleven short of the floor, so
         ``find`` masks it out — and because 2,508 works clear the floor there is always
         *something* left within the picker margin, so the query never comes back empty. It
@@ -732,7 +732,7 @@ class DemoEngine:
         :attr:`DemoAssets.anchor_min_support`.
 
         Returns k suggestions whenever k exist. The score-gap truncation measured in M14.5
-        is **off** (:data:`SCORE_TRUNCATION_TAU` is 0.0, the reversal); pass an
+        is **off** (:data:`SCORE_TRUNCATION_TAU` is 0.0, reverted after review); pass an
         explicit ``tau`` to apply it.
         """
         anchor = self._index.get(isbn)

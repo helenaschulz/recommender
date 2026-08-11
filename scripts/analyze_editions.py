@@ -163,7 +163,7 @@ def cluster_statistics(catalog, works) -> None:
         f"— too few to explain any work-level lift"
     )
 
-    # the motivating example, recomputed.
+    # The motivating example, recomputed.
     cp = "crime and punishment|dostoevsky"
     members = works.work_of_isbn[works.work_of_isbn == cp].index
     counts = per_isbn_inter.reindex(members).fillna(0).astype(int).sort_values(ascending=False)

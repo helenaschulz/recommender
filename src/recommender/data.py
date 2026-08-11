@@ -127,7 +127,7 @@ def repair_shifted_rows(books: pd.DataFrame) -> tuple[pd.DataFrame, int]:
 # title* when they are within one edit of each other and at least
 # ``MIN_VARIANT_NAME_LENGTH`` characters long. It is deliberately narrow: it can never
 # join two different titles, and the length floor keeps short near-collisions (keats /
-# yeats) apart. See ledger L41 for what it costs and the milestone notes for the deviation note.
+# yeats) apart. See ledger L41 for what it costs.
 
 #: Below this many characters, a one-edit difference between two surnames is as likely to
 #: be two people as one spelling. Dostoevsky/Dostoyevsky is 10-11 characters.

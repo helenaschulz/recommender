@@ -183,7 +183,7 @@ class TestSimilar:
 
 
 class TestTruncation:
-    """M14.5, measured and then **reverted** on review: the app always returns ten.
+    """M14.5, measured and then **reverted**: the app always returns ten.
 
     The rule stays reachable through ``tau`` because L68 is a real finding and because a
     later milestone may want it back — but the default must not shorten a list."""

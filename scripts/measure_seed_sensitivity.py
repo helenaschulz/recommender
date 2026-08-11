@@ -50,7 +50,7 @@ reuses the cache *knowingly* and **bounds the error rather than hiding it**: the
 row is exact for every work but those, and the count of drifted works that are actually
 somebody's held-out book is printed per seed, because that is what caps how far the metric
 could move. Re-encoding 235,824 works per seed is two hours a seed and out of budget; the fix
-to ``_fingerprint`` is out of scope tonight for the reason M21's own escalation rule gives.
+to ``_fingerprint`` is out of scope here for the reason M21's own escalation rule gives.
 """
 
 from __future__ import annotations
@@ -162,8 +162,8 @@ def drift_gate(seeds: tuple[int, ...], catalog) -> tuple[dict[int, int], dict[in
                   "  array length and every len/512-th text — ~512 samples of 235,824 — so a plain\n"
                   "  run reuses the cache silently and scores this seed with the other seed's\n"
                   "  vectors. That is a stale hit, not a miss, and it is the more dangerous of the\n"
-                  "  two. Recorded as a finding of its own; not fixed tonight, because changing a\n"
-                  "  cache key twelve hours before a demo forces an unplanned two-hour re-encode.")
+                  "  two. Recorded as a finding of its own; not fixed here, because changing a\n"
+                  "  cache key at this point forces an unplanned two-hour re-encode.")
         print("  The sweep reuses the cache and **bounds the error instead of hiding it**: the\n"
               "  embeddings row is exact for every work except these, and the held-out overlap is\n"
               "  printed per seed below, which is what caps how far the metric could move.\n")
@@ -405,7 +405,7 @@ def main(argv: list[str] | None = None) -> int:
     if reordered:
         print(f"\nORDERING FLIPPED for: {', '.join(reordered)} — the table is in a different order "
               f"on some draw. Per M21's escalation rule the primary table is NOT rewritten "
-              f"tonight; write the numbers into the milestone notes and leave it for the project owner.")
+              f"automatically; record the numbers and escalate the decision.")
     else:
         print("\nThe ordering holds on every draw: every comparison keeps its sign, on all "
               f"{len(seeds)} draws.")

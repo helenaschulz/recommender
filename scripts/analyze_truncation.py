@@ -4,7 +4,7 @@
     python scripts/analyze_truncation.py --taus 0.5 0.6 0.7 --anchors 300
 
 **This script proposes; it does not wire anything in.** M14.5 asks for a rule derived from
-the data, the number of slots it removes across the eleven demo anchors, and the project owner's
+the data, the number of slots it removes across the eleven demo anchors, and a review
 verdict *before* it reaches ``demo.similar``.
 
 The observation behind it: *Harry Potter*, *The Hobbit* and *Bridget Jones* all have a

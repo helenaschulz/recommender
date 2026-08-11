@@ -146,7 +146,7 @@ Configurations: **A** = ALS (what ships), **B** = item-item shrunk cosine, **C**
 
 ## The count
 
-Counted by hand by hand on 2026-08-10, reading all 240 slots above, the same
+Counted by hand on 2026-08-10, reading all 240 slots above, the same
 way L42's 30 clusters and L79's 30 gallery slots were counted.
 
 | configuration | bad slots (L79's criterion) | text-match artefacts | of | counted by | date |

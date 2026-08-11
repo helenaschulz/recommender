@@ -6,7 +6,7 @@
     python scripts/measure_hybrid.py --pairs-from artifacts/hybrid/rules_work_k10.npz
 
 **The prediction, written down before the run and repeated here so it cannot be quietly
-edited afterwards** (the advisor, 09.08.2026, from L20/L50 and L27/L73):
+edited afterwards** (09.08.2026, from L20/L50 and L27/L73):
 
     Coverage will move a lot and HitRate will barely move, possibly down. The held-out
     items only the content layer can reach are by definition items with little or no
