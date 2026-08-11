@@ -4,8 +4,8 @@ data/
 # --- Never commit: private working notes and agent instructions ---
 # Excluded regardless of repo visibility.
 internal/
-the milestone notes
-the project conventions
+STRATEGY.md
+CLAUDE.md
 
 # --- Secrets ---
 .env
