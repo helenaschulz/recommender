@@ -288,8 +288,9 @@ def sidebar(engine: DemoEngine) -> None:
 
     **Register, which is the decision behind every line.** This is a product surface, not a
     methods paper. A visitor does not read an essay before the first result, does not know
-    what a ledger code is, and does not need the mechanism unless they ask. So: no internal codes, no argument the screen
-    has not earned yet, plain nouns, and the model names written out. The substance stays —
+    what a ledger code is, and does not need the mechanism unless they ask. So: no internal
+    codes, no argument the screen has not earned yet, plain nouns, and the model names
+    written out. The substance stays —
     the floor, the refusal, the evidence, the table where this engine loses — in fewer words.
     """
     with st.sidebar:
