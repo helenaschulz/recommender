@@ -131,11 +131,11 @@ def main(argv: list[str] | None = None) -> int:
         "read it — a count written by the script that produced the lists would be the thing "
         "this audit exists to avoid.",
         "",
-        "| configuration | bad slots | of | counted by | date |",
-        "|---|---:|---:|---|---|",
-        f"| A · ALS | | {len(picked) * args.k} | | |",
-        f"| B · item-item | | {len(picked) * args.k} | | |",
-        f"| C · RRF | | {len(picked) * args.k} | | |",
+        "| configuration | bad slots | of | date |",
+        "|---|---:|---:|---|",
+        f"| A · ALS | | {len(picked) * args.k} | |",
+        f"| B · item-item | | {len(picked) * args.k} | |",
+        f"| C · RRF | | {len(picked) * args.k} | |",
         "",
     ]
 

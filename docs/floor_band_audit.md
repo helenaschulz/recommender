@@ -149,11 +149,11 @@ Configurations: **A** = ALS (what ships), **B** = item-item shrunk cosine, **C**
 Counted by hand on 2026-08-10, reading all 240 slots above, the same
 way L42's 30 clusters and L79's 30 gallery slots were counted.
 
-| configuration | bad slots (L79's criterion) | text-match artefacts | of | counted by | date |
-|---|---:|---:|---:|---|---|
-| A · ALS | **1** | 0 | 80 | hand count | 2026-08-10 |
-| B · item-item | **0** | 0 | 80 | hand count | 2026-08-10 |
-| C · RRF | **2** | **17** | 80 | hand count | 2026-08-10 |
+| configuration | bad slots (L79's criterion) | text-match artefacts | of | date |
+|---|---:|---:|---:|---|
+| A · ALS | **1** | 0 | 80 | 2026-08-10 |
+| B · item-item | **0** | 0 | 80 | 2026-08-10 |
+| C · RRF | **2** | **17** | 80 | 2026-08-10 |
 
 **The three bad slots, named, so the count can be checked rather than believed.**
 

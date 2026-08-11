@@ -489,10 +489,10 @@ Seeded from the twenty works the set names plus the keys M23.10.7 cites, so a sp
 
 Filled in by hand after reading section 3, under **L79's criterion, inherited unchanged** so this count and L89's are comparable: a slot is bad when it is the anchor itself under another edition, title or translation; a companion or *about* book rather than a comparable read; or a duplicate of another slot in the same list. Empty until someone has read it — a count written by the script that produced the lists is the thing this audit exists to avoid.
 
-| configuration | bad slots | of | counted by | date |
-|---|--:|--:|---|---|
-| A · Matrix factorization (ALS) | **7** (4 unambiguous) | 220 | hand count | 2026-08-10 |
-| B · Item-based collaborative filtering | **0** | 220 | hand count | 2026-08-10 |
+| configuration | bad slots | of | date |
+|---|--:|--:|---|
+| A · Matrix factorization (ALS) | **7** (4 unambiguous) | 220 | 2026-08-10 |
+| B · Item-based collaborative filtering | **0** | 220 | 2026-08-10 |
 
 **Every counted slot is named, so the count can be checked rather than believed.** All seven
 are A's; B produced none of the three classes in 220 slots.
